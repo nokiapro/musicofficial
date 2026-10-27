@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #120822;
+    --bg-sidebar: #170f23;
+    --bg-player: #170f23;
+    --bg-surface: #231b2e;
+    --bg-surface-hover: #2f2739;
+    --color-accent: #9b4de0;
+    --color-accent-hover: #b268f5;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  [data-theme="blue"] {
+    --bg-primary: #0f1a2e;
+    --bg-sidebar: #132238;
+    --bg-player: #132238;
+    --bg-surface: #1e2f47;
+    --bg-surface-hover: #273d5c;
+    --color-accent: #3b82f6;
+    --color-accent-hover: #60a5fa;
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+    --border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  [data-theme="sunset"] {
+    --bg-primary: #1e131d;
+    --bg-sidebar: #281926;
+    --bg-player: #281926;
+    --bg-surface: #382436;
+    --bg-surface-hover: #482f45;
+    --color-accent: #ec4899;
+    --color-accent-hover: #f472b6;
+    --text-primary: #ffffff;
+    --text-secondary: #a8a29e;
+    --border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  [data-theme="light"] {
+    --bg-primary: #f8fafc;
+    --bg-sidebar: #f1f5f9;
+    --bg-player: #ffffff;
+    --bg-surface: #e2e8f0;
+    --bg-surface-hover: #cbd5e1;
+    --color-accent: #8b5cf6;
+    --color-accent-hover: #7c3aed;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  body {
+    font-family: 'Roboto Condensed', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 18s linear infinite;
+}
+
+.paused {
+  animation-play-state: paused !important;
+}
+
+/* Range input styling for sleek Zing audio scrubber */
+input[type="range"] {
+  accent-color: var(--color-accent);
+}

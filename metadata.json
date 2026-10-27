@@ -1,0 +1,6 @@
+{
+  "name": "XuanKen Music",
+  "description": "Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua nhạc bản quyền MP3/WAV full chất lượng, quản lý kho bài hát Admin và đồng bộ Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
