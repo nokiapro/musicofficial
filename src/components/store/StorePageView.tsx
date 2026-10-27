@@ -175,8 +175,16 @@ Bitrate: ${song.audioFormat === 'WAV' ? '24-bit 96kHz Lossless' : '320kbps High 
             >
               <div className="flex items-start gap-3.5">
                 <div
-                  className={`w-14 h-14 rounded-xl bg-gradient-to-tr ${song.coverGradient} flex items-center justify-center shrink-0 shadow-lg relative`}
+                  className={`w-14 h-14 rounded-xl bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center shrink-0 shadow-lg relative overflow-hidden border border-white/10`}
                 >
+                  {song.coverImage ? (
+                    <img
+                      src={song.coverImage}
+                      alt={song.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : null}
                   <button
                     onClick={() => {
                       if (isCurrent) togglePlay();

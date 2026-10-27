@@ -5,7 +5,6 @@ import { MobileAppLayout } from './components/mobile/MobileAppLayout';
 
 const MainApp: React.FC = () => {
   const { effectiveIsMobile } = useMusic();
-
   return effectiveIsMobile ? <MobileAppLayout /> : <DesktopAppLayout />;
 };
 

@@ -91,6 +91,7 @@ interface MusicContextType {
   editSong: (song: Song) => Promise<void>;
   removeSong: (songId: string) => Promise<void>;
   updateMemberBalance: (uid: string, newBalance: number) => Promise<void>;
+  updateMember: (uid: string, data: { displayName?: string; role?: 'admin' | 'user'; balance?: number }) => Promise<void>;
   removeMember: (uid: string) => Promise<void>;
   toggleMemberRole: (uid: string) => Promise<void>;
 }
@@ -102,8 +103,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(180);
-  const [volume, setVolumeState] = useState<number>(0.8);
+  const [duration, setDuration] = useState<number>(210);
+  const [volume, setVolumeState] = useState<number>(1.0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
@@ -200,7 +201,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => unsubscribe();
   }, []);
 
-  // Fetch initial songs and members
+  // Fetch initial songs and members with real-time RTDB sync
   useEffect(() => {
     MusicService.fetchSongs().then((loadedSongs) => {
       setSongs(loadedSongs || []);
@@ -212,19 +213,39 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const randomIndex = Math.floor(Math.random() * loadedSongs.length);
           const randomSong = loadedSongs[randomIndex];
           setCurrentSong(randomSong);
-          setDuration(randomSong.duration || 180);
+          setDuration(randomSong.duration && randomSong.duration > 0 ? randomSong.duration : 210);
           setCurrentTime(0);
 
           setIsPlaying(true);
           const activeUrl = randomSong.demoUrl || randomSong.mp3Url || randomSong.wavUrl;
-          audioEngine.playUrl(activeUrl, (dur) => setDuration(dur));
+          audioEngine.playUrl(activeUrl, (dur) => {
+            if ((!randomSong.duration || randomSong.duration <= 0) && dur > 60) {
+              setDuration(dur);
+            }
+          });
         }
+      }
+    });
+
+    // Real-time listener for live sync across devices
+    const unsubscribeRealtime = MusicService.subscribeToSongs((updatedSongs) => {
+      if (updatedSongs && updatedSongs.length > 0) {
+        setSongs(updatedSongs);
+        setCurrentSong((cur) => {
+          if (!cur) return null;
+          const matched = updatedSongs.find((s) => s.id === cur.id);
+          return matched ? { ...cur, ...matched } : cur;
+        });
       }
     });
 
     MusicService.fetchMembers().then((loadedMembers) => {
       setMembers(loadedMembers || []);
     });
+
+    return () => {
+      unsubscribeRealtime();
+    };
   }, []);
 
   const isSongPurchased = (songId: string): boolean => {
@@ -270,16 +291,21 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         : currentSong.demoUrl || currentSong.mp3Url;
 
       audioEngine.playUrl(activeUrl, (dur) => {
-        if (dur > 0) setDuration(dur);
+        // Keep full song duration; never overwrite with shorter demo metadata
+        if ((!currentSong.duration || currentSong.duration <= 0) && dur > 60) {
+          setDuration(dur);
+        }
       });
 
       timerRef.current = window.setInterval(() => {
         setCurrentTime((prev) => {
           const purchased = isSongPurchased(currentSong.id);
-          // Requirement 4: Demo 60s limitation
+          // Requirement 2: Demo 60s limitation - at yellow dot, pop up buy song modal
           if (!purchased && prev >= 60) {
             audioEngine.pause();
             setIsPlaying(false);
+            setSongToBuy(currentSong);
+            setIsBuyModalOpen(true);
             setIsDemoLimitModalOpen(true);
             return 60;
           }
@@ -316,13 +342,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const playSong = (song: Song) => {
+    // Increment playCount for #xuankenchart ranking and sync to Firebase
+    const nextPlayCount = (song.playCount || 0) + 1;
+    const activeSong = { ...song, playCount: nextPlayCount };
+    setSongs((prev) => prev.map((s) => (s.id === song.id ? activeSong : s)));
+    MusicService.incrementPlayCount(song.id, nextPlayCount);
+
     if (currentSong?.id !== song.id) {
       if (currentSong) {
         setHistory((prev) => [currentSong, ...prev.filter((s) => s.id !== currentSong.id)]);
       }
-      setCurrentSong(song);
+      setCurrentSong(activeSong);
       setCurrentTime(0);
-      setDuration(song.duration || 180);
+      // Requirement 2: Always keep full song duration on progress bar (default 210s = 3:30)
+      setDuration(song.duration && song.duration > 0 ? song.duration : 210);
+    } else {
+      setCurrentSong(activeSong);
     }
     setIsPlaying(true);
 
@@ -332,7 +367,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       : song.demoUrl || song.mp3Url;
 
     audioEngine.playUrl(activeUrl, (dur) => {
-      if (dur > 0) setDuration(dur);
+      if ((!song.duration || song.duration <= 0) && dur > 60) {
+        setDuration(dur);
+      }
     });
   };
 
@@ -347,11 +384,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const seekTo = (seconds: number) => {
     if (!currentSong) return;
     const purchased = isSongPurchased(currentSong.id);
-    if (!purchased && seconds > 60) {
+    if (!purchased && seconds >= 60) {
       setCurrentTime(60);
       audioEngine.seek(60);
       audioEngine.pause();
       setIsPlaying(false);
+      setSongToBuy(currentSong);
+      setIsBuyModalOpen(true);
       setIsDemoLimitModalOpen(true);
       return;
     }
@@ -534,13 +573,37 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.saveSongsToFirebase(updated);
   };
 
-  // Member Management
   const updateMemberBalance = async (uid: string, newBalance: number) => {
     const updated = members.map((m) => (m.uid === uid ? { ...m, balance: newBalance } : m));
     setMembers(updated);
     if (currentUser?.uid === uid) {
       setCurrentUser({ ...currentUser, balance: newBalance });
       setUserBalance(newBalance);
+    }
+    await MusicService.saveMembers(updated);
+  };
+
+  const updateMember = async (uid: string, data: { displayName?: string; role?: 'admin' | 'user'; balance?: number }) => {
+    const updated = members.map((m) => {
+      if (m.uid === uid) {
+        return {
+          ...m,
+          displayName: data.displayName !== undefined ? data.displayName : m.displayName,
+          role: data.role !== undefined ? data.role : m.role,
+          balance: data.balance !== undefined ? data.balance : m.balance,
+        };
+      }
+      return m;
+    });
+    setMembers(updated);
+    if (currentUser?.uid === uid) {
+      const updatedCurrent = updated.find((m) => m.uid === uid);
+      if (updatedCurrent) {
+        setCurrentUser(updatedCurrent);
+        if (data.balance !== undefined) {
+          setUserBalance(data.balance);
+        }
+      }
     }
     await MusicService.saveMembers(updated);
   };
@@ -646,6 +709,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         editSong,
         removeSong,
         updateMemberBalance,
+        updateMember,
         removeMember,
         toggleMemberRole,
       }}

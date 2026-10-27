@@ -18,6 +18,10 @@ import {
   FileText,
   Clock,
   ShieldAlert,
+  Code,
+  Copy,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song, AppUser, AudioFormat } from '../../types/music';
@@ -35,11 +39,12 @@ export const AdminPageView: React.FC = () => {
     logout,
     members,
     updateMemberBalance,
+    updateMember,
     removeMember,
     toggleMemberRole,
   } = useMusic();
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members'>('songs');
+  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members' | 'rules'>('songs');
 
   // Login form state for unauthenticated admin
   const [loginEmail, setLoginEmail] = useState('');
@@ -59,16 +64,22 @@ export const AdminPageView: React.FC = () => {
   const [demoUrl, setDemoUrl] = useState('');
   const [mp3Url, setMp3Url] = useState('');
   const [wavUrl, setWavUrl] = useState('');
+  const [coverImage, setCoverImage] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState('3');
+  const [durationSeconds, setDurationSeconds] = useState('30');
+  const [playCountInput, setPlayCountInput] = useState('0');
   const [lrcType, setLrcType] = useState<'text' | 'link'>('text');
   const [lrcRaw, setLrcRaw] = useState('');
   const [lrcUrl, setLrcUrl] = useState('');
-  const [autoCalculatedDuration, setAutoCalculatedDuration] = useState<number>(180);
+  const [autoCalculatedDuration, setAutoCalculatedDuration] = useState<number>(210);
   const [isDetectingDuration, setIsDetectingDuration] = useState(false);
 
-  // Member Edit Balance Modal State
+  // Member Edit Modal State (displayName, role, balance - Requirement 3)
   const [editingMember, setEditingMember] = useState<AppUser | null>(null);
-  const [balanceAdjustment, setBalanceAdjustment] = useState<string>('50000');
-  const [adjustType, setAdjustType] = useState<'add' | 'subtract' | 'set'>('add');
+  const [editDisplayName, setEditDisplayName] = useState<string>('');
+  const [editRole, setEditRole] = useState<'admin' | 'user'>('user');
+  const [editBalance, setEditBalance] = useState<string>('0');
+  const [copiedRuleFile, setCopiedRuleFile] = useState<string | null>(null);
 
   // If not logged in, show Admin Login Screen
   if (!currentUser) {
@@ -157,12 +168,16 @@ export const AdminPageView: React.FC = () => {
     );
   }
 
-  // Calculate duration automatically from audio URLs
+  // Calculate duration automatically from audio URLs (full tracks only, never capped to 60s demo)
   const triggerAutoDuration = async (urlToCheck: string) => {
     if (!urlToCheck || !urlToCheck.trim()) return;
     setIsDetectingDuration(true);
     const dur = await audioEngine.calculateDurationFromUrl(urlToCheck);
-    setAutoCalculatedDuration(dur);
+    if (dur > 60) {
+      setAutoCalculatedDuration(dur);
+      setDurationMinutes(Math.floor(dur / 60).toString());
+      setDurationSeconds((dur % 60).toString().padStart(2, '0'));
+    }
     setIsDetectingDuration(false);
   };
 
@@ -171,15 +186,19 @@ export const AdminPageView: React.FC = () => {
     setTitle('');
     setArtists('');
     setAlbum('');
+    setCoverImage('');
     setAudioFormat('MP3');
     setPrice('20000');
+    setDurationMinutes('3');
+    setDurationSeconds('30');
+    setPlayCountInput('0');
     setDemoUrl('');
     setMp3Url('');
     setWavUrl('');
     setLrcType('text');
     setLrcRaw('');
     setLrcUrl('');
-    setAutoCalculatedDuration(180);
+    setAutoCalculatedDuration(210);
     setIsSongModalOpen(true);
   };
 
@@ -188,27 +207,34 @@ export const AdminPageView: React.FC = () => {
     setTitle(song.title);
     setArtists(song.artists);
     setAlbum(song.album || '');
+    setCoverImage(song.coverImage || '');
     setAudioFormat(song.audioFormat);
     setPrice(song.price.toString());
+    const totalSecs = song.duration && song.duration > 0 ? song.duration : 210;
+    setDurationMinutes(Math.floor(totalSecs / 60).toString());
+    setDurationSeconds((totalSecs % 60).toString().padStart(2, '0'));
+    setPlayCountInput((song.playCount || 0).toString());
     setDemoUrl(song.demoUrl || '');
     setMp3Url(song.mp3Url || '');
     setWavUrl(song.wavUrl || '');
     setLrcType(song.lrcUrl ? 'link' : 'text');
     setLrcRaw(song.lrcRaw || '');
     setLrcUrl(song.lrcUrl || '');
-    setAutoCalculatedDuration(song.duration || 180);
+    setAutoCalculatedDuration(totalSecs);
     setIsSongModalOpen(true);
   };
 
   const handleSaveSong = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Auto calculate from best available audio URL if not already done
-    const primaryUrl = mp3Url || wavUrl || demoUrl;
-    let finalDuration = autoCalculatedDuration;
-    if (primaryUrl && finalDuration <= 0) {
-      finalDuration = await audioEngine.calculateDurationFromUrl(primaryUrl);
+    // Calculate user-specified duration (Phút : Giây)
+    const mins = parseInt(durationMinutes, 10) || 0;
+    const secs = parseInt(durationSeconds, 10) || 0;
+    let finalDuration = mins * 60 + secs;
+    if (finalDuration <= 0) {
+      finalDuration = autoCalculatedDuration > 60 ? autoCalculatedDuration : 210;
     }
+    const numPlayCount = Math.max(0, parseInt(playCountInput, 10) || 0);
 
     // Parse LRC lines if text provided
     const parsedLyrics = lrcRaw
@@ -241,15 +267,17 @@ export const AdminPageView: React.FC = () => {
           title,
           artists,
           album,
+          coverImage: coverImage.trim() || existing.coverImage || undefined,
           audioFormat,
           price: parseInt(price, 10) || 0,
+          playCount: numPlayCount,
           demoUrl: demoUrl.trim() || undefined,
           mp3Url: mp3Url.trim() || undefined,
           wavUrl: wavUrl.trim() || undefined,
           lrcUrl: lrcType === 'link' ? lrcUrl.trim() : undefined,
           lrcRaw: lrcType === 'text' ? lrcRaw : undefined,
           lyrics: parsedLyrics,
-          duration: finalDuration || 180,
+          duration: finalDuration,
         };
         await editSong(updated);
       }
@@ -260,15 +288,17 @@ export const AdminPageView: React.FC = () => {
         title,
         artists,
         album,
+        coverImage: coverImage.trim() || undefined,
         audioFormat,
         price: parseInt(price, 10) || 0,
+        playCount: numPlayCount,
         demoUrl: demoUrl.trim() || undefined,
         mp3Url: mp3Url.trim() || undefined,
         wavUrl: wavUrl.trim() || undefined,
         lrcUrl: lrcType === 'link' ? lrcUrl.trim() : undefined,
         lrcRaw: lrcType === 'text' ? lrcRaw : undefined,
         lyrics: parsedLyrics,
-        duration: finalDuration || 180,
+        duration: finalDuration,
         coverGradient: gradients[Math.floor(Math.random() * gradients.length)],
         releaseDate: new Date().getFullYear().toString(),
       };
@@ -278,16 +308,29 @@ export const AdminPageView: React.FC = () => {
     setIsSongModalOpen(false);
   };
 
-  const handleAdjustBalance = async () => {
-    if (!editingMember) return;
-    const amount = parseInt(balanceAdjustment, 10) || 0;
-    let newBal = editingMember.balance;
-    if (adjustType === 'add') newBal += amount;
-    else if (adjustType === 'subtract') newBal = Math.max(0, newBal - amount);
-    else newBal = Math.max(0, amount);
+  const handleOpenEditMember = (m: AppUser) => {
+    setEditingMember(m);
+    setEditDisplayName(m.displayName || '');
+    setEditRole(m.role || 'user');
+    setEditBalance(m.balance?.toString() || '0');
+  };
 
-    await updateMemberBalance(editingMember.uid, newBal);
+  const handleSaveMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    const numBalance = Math.max(0, parseInt(editBalance, 10) || 0);
+    await updateMember(editingMember.uid, {
+      displayName: editDisplayName.trim() || editingMember.email.split('@')[0],
+      role: editRole,
+      balance: numBalance,
+    });
     setEditingMember(null);
+  };
+
+  const copyRuleToClipboard = (filename: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedRuleFile(filename);
+    setTimeout(() => setCopiedRuleFile(null), 2500);
   };
 
   return (
@@ -319,8 +362,8 @@ export const AdminPageView: React.FC = () => {
         </div>
       </div>
 
-      {/* Admin Tabs: Quản Lý Bài Hát vs Quản Lý Thành Viên */}
-      <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 w-fit">
+      {/* Admin Tabs: Quản Lý Bài Hát vs Quản Lý Thành Viên vs Quy Tắc Firebase */}
+      <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 w-fit flex-wrap gap-1">
         <button
           onClick={() => setActiveAdminTab('songs')}
           className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -342,6 +385,17 @@ export const AdminPageView: React.FC = () => {
         >
           <Users className="w-4 h-4" />
           <span>Quản Lý Thành Viên ({members.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('rules')}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeAdminTab === 'rules'
+              ? 'bg-[#9b4de0] text-white shadow'
+              : 'text-white/60 hover:text-white'
+          }`}
+        >
+          <Code className="w-4 h-4" />
+          <span>Quy Tắc Firebase (Rules)</span>
         </button>
       </div>
 
@@ -398,8 +452,25 @@ export const AdminPageView: React.FC = () => {
                           {song.stt || i + 1}
                         </td>
                         <td className="py-3 px-4">
-                          <p className="font-bold text-white truncate max-w-xs">{song.title}</p>
-                          <p className="text-[10px] text-white/40 truncate">{song.album || 'Độc quyền'}</p>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 relative">
+                              {song.coverImage ? (
+                                <img
+                                  src={song.coverImage}
+                                  alt={song.title}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
+                              ) : null}
+                              <div className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}>
+                                <Music2 className="w-4 h-4 text-white/60" />
+                              </div>
+                            </div>
+                            <div className="truncate">
+                              <p className="font-bold text-white truncate max-w-xs">{song.title}</p>
+                              <p className="text-[10px] text-white/40 truncate">{song.album || 'Độc quyền'}</p>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-white/80 font-medium truncate">
                           {song.artists}
@@ -540,16 +611,14 @@ export const AdminPageView: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {/* Requirement 3: Nút Chỉnh sửa thành viên (Tên, vai trò, số tiền) */}
                             <button
-                              onClick={() => {
-                                setEditingMember(member);
-                                setBalanceAdjustment('50000');
-                                setAdjustType('add');
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white font-bold flex items-center gap-1"
+                              onClick={() => handleOpenEditMember(member)}
+                              className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/30 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white font-bold flex items-center gap-1 transition-colors"
+                              title="Chỉnh sửa tên hiển thị, vai trò, số tiền"
                             >
-                              <Wallet className="w-3 h-3" />
-                              <span>Sửa Tiền</span>
+                              <Edit3 className="w-3 h-3" />
+                              <span>Sửa Thành Viên</span>
                             </button>
 
                             <button
@@ -558,7 +627,7 @@ export const AdminPageView: React.FC = () => {
                                   removeMember(member.uid);
                                 }
                               }}
-                              className="p-1 rounded-lg bg-white/10 hover:bg-red-600 text-white"
+                              className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
                               title="Xóa thành viên"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -575,88 +644,392 @@ export const AdminPageView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: SỬA TIỀN THÀNH VIÊN (Requirement 4) */}
+      {/* TAB 3: QUY TẮC FIREBASE (RULES - Requirement 1) */}
+      {activeAdminTab === 'rules' && (
+        <div className="space-y-6">
+          <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-800/40 text-xs">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Code className="w-4 h-4 text-[#c273ed]" />
+              <span>Quy Tắc Bảo Mật Firebase Đã Được Tạo Tự Động</span>
+            </h3>
+            <p className="text-white/70 mt-1 leading-relaxed">
+              Các tệp quy tắc bảo mật đã được tạo tại thư mục gốc của dự án (<code className="text-amber-300">firestore.rules</code>, <code className="text-amber-300">database.rules.json</code>, <code className="text-amber-300">storage.rules</code>). Bạn có thể bấm nút <strong>Sao chép</strong> dưới đây và dán trực tiếp vào Firebase Console (<a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="text-purple-300 underline font-bold">console.firebase.google.com</a>) để áp dụng ngay.
+            </p>
+          </div>
+
+          {/* 1. Realtime Database Rules */}
+          <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
+            <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <span className="font-bold text-white text-sm">database.rules.json (Firebase Realtime Database)</span>
+                <p className="text-[11px] text-white/50">Dành cho lưu trữ bài hát và danh sách thành viên hiện tại</p>
+              </div>
+              <button
+                onClick={() =>
+                  copyRuleToClipboard(
+                    'database.rules.json',
+                    JSON.stringify(
+                      {
+                        rules: {
+                          songs: {
+                            ".read": true,
+                            ".write": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
+                          },
+                          members: {
+                            ".read": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
+                            "$uid": {
+                              ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
+                              ".write": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
+                            },
+                          },
+                          purchases: {
+                            "$uid": {
+                              ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'xuankensinger@gmail.com')",
+                              ".write": "auth != null && auth.uid === $uid",
+                            },
+                          },
+                        },
+                      },
+                      null,
+                      2
+                    )
+                  )
+                }
+                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors"
+              >
+                {copiedRuleFile === 'database.rules.json' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Đã sao chép!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Sao Chép File</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <pre className="p-4 text-[11px] font-mono text-emerald-400 bg-black/60 overflow-x-auto max-h-56 leading-relaxed">
+{`{
+  "rules": {
+    "songs": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')"
+    },
+    "members": {
+      ".read": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')"
+      }
+    },
+    "purchases": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'xuankensinger@gmail.com')",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}`}
+            </pre>
+          </div>
+
+          {/* 2. Cloud Firestore Rules */}
+          <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
+            <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <span className="font-bold text-white text-sm">firestore.rules (Cloud Firestore)</span>
+                <p className="text-[11px] text-white/50">Dành cho bộ sưu tập Firestore (songs, members, purchases)</p>
+              </div>
+              <button
+                onClick={() =>
+                  copyRuleToClipboard(
+                    'firestore.rules',
+                    `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() { return request.auth != null; }
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'xuankensinger@gmail.com' ||
+        request.auth.token.admin == true
+      );
+    }
+    function isUserAdmin() {
+      return isSuperAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
+
+    match /songs/{songId} {
+      allow read: if true;
+      allow write: if isUserAdmin();
+    }
+
+    match /members/{userId} {
+      allow read: if isOwner(userId) || isUserAdmin();
+      allow write: if isUserAdmin();
+      allow create: if isOwner(userId) && request.resource.data.role == 'user' && request.resource.data.balance == 0;
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isUserAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isUserAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if isUserAdmin();
+    }
+  }
+}`
+                  )
+                }
+                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors"
+              >
+                {copiedRuleFile === 'firestore.rules' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Đã sao chép!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Sao Chép File</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <pre className="p-4 text-[11px] font-mono text-purple-300 bg-black/60 overflow-x-auto max-h-56 leading-relaxed">
+{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() { return request.auth != null; }
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'xuankensinger@gmail.com' ||
+        request.auth.token.admin == true
+      );
+    }
+    function isUserAdmin() {
+      return isSuperAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
+
+    match /songs/{songId} {
+      allow read: if true;
+      allow write: if isUserAdmin();
+    }
+
+    match /members/{userId} {
+      allow read: if isOwner(userId) || isUserAdmin();
+      allow write: if isUserAdmin();
+      allow create: if isOwner(userId) && request.resource.data.role == 'user' && request.resource.data.balance == 0;
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isUserAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isUserAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if isUserAdmin();
+    }
+  }
+}`}
+            </pre>
+          </div>
+
+          {/* 3. Storage Rules */}
+          <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
+            <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <span className="font-bold text-white text-sm">storage.rules (Firebase Cloud Storage)</span>
+                <p className="text-[11px] text-white/50">Dành cho bucket lưu trữ file âm thanh và ảnh bìa</p>
+              </div>
+              <button
+                onClick={() =>
+                  copyRuleToClipboard(
+                    'storage.rules',
+                    `rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.token.email == 'xuankensinger@gmail.com' ||
+        request.auth.token.admin == true
+      );
+    }
+  }
+}`
+                  )
+                }
+                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors"
+              >
+                {copiedRuleFile === 'storage.rules' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Đã sao chép!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Sao Chép File</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <pre className="p-4 text-[11px] font-mono text-amber-300 bg-black/60 overflow-x-auto max-h-40 leading-relaxed">
+{`rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.token.email == 'xuankensinger@gmail.com' ||
+        request.auth.token.admin == true
+      );
+    }
+  }
+}`}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CHỈNH SỬA THÀNH VIÊN (Tên hiển thị, vai trò, số tiền - Requirement 3) */}
       {editingMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-[#231b2e] border border-white/10 rounded-2xl shadow-2xl p-6 text-white text-xs">
+          <div className="w-full max-w-md bg-[#231b2e] border border-white/10 rounded-2xl shadow-2xl p-6 text-white text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h2 className="text-base font-bold flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-emerald-400" />
-                <span>Chỉnh Sửa Tiền Thành Viên</span>
+                <Users className="w-4 h-4 text-[#c273ed]" />
+                <span>Chỉnh Sửa Thành Viên</span>
               </h2>
               <button onClick={() => setEditingMember(null)} className="p-1 text-white/60 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="mt-4 p-3 rounded-xl bg-white/5 border border-white/5">
-              <p className="text-white/60">Thành viên: <strong className="text-white">{editingMember.email}</strong></p>
-              <p className="text-white/60 mt-1">
-                Số dư hiện tại: <span className="font-bold text-amber-300 font-mono">{editingMember.balance.toLocaleString('vi-VN')} đ</span>
-              </p>
-            </div>
+            <form onSubmit={handleSaveMember} className="mt-4 space-y-4">
+              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                <p className="text-white/60">Tài khoản Email:</p>
+                <p className="font-bold text-white text-sm font-mono mt-0.5">{editingMember.email}</p>
+                <p className="text-[10px] text-white/40 font-mono mt-0.5">UID: {editingMember.uid}</p>
+              </div>
 
-            <div className="mt-4">
-              <label className="block text-white/70 mb-1 font-bold">Hình thức điều chỉnh</label>
-              <div className="grid grid-cols-3 gap-2">
+              {/* 1. Tên hiển thị */}
+              <div>
+                <label className="block text-white/70 mb-1 font-bold">1. Tên hiển thị thành viên *</label>
+                <input
+                  type="text"
+                  required
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                  placeholder="Nhập tên hiển thị"
+                  className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#9b4de0]"
+                />
+              </div>
+
+              {/* 2. Vai trò */}
+              <div>
+                <label className="block text-white/70 mb-1 font-bold">2. Vai trò tài khoản *</label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as 'admin' | 'user')}
+                  className="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#9b4de0]"
+                >
+                  <option value="user">User - Thành viên thông thường</option>
+                  <option value="admin">Admin - Quản trị viên toàn quyền</option>
+                </select>
+              </div>
+
+              {/* 3. Số tiền trong ví */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-white/70 font-bold">3. Số dư ví (VNĐ) *</label>
+                  <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                    {parseInt(editBalance || '0', 10).toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  required
+                  value={editBalance}
+                  onChange={(e) => setEditBalance(e.target.value)}
+                  className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#9b4de0]"
+                />
+
+                {/* Quick helper balance buttons */}
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = parseInt(editBalance || '0', 10);
+                      setEditBalance((cur + 50000).toString());
+                    }}
+                    className="py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white font-mono font-bold text-[10px] border border-emerald-500/30 transition-colors"
+                  >
+                    +50.000đ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = parseInt(editBalance || '0', 10);
+                      setEditBalance((cur + 100000).toString());
+                    }}
+                    className="py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white font-mono font-bold text-[10px] border border-emerald-500/30 transition-colors"
+                  >
+                    +100.000đ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cur = parseInt(editBalance || '0', 10);
+                      setEditBalance((cur + 500000).toString());
+                    }}
+                    className="py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white font-mono font-bold text-[10px] border border-emerald-500/30 transition-colors"
+                  >
+                    +500.000đ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditBalance('0')}
+                    className="py-1 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white font-mono font-bold text-[10px] border border-red-500/30 transition-colors"
+                  >
+                    Đặt 0đ
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-2 pt-2 border-t border-white/10">
                 <button
                   type="button"
-                  onClick={() => setAdjustType('add')}
-                  className={`py-1.5 rounded-lg border font-bold text-center ${
-                    adjustType === 'add' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/5 border-white/10 text-white/60'
-                  }`}
+                  onClick={() => setEditingMember(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 font-semibold text-xs transition-colors"
                 >
-                  + Cộng Tiền
+                  Hủy Bỏ
                 </button>
                 <button
-                  type="button"
-                  onClick={() => setAdjustType('subtract')}
-                  className={`py-1.5 rounded-lg border font-bold text-center ${
-                    adjustType === 'subtract' ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/10 text-white/60'
-                  }`}
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] font-bold text-white text-xs shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
                 >
-                  - Trừ Tiền
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdjustType('set')}
-                  className={`py-1.5 rounded-lg border font-bold text-center ${
-                    adjustType === 'set' ? 'bg-purple-600 border-purple-500 text-white' : 'bg-white/5 border-white/10 text-white/60'
-                  }`}
-                >
-                  = Đặt Lại
+                  Lưu Thông Tin
                 </button>
               </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-white/70 mb-1 font-bold">Số tiền (VNĐ)</label>
-              <input
-                type="number"
-                min="0"
-                step="1000"
-                value={balanceAdjustment}
-                onChange={(e) => setBalanceAdjustment(e.target.value)}
-                className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#9b4de0]"
-              />
-            </div>
-
-            <div className="mt-6 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingMember(null)}
-                className="flex-1 py-2 rounded-xl border border-white/10 text-white/70 hover:text-white"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleAdjustBalance}
-                className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-white shadow"
-              >
-                Lưu Thay Đổi
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -698,6 +1071,38 @@ export const AdminPageView: React.FC = () => {
                     placeholder="VD: Sơn Tùng M-TP"
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#9b4de0]"
                   />
+                </div>
+              </div>
+
+              {/* Requirement 5: Link ảnh bìa bài hát */}
+              <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-white/80 font-bold text-xs flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#c273ed]" />
+                    <span>Link ảnh bìa bài hát (Cover Image URL)</span>
+                  </label>
+                  <span className="text-[10px] text-white/40">Dán link ảnh (.jpg, .png, .webp)</span>
+                </div>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="url"
+                    value={coverImage}
+                    onChange={(e) => setCoverImage(e.target.value)}
+                    placeholder="https://example.com/anh-bia-bai-hat.jpg"
+                    className="flex-1 bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white text-[11px] font-mono focus:outline-none focus:border-[#9b4de0]"
+                  />
+                  <div className="w-11 h-11 rounded-xl border border-white/10 bg-black/50 overflow-hidden shrink-0 flex items-center justify-center relative">
+                    {coverImage.trim() ? (
+                      <img
+                        src={coverImage.trim()}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <span className="text-[9px] text-white/30 text-center leading-tight">Chưa có ảnh</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -754,7 +1159,7 @@ export const AdminPageView: React.FC = () => {
                     type="url"
                     value={demoUrl}
                     onChange={(e) => setDemoUrl(e.target.value)}
-                    onBlur={() => triggerAutoDuration(demoUrl)}
+                    
                     placeholder="https://example.com/demo60s.mp3"
                     className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-[#9b4de0]"
                   />
@@ -790,19 +1195,72 @@ export const AdminPageView: React.FC = () => {
                   />
                 </div>
 
-                {/* Requirement 2: Auto Duration calculated */}
+                {/* Requirement 2: Thời lượng chuẩn (Phút : Giây) & Lượt nghe */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-white/80 mb-1 font-bold flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#c273ed]" />
+                      <span>Thời lượng bài hát *</span>
+                    </label>
+                    <div className="flex items-center gap-1.5 bg-black/40 border border-white/15 rounded-xl px-2.5 py-1.5 focus-within:border-[#9b4de0]">
+                      <input
+                        type="number"
+                        min="0"
+                        max="60"
+                        value={durationMinutes}
+                        onChange={(e) => setDurationMinutes(e.target.value)}
+                        placeholder="3"
+                        className="w-10 bg-transparent text-white font-mono text-center font-bold text-xs focus:outline-none"
+                      />
+                      <span className="text-white/50 text-[10px]">phút</span>
+                      <span className="text-white/30">:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={durationSeconds}
+                        onChange={(e) => setDurationSeconds(e.target.value)}
+                        placeholder="30"
+                        className="w-10 bg-transparent text-white font-mono text-center font-bold text-xs focus:outline-none"
+                      />
+                      <span className="text-white/50 text-[10px]">giây</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-white/80 mb-1 font-bold">
+                      Lượt nghe (#xuankenchart)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={playCountInput}
+                      onChange={(e) => setPlayCountInput(e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#9b4de0]"
+                    />
+                  </div>
+                </div>
+
+                {/* Auto duration helper */}
                 <div className="p-2.5 rounded-lg bg-black/30 border border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs">
                     <Clock className="w-4 h-4 text-[#c273ed]" />
-                    <span className="text-white/70">Thời lượng bài hát (Tự động tính):</span>
+                    <span className="text-white/70">Tổng thời lượng lưu:</span>
+                    <span className="font-mono font-bold text-amber-300">
+                      {durationMinutes}:{durationSeconds.padStart(2, '0')} (
+                      {parseInt(durationMinutes || '0', 10) * 60 + parseInt(durationSeconds || '0', 10)}s)
+                    </span>
                   </div>
-                  <span className="font-mono font-bold text-amber-300 text-sm">
-                    {isDetectingDuration
-                      ? 'Đang kiểm tra link...'
-                      : `${Math.floor(autoCalculatedDuration / 60)}:${(autoCalculatedDuration % 60)
-                          .toString()
-                          .padStart(2, '0')} (${autoCalculatedDuration}s)`}
-                  </span>
+                  {(mp3Url.trim() || wavUrl.trim()) && (
+                    <button
+                      type="button"
+                      onClick={() => triggerAutoDuration(mp3Url.trim() || wavUrl.trim())}
+                      className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/20 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white text-[10px] font-bold transition-colors"
+                    >
+                      {isDetectingDuration ? 'Đang dò...' : 'Dò từ file MP3/WAV'}
+                    </button>
+                  )}
                 </div>
               </div>
 

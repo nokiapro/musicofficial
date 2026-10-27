@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "Song": {
+      "title": "Song",
+      "description": "A musical track with metadata, audio links (demo 60s, MP3, WAV), and lyrics",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "artists": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number"
+        },
+        "audioFormat": {
+          "type": "string",
+          "enum": ["MP3", "WAV"]
+        },
+        "price": {
+          "type": "number"
+        },
+        "demoUrl": {
+          "type": "string"
+        },
+        "mp3Url": {
+          "type": "string"
+        },
+        "wavUrl": {
+          "type": "string"
+        },
+        "lrcRaw": {
+          "type": "string"
+        },
+        "lrcUrl": {
+          "type": "string"
+        },
+        "album": {
+          "type": "string"
+        },
+        "coverImage": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "title", "artists", "price", "audioFormat"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "User profile with balance, role, and purchased song IDs",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "number"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "user"]
+        },
+        "purchasedSongIds": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      },
+      "required": ["uid", "email", "role", "balance"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "Record of a song purchased by a member",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "songId": {
+          "type": "string"
+        },
+        "songTitle": {
+          "type": "string"
+        },
+        "price": {
+          "type": "number"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "userId", "songId", "price"]
+    }
+  },
+  "firestore": {
+    "/songs/{songId}": {
+      "schema": "Song",
+      "description": "Collection of all songs in the music store"
+    },
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "Collection of user profiles and wallet balances"
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "Purchase",
+      "description": "Purchase transaction records"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "songs": {
+      ".read": true,
+      ".write": true
+    },
+    "members": {
+      ".read": true,
+      ".write": true
+    },
+    "purchases": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

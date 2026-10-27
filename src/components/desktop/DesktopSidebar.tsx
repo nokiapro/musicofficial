@@ -19,7 +19,7 @@ export const DesktopSidebar: React.FC = () => {
     { id: 'discover', label: 'Danh Sách Bài Hát', icon: <ListMusic className="w-5 h-5" /> },
     { id: 'store', label: 'Cửa Hàng Nhạc', icon: <ShoppingBag className="w-5 h-5" /> },
     { id: 'admin', label: 'Admin Quản Trị', icon: <ShieldCheck className="w-5 h-5" /> },
-    { id: 'chart', label: '#zingchart', icon: <TrendingUp className="w-5 h-5" /> },
+    { id: 'chart', label: '#xuankenchart', icon: <TrendingUp className="w-5 h-5" /> },
     { id: 'radio', label: 'Radio Trực Tuyến', icon: <Radio className="w-5 h-5" />, isLive: true },
     { id: 'library', label: 'Thư Viện Của Tôi', icon: <FolderHeart className="w-5 h-5" /> },
   ];

@@ -10,12 +10,13 @@ export interface Song {
   stt?: number;
   title: string;
   artists: string;
-  duration: number; // calculated automatically!
+  duration: number; // calculated or specified in seconds
   coverGradient?: string;
-  coverImage?: string;
+  coverImage?: string; // Link ảnh bìa trực tuyến
   album?: string;
   releaseDate?: string;
   plays?: string;
+  playCount?: number; // Lượt nghe thời gian thực cho #xuankenchart
   lyrics: LyricLine[];
   lrcRaw?: string;
   lrcUrl?: string; // external .lrc link or text

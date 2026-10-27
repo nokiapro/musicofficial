@@ -5,7 +5,7 @@ export class AudioEngine {
   private isPlaying: boolean = false;
   private timerId: number | null = null;
   private step: number = 0;
-  private volume: number = 0.8;
+  private volume: number = 1.0;
   private isMuted: boolean = false;
   private audioElement: HTMLAudioElement | null = null;
   private audioSourceNode: MediaElementAudioSourceNode | null = null;

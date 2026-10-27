@@ -99,7 +99,7 @@
   animation-play-state: paused !important;
 }
 
-/* Range input styling for sleek Zing audio scrubber */
+/* Range input styling for sleek audio scrubber & volume */
 input[type="range"] {
   accent-color: var(--color-accent);
 }

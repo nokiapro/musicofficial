@@ -41,9 +41,10 @@ export const DesktopSongListView: React.FC = () => {
     return true;
   });
 
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (seconds?: number) => {
+    if (!seconds || isNaN(seconds) || seconds <= 0) return '03:30';
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
@@ -209,9 +210,18 @@ export const DesktopSongListView: React.FC = () => {
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-10 h-10 rounded-lg bg-gradient-to-tr ${song.coverGradient} flex items-center justify-center shrink-0 shadow relative`}
+                          className={`w-11 h-11 rounded-xl bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center shrink-0 shadow-md relative overflow-hidden border border-white/10`}
                         >
-                          <Music className="w-4 h-4 text-white/70" />
+                          {song.coverImage ? (
+                            <img
+                              src={song.coverImage}
+                              alt={song.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <Music className="w-5 h-5 text-white/70" />
+                          )}
                         </div>
                         <div className="truncate">
                           <p

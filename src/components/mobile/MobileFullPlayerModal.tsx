@@ -41,6 +41,7 @@ export const MobileFullPlayerModal: React.FC = () => {
     sleepTimerRemainingSeconds,
     queue,
     playSong,
+    isSongPurchased,
   } = useMusic();
 
   const [activeTab, setActiveTab] = useState<'disc' | 'lyrics'>('disc');
@@ -133,12 +134,20 @@ export const MobileFullPlayerModal: React.FC = () => {
               {/* Spinning Disc Center */}
               <div
                 className={`w-full h-full rounded-full bg-gradient-to-tr ${
-                  currentSong.coverGradient
+                  currentSong.coverGradient || 'from-purple-600 to-indigo-800'
                 } flex items-center justify-center overflow-hidden animate-spin-slow ${
                   !isPlaying ? 'paused' : ''
-                } shadow-inner`}
+                } shadow-inner relative`}
               >
-                <div className="w-20 h-20 rounded-full bg-[#120822] border-4 border-zinc-900 flex items-center justify-center">
+                {currentSong.coverImage ? (
+                  <img
+                    src={currentSong.coverImage}
+                    alt={currentSong.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : null}
+                <div className="absolute w-20 h-20 rounded-full bg-[#120822] border-4 border-zinc-900 flex items-center justify-center shadow-lg">
                   <Disc3 className="w-8 h-8 text-white/70" />
                 </div>
               </div>
@@ -200,17 +209,37 @@ export const MobileFullPlayerModal: React.FC = () => {
 
       {/* Scrubber Slider */}
       <div className="relative z-10 px-6 mt-4">
-        <input
-          type="range"
-          min={0}
-          max={duration}
-          value={currentTime}
-          onChange={(e) => seekTo(Number(e.target.value))}
-          className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-        />
+        <div className="relative flex items-center">
+          <input
+            type="range"
+            min={0}
+            max={duration}
+            value={currentTime}
+            onChange={(e) => seekTo(Number(e.target.value))}
+            className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
+          />
+          {/* Yellow Dot (Chấm vàng 60s) if not purchased */}
+          {!isSongPurchased(currentSong.id) && duration > 60 && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -ml-1.5 flex flex-col items-center pointer-events-none z-10"
+              style={{ left: `${(60 / duration) * 100}%` }}
+              title="Chấm vàng: Hết hạn nghe thử 60s - Mua nhạc để nghe full bài"
+            >
+              <div className="w-3 h-3 rounded-full bg-amber-400 border-2 border-[#120822] shadow-[0_0_8px_#f59e0b]" />
+              <div className="w-0.5 h-2 bg-amber-400/80 -mt-0.5" />
+            </div>
+          )}
+        </div>
         <div className="flex items-center justify-between text-[11px] text-white/50 mt-1 tabular-nums font-medium">
           <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
+          <span className="flex items-center gap-1">
+            {!isSongPurchased(currentSong.id) && (
+              <span className="text-[9px] text-amber-300 font-bold bg-amber-400/10 px-1 py-0.2 rounded border border-amber-400/20">
+                Demo 60s (Chấm vàng)
+              </span>
+            )}
+            <span>{formatTime(duration)}</span>
+          </span>
         </div>
       </div>
 
