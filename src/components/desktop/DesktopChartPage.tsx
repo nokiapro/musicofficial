@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Play,
   TrendingUp,
@@ -10,6 +10,8 @@ import {
   CheckCircle,
   FileText,
   Crown,
+  MoreVertical,
+  Download,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
@@ -23,10 +25,25 @@ export const DesktopChartPage: React.FC = () => {
     isSongPurchased,
     setSongToBuy,
     setIsBuyModalOpen,
+    setIsDemoLimitModalOpen,
     setSelectedLrcSong,
     currentSong,
     isPlaying,
+    openDownloadModal,
   } = useMusic();
+
+  const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuSongId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return '3:30';
@@ -132,13 +149,13 @@ export const DesktopChartPage: React.FC = () => {
       {/* Chart List Table */}
       <div className="space-y-2">
         {/* Table Header with evenly spaced CSS grid */}
-        <div className="grid grid-cols-[64px_1fr_140px_110px_90px_180px] gap-4 px-5 py-3 text-xs font-bold text-white/50 uppercase tracking-wider border-b border-white/10 bg-white/5 rounded-xl">
+        <div className="grid grid-cols-[64px_1fr_120px_110px_90px_180px] gap-4 px-5 py-3 text-xs font-bold text-white/50 uppercase tracking-wider border-b border-white/10 bg-white/5 rounded-xl">
           <span className="text-center">Thứ hạng</span>
           <span>Bài hát</span>
           <span className="text-center">Định dạng</span>
           <span className="text-center">Lượt nghe</span>
           <span className="text-center">Thời lượng</span>
-          <span className="text-right pr-2">Thao tác</span>
+          <span className="text-right pr-4">Trạng thái mua</span>
         </div>
 
         {/* Songs Rows */}
@@ -168,7 +185,7 @@ export const DesktopChartPage: React.FC = () => {
               <div
                 key={song.id}
                 onClick={() => playSong(song)}
-                className={`grid grid-cols-[64px_1fr_140px_110px_90px_180px] gap-4 px-5 py-3.5 rounded-2xl border cursor-pointer group transition-all items-center ${
+                className={`grid grid-cols-[64px_1fr_120px_110px_90px_180px] gap-4 px-5 py-3.5 rounded-2xl border cursor-pointer group transition-all items-center ${
                   isCurrent
                     ? 'bg-purple-900/40 border-purple-500/50 shadow-xl'
                     : 'bg-white/[0.02] hover:bg-white/[0.08] border-white/5 hover:border-white/15'
@@ -231,16 +248,16 @@ export const DesktopChartPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Audio format badge */}
+                {/* Audio format badge (MP3 or WAV only) */}
                 <div className="flex items-center justify-center">
                   <span
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                    className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
                       song.audioFormat === 'WAV'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                         : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                     }`}
                   >
-                    {song.audioFormat} {song.audioFormat === 'WAV' ? 'Lossless' : '320kbps'}
+                    {song.audioFormat}
                   </span>
                 </div>
 
@@ -257,39 +274,83 @@ export const DesktopChartPage: React.FC = () => {
                   {formatDuration(song.duration)}
                 </div>
 
-                {/* Actions: Buy / Owned / Lyrics */}
+                {/* Trạng thái mua & Menu 3 chấm dọc */}
                 <div className="flex items-center justify-end gap-2 pr-1" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => toggleLike(song.id)}
-                    className="p-2 rounded-lg hover:bg-white/10 text-white/50 hover:text-red-400 transition-colors"
-                    title={isLiked ? 'Bỏ thích' : 'Yêu thích'}
-                  >
-                    <Heart className={`w-4 h-4 ${isLiked ? 'text-red-500 fill-red-500' : ''}`} />
-                  </button>
-
-                  <button
-                    onClick={() => setSelectedLrcSong(song)}
-                    className="p-2 rounded-lg hover:bg-white/10 text-white/50 hover:text-[#c273ed] transition-colors"
-                    title="Xem lời LRC"
-                  >
-                    <FileText className="w-4 h-4" />
-                  </button>
-
                   {isPurchased ? (
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-400 flex items-center gap-1 shrink-0">
-                      <CheckCircle className="w-3.5 h-3.5" /> Đã mua
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 flex items-center gap-1 shrink-0">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Đã mua</span>
                     </span>
                   ) : (
                     <button
                       onClick={() => {
                         setSongToBuy(song);
-                        setIsBuyModalOpen(true);
+                        setIsDemoLimitModalOpen(true);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black font-bold text-xs border border-amber-500/40 transition-colors shadow-sm shrink-0 whitespace-nowrap"
+                      className="px-3 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black font-bold text-xs border border-amber-500/40 transition-colors shadow-sm shrink-0 whitespace-nowrap active:scale-95 cursor-pointer"
+                      title="Bấm để mua bản quyền"
                     >
-                      Mua ({(song.price ?? 20000).toLocaleString('vi-VN')}đ)
+                      Chưa mua
                     </button>
                   )}
+
+                  {/* 3-dots vertical button */}
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        setActiveMenuSongId(activeMenuSongId === song.id ? null : song.id);
+                      }}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        activeMenuSongId === song.id
+                          ? 'bg-white/20 text-white'
+                          : 'hover:bg-white/10 text-white/60 hover:text-white'
+                      }`}
+                      title="Tùy chọn bài hát"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+
+                    {/* Dropdown Menu: Tim, xem lyric, tải về */}
+                    {activeMenuSongId === song.id && (
+                      <div
+                        ref={menuRef}
+                        className="absolute right-0 top-8 w-40 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-1.5 z-50 text-xs text-white space-y-1 animate-in fade-in duration-150"
+                      >
+                        <button
+                          onClick={() => {
+                            toggleLike(song.id);
+                            setActiveMenuSongId(null);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white/70'}`} />
+                          <span>{isLiked ? 'Bỏ thích' : 'Thả tim'}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedLrcSong(song);
+                            setActiveMenuSongId(null);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-purple-400" />
+                          <span>Xem lyric</span>
+                        </button>
+                        {isPurchased && (
+                          <button
+                            onClick={() => {
+                              openDownloadModal(song);
+                              setActiveMenuSongId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium text-emerald-300 transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Tải nhạc về</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );

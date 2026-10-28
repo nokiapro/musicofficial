@@ -9,14 +9,6 @@ import { DesktopChartPage } from './DesktopChartPage';
 import { DesktopLibraryPage } from './DesktopLibraryPage';
 import { StorePageView } from '../store/StorePageView';
 import { AdminPageView } from '../admin/AdminPageView';
-import { KaraokeLyricsModal } from '../lyrics/KaraokeLyricsModal';
-import { LrcViewerModal } from '../lyrics/LrcViewerModal';
-import { DemoLimitModal } from '../store/DemoLimitModal';
-import { BuySongModal } from '../store/BuySongModal';
-import { TopUpModal } from '../store/TopUpModal';
-import { LoginModal } from '../auth/LoginModal';
-import { ThemeSelectorModal } from '../common/ThemeSelectorModal';
-import { SleepTimerModal } from '../common/SleepTimerModal';
 import { Radio } from 'lucide-react';
 
 export const DesktopAppLayout: React.FC = () => {

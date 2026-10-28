@@ -103,16 +103,21 @@ export const KaraokeLyricsModal: React.FC = () => {
         <div className="hidden lg:flex flex-col items-center justify-center w-80 shrink-0">
           <div className="relative w-64 h-64 rounded-full p-2 bg-gradient-to-tr from-zinc-900 via-zinc-800 to-zinc-950 shadow-2xl border-4 border-zinc-700/50 flex items-center justify-center">
             <div
-              className={`w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-br ${currentSong.coverGradient} shadow-inner animate-spin-slow ${
-                !isPlaying ? 'paused' : ''
-              }`}
+              className={`w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-br ${
+                currentSong.coverGradient || 'from-purple-600 to-indigo-800'
+              } shadow-inner animate-spin-slow ${!isPlaying ? 'paused' : ''}`}
             >
-              <div className="w-20 h-20 rounded-full bg-[#120822] border-4 border-zinc-900 flex items-center justify-center">
-                <Disc3 className="w-8 h-8 text-white/60" />
-              </div>
+              {currentSong.coverImage ? (
+                <img
+                  src={currentSong.coverImage}
+                  alt={currentSong.title}
+                  className="w-full h-full object-cover rounded-full"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : (
+                <Disc3 className="w-16 h-16 text-white/60" />
+              )}
             </div>
-            {/* Center spindle */}
-            <div className="absolute w-6 h-6 rounded-full bg-zinc-300 border-2 border-zinc-900 shadow" />
           </div>
 
           <div className="mt-6 text-center">

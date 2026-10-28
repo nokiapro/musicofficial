@@ -9,7 +9,7 @@ import {
   Pause,
   Music,
   FileText,
-  Sparkles,
+  ShoppingCart,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
@@ -21,42 +21,26 @@ export const StorePageView: React.FC = () => {
     isPlaying,
     playSong,
     togglePlay,
-    purchasedSongIds,
     userBalance,
     setIsTopUpModalOpen,
     setSongToBuy,
     setIsBuyModalOpen,
+    setIsDemoLimitModalOpen,
     setSelectedLrcSong,
     isSongPurchased,
+    downloadSong,
+    openDownloadModal,
   } = useMusic();
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'owned'>('catalog');
-  const [formatFilter, setFormatFilter] = useState<'ALL' | 'MP3' | 'WAV'>('ALL');
 
   const ownedSongs = songs.filter((s) => isSongPurchased(s.id));
+  const rawList = activeTab === 'catalog' ? songs : ownedSongs;
 
-  const displaySongs = (activeTab === 'catalog' ? songs : ownedSongs).filter((s) => {
-    if (formatFilter !== 'ALL' && s.audioFormat !== formatFilter) return false;
-    return true;
-  });
-
-  const handleDownloadFile = (song: Song) => {
-    // Generate simulated high-res audio container download
-    const dummyAudioContent = `XuanKen Music - Licensed Master Audio
-Title: ${song.title}
-Artist: ${song.artists}
-Format: ${song.audioFormat} High Definition Audio
-License: Purchased Full Rights
-Bitrate: ${song.audioFormat === 'WAV' ? '24-bit 96kHz Lossless' : '320kbps High Quality'}`;
-
-    const blob = new Blob([dummyAudioContent], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${song.title} - ${song.artists}.${song.audioFormat.toLowerCase()}`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  // Requirement 6: Sort alphabetically A -> Z (ABCD) by song title
+  const sortedSongs = [...rawList].sort((a, b) =>
+    a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' })
+  );
 
   return (
     <div className="space-y-6 pb-20 select-none">
@@ -96,8 +80,8 @@ Bitrate: ${song.audioFormat === 'WAV' ? '24-bit 96kHz Lossless' : '320kbps High 
         </div>
       </div>
 
-      {/* Tabs and Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-3">
+      {/* Tabs (Requirement 4: removed format filter buttons) */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-3">
         <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10">
           <button
             onClick={() => setActiveTab('catalog')}
@@ -122,149 +106,181 @@ Bitrate: ${song.audioFormat === 'WAV' ? '24-bit 96kHz Lossless' : '320kbps High 
             Bài Hát Đã Mua ({ownedSongs.length})
           </button>
         </div>
-
-        {/* Format toggle */}
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-white/50">Lọc định dạng:</span>
-          <button
-            onClick={() => setFormatFilter('ALL')}
-            className={`px-3 py-1 rounded-lg font-bold ${
-              formatFilter === 'ALL' ? 'bg-white/20 text-white' : 'text-white/50'
-            }`}
-          >
-            Tất cả
-          </button>
-          <button
-            onClick={() => setFormatFilter('MP3')}
-            className={`px-3 py-1 rounded-lg font-bold ${
-              formatFilter === 'MP3' ? 'bg-blue-600 text-white' : 'text-white/50'
-            }`}
-          >
-            MP3
-          </button>
-          <button
-            onClick={() => setFormatFilter('WAV')}
-            className={`px-3 py-1 rounded-lg font-bold ${
-              formatFilter === 'WAV' ? 'bg-amber-600 text-white' : 'text-white/50'
-            }`}
-          >
-            WAV
-          </button>
-        </div>
       </div>
 
-      {/* Grid of Store Items */}
-      {displaySongs.length === 0 ? (
+      {/* List / Table View of Store Items (Requirement 5 & 6: clean list view, fixed cover alignment, sorted ABCD) */}
+      {sortedSongs.length === 0 ? (
         <div className="py-16 text-center rounded-2xl border border-dashed border-white/15 bg-white/5">
           <ShoppingBag className="w-12 h-12 text-white/30 mx-auto mb-2" />
           <h3 className="text-base font-bold text-white">Chưa Có Bài Hát Nào Trong Cửa Hàng</h3>
           <p className="text-xs text-white/50 mt-1">Dữ liệu demo đã được xóa. Quản trị viên có thể thêm bài hát tại trang Admin.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displaySongs.map((song) => {
-            const isPurchased = isSongPurchased(song.id);
-            const isCurrent = currentSong?.id === song.id;
+        <div
+          className="rounded-2xl border overflow-hidden shadow-2xl transition-colors duration-200"
+          style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5 text-[11px] font-bold text-white/60 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 text-center w-14">STT</th>
+                  <th className="py-3.5 px-4 min-w-[220px]">BÀI HÁT</th>
+                  <th className="py-3.5 px-4 min-w-[160px]">CA SỸ</th>
+                  <th className="py-3.5 px-4 text-center w-24">LRC</th>
+                  <th className="py-3.5 px-4 text-center w-28">ĐỊNH DẠNG</th>
+                  <th className="py-3.5 px-4 text-center w-36">GIÁ BẢN QUYỀN</th>
+                  <th className="py-3.5 px-4 text-right min-w-[180px]">THAO TÁC / MUA</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-sm">
+                {sortedSongs.map((song, index) => {
+                  const isPurchased = isSongPurchased(song.id);
+                  const isCurrent = currentSong?.id === song.id;
+                  const isCurrentPlaying = isCurrent && isPlaying;
 
-          return (
-            <div
-              key={song.id}
-              className={`p-4 rounded-2xl border transition-all ${
-                isPurchased
-                  ? 'bg-emerald-950/20 border-emerald-500/30'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
-              } flex flex-col justify-between gap-4`}
-            >
-              <div className="flex items-start gap-3.5">
-                <div
-                  className={`w-14 h-14 rounded-xl bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center shrink-0 shadow-lg relative overflow-hidden border border-white/10`}
-                >
-                  {song.coverImage ? (
-                    <img
-                      src={song.coverImage}
-                      alt={song.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  ) : null}
-                  <button
-                    onClick={() => {
-                      if (isCurrent) togglePlay();
-                      else playSong(song);
-                    }}
-                    className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-transform hover:scale-110"
-                  >
-                    {isCurrent && isPlaying ? (
-                      <Pause className="w-4 h-4 fill-current" />
-                    ) : (
-                      <Play className="w-4 h-4 fill-current ml-0.5" />
-                    )}
-                  </button>
-                </div>
-
-                <div className="flex-1 truncate">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                        song.audioFormat === 'WAV'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                  return (
+                    <tr
+                      key={song.id}
+                      onClick={() => {
+                        if (isCurrent) togglePlay();
+                        else playSong(song);
+                      }}
+                      className={`cursor-pointer transition-colors group ${
+                        isCurrent ? 'bg-[#9b4de0]/15 hover:bg-[#9b4de0]/20' : 'hover:bg-white/5'
                       }`}
                     >
-                      {song.audioFormat}
-                    </span>
-                    <button
-                      onClick={() => setSelectedLrcSong(song)}
-                      className="text-[11px] text-white/50 hover:text-[#c273ed] flex items-center gap-1"
-                    >
-                      <FileText className="w-3 h-3" />
-                      LRC
-                    </button>
-                  </div>
+                      {/* STT */}
+                      <td className="py-3.5 px-4 text-center text-xs font-bold text-white/50 group-hover:text-white font-mono">
+                        {isCurrentPlaying ? (
+                          <div className="w-6 h-6 rounded-full bg-[#9b4de0] text-white flex items-center justify-center mx-auto shadow">
+                            <Pause className="w-3.5 h-3.5 fill-current" />
+                          </div>
+                        ) : (
+                          <span className="group-hover:hidden">{index + 1}</span>
+                        )}
+                        {!isCurrentPlaying && (
+                          <div className="hidden group-hover:flex w-6 h-6 rounded-full bg-white text-slate-900 items-center justify-center mx-auto shadow">
+                            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                          </div>
+                        )}
+                      </td>
 
-                  <h3 className="text-base font-bold text-white truncate mt-1">
-                    {song.title}
-                  </h3>
-                  <p className="text-xs text-white/60 truncate">{song.artists}</p>
-                </div>
-              </div>
+                      {/* Bài Hát + Ảnh bìa căn chỉnh chuẩn xác không bị lệch */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-11 h-11 rounded-xl bg-gradient-to-tr ${
+                              song.coverGradient || 'from-purple-600 to-indigo-800'
+                            } flex items-center justify-center shrink-0 shadow-md relative overflow-hidden border border-white/10`}
+                          >
+                            {song.coverImage ? (
+                              <img
+                                src={song.coverImage}
+                                alt={song.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <Music className="w-5 h-5 text-white/70" />
+                            )}
+                          </div>
+                          <div className="truncate">
+                            <p
+                              className={`font-bold truncate ${
+                                isCurrent ? 'text-[#c273ed]' : 'text-white'
+                              }`}
+                            >
+                              {song.title}
+                            </p>
+                            <p className="text-[11px] text-white/40 truncate mt-0.5">
+                              Album: {song.album || 'XuanKen Official'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
 
-              {/* Bottom Price & Action */}
-              <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] text-white/50 uppercase">
-                    {isPurchased ? 'Trạng thái' : 'Giá bản quyền'}
-                  </p>
-                  <p className="text-base font-black text-amber-300">
-                    {isPurchased ? 'ĐÃ SỞ HỮU' : `${(song.price ?? 20000).toLocaleString('vi-VN')} đ`}
-                  </p>
-                </div>
+                      {/* Ca sỹ */}
+                      <td className="py-3.5 px-4 font-medium text-white/80 truncate">
+                        {song.artists}
+                      </td>
 
-                {isPurchased ? (
-                  <button
-                    onClick={() => handleDownloadFile(song)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Tải {song.audioFormat}</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setSongToBuy(song);
-                      setIsBuyModalOpen(true);
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>Mua Ngay</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                      {/* LRC */}
+                      <td
+                        className="py-3.5 px-4 text-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedLrcSong(song);
+                        }}
+                      >
+                        <button
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white/80 hover:text-white text-xs font-semibold transition-colors"
+                          title="Bấm để xem và tải tệp lời bài hát (.lrc)"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-[#c273ed] group-hover:text-white" />
+                          <span>LRC</span>
+                        </button>
+                      </td>
+
+                      {/* Định dạng */}
+                      <td className="py-3.5 px-4 text-center">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-md text-xs font-black tracking-wider ${
+                            song.audioFormat === 'WAV'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                          }`}
+                        >
+                          {song.audioFormat}
+                        </span>
+                      </td>
+
+                      {/* Giá bản quyền */}
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-amber-300">
+                        {(song.price ?? 20000).toLocaleString('vi-VN')} đ
+                      </td>
+
+                      {/* Thao tác / Mua */}
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="inline-flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+                          {isPurchased ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-xs inline-flex items-center gap-1 shadow-sm">
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>Đã mua</span>
+                              </span>
+                              <button
+                                onClick={() => openDownloadModal(song)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition-colors"
+                                title="Tải bài hát (MP3 hoặc WAV)"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Tải về</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSongToBuy(song);
+                                setIsDemoLimitModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                              <span>Mua Ngay</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

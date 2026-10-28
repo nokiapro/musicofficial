@@ -6,7 +6,7 @@ import { InteractionSplash } from './components/common/InteractionSplash';
 import { KaraokeLyricsModal } from './components/lyrics/KaraokeLyricsModal';
 import { LrcViewerModal } from './components/lyrics/LrcViewerModal';
 import { DemoLimitModal } from './components/store/DemoLimitModal';
-import { BuySongModal } from './components/store/BuySongModal';
+import { DownloadModal } from './components/common/DownloadModal';
 import { TopUpModal } from './components/store/TopUpModal';
 import { LoginModal } from './components/auth/LoginModal';
 import { ThemeSelectorModal } from './components/common/ThemeSelectorModal';
@@ -26,7 +26,7 @@ const MainApp: React.FC = () => {
       <KaraokeLyricsModal />
       <LrcViewerModal />
       <DemoLimitModal />
-      <BuySongModal />
+      <DownloadModal />
       <TopUpModal />
       <LoginModal />
       <ThemeSelectorModal />

@@ -46,7 +46,7 @@ interface MusicContextType {
   members: AppUser[];
   userBalance: number;
 
-  playSong: (song: Song) => void;
+  playSong: (song: Song, formatOverride?: 'MP3' | 'WAV') => void;
   togglePlay: () => void;
   seekTo: (seconds: number) => void;
   nextSong: () => void;
@@ -85,7 +85,7 @@ interface MusicContextType {
 
   // Store & Wallet
   isSongPurchased: (songId: string) => boolean;
-  buySong: (song: Song) => { success: boolean; message: string };
+  buySong: (song: Song, priceOverride?: number) => { success: boolean; message: string };
   topUpBalance: (amount: number) => void;
 
   // Admin CRUD for Songs & Members
@@ -102,6 +102,8 @@ interface MusicContextType {
   // Audio Format Preference & Crossfade
   preferredAudioFormat: 'MP3' | 'WAV';
   setPreferredAudioFormat: (fmt: 'MP3' | 'WAV') => void;
+  songFormatMap: Record<string, 'MP3' | 'WAV'>;
+  setSongAudioFormat: (songId: string, format: 'MP3' | 'WAV') => void;
   crossfadeDuration: number;
   setCrossfadeDuration: (sec: number) => void;
   isAudioSettingsModalOpen: boolean;
@@ -138,6 +140,10 @@ interface MusicContextType {
 
   // Download
   downloadSong: (song: Song, format?: 'MP3' | 'WAV') => Promise<{ success: boolean; message: string }>;
+  isDownloadModalOpen: boolean;
+  setIsDownloadModalOpen: (open: boolean) => void;
+  songToDownload: Song | null;
+  openDownloadModal: (song: Song) => void;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -184,9 +190,21 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Audio Playback Settings: Format & Crossfade
   const [preferredAudioFormat, setPreferredAudioFormatState] = useState<'MP3' | 'WAV'>('MP3');
+  const [songFormatMap, setSongFormatMap] = useState<Record<string, 'MP3' | 'WAV'>>({});
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
+  const [songToDownload, setSongToDownload] = useState<Song | null>(null);
   const [playbackRate, setPlaybackRateState] = useState<number>(1.0);
   const [crossfadeDuration, setCrossfadeDurationState] = useState<number>(3);
   const [isAudioSettingsModalOpen, setIsAudioSettingsModalOpen] = useState<boolean>(false);
+
+  const openDownloadModal = (song: Song) => {
+    setSongToDownload(song);
+    setIsDownloadModalOpen(true);
+  };
+
+  const setSongAudioFormat = (songId: string, format: 'MP3' | 'WAV') => {
+    setSongFormatMap((prev) => ({ ...prev, [songId]: format }));
+  };
 
   // Playlists
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -416,7 +434,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setPreferredAudioFormatState(fmt);
     if (currentSong && isPlaying) {
       const activePurchased = isSongPurchased(currentSong.id);
-      const activeUrl = resolveAudioUrl(currentSong, fmt, activePurchased);
+      const songFormat = songFormatMap[currentSong.id] || fmt;
+      const activeUrl = resolveAudioUrl(currentSong, songFormat, activePurchased);
       if (activeUrl) {
         audioEngine.playUrl(activeUrl, (dur) => {
           if ((!currentSong.duration || currentSong.duration <= 0) && dur > 60) {
@@ -432,7 +451,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (isPlaying && currentSong) {
       const activePurchased = isSongPurchased(currentSong.id);
-      const activeUrl = resolveAudioUrl(currentSong, preferredAudioFormat, activePurchased);
+      const songFormat = songFormatMap[currentSong.id] || preferredAudioFormat;
+      const activeUrl = resolveAudioUrl(currentSong, songFormat, activePurchased);
 
       audioEngine.playUrl(activeUrl, (dur) => {
         // Keep full song duration; never overwrite with shorter demo metadata
@@ -489,7 +509,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         clearInterval(timerRef.current);
       }
     };
-  }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat]);
+  }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat, songFormatMap]);
 
   const handleSongEnd = () => {
     if (repeatMode === 'one') {
@@ -500,7 +520,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     nextSong();
   };
 
-  const playSong = (song: Song) => {
+  const playSong = (song: Song, formatOverride?: 'MP3' | 'WAV') => {
+    if (formatOverride) {
+      setSongFormatMap((prev) => ({ ...prev, [song.id]: formatOverride }));
+    }
+
     // Increment playCount for #xuankenchart ranking and sync to Firebase
     const nextPlayCount = (song.playCount || 0) + 1;
     const activeSong = { ...song, playCount: nextPlayCount };
@@ -538,7 +562,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsPlaying(true);
 
     const activePurchased = isSongPurchased(song.id);
-    const activeUrl = resolveAudioUrl(song, preferredAudioFormat, activePurchased);
+    const chosenFormat = formatOverride || songFormatMap[song.id] || preferredAudioFormat;
+    const activeUrl = resolveAudioUrl(song, chosenFormat, activePurchased);
 
     audioEngine.playUrl(activeUrl, (dur) => {
       if ((!song.duration || song.duration <= 0) && dur > 60) {
@@ -683,17 +708,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearQueue = () => setQueue([]);
 
   // Store Buy Song
-  const buySong = (song: Song): { success: boolean; message: string } => {
+  const buySong = (song: Song, priceOverride?: number): { success: boolean; message: string } => {
     if (purchasedSongIds.includes(song.id)) {
       return { success: true, message: 'Bạn đã sở hữu bài hát này!' };
     }
 
-    if (userBalance < song.price) {
+    const priceToPay = priceOverride !== undefined ? priceOverride : (song.price ?? 20000);
+
+    if (userBalance < priceToPay) {
       setIsTopUpModalOpen(true);
       return { success: false, message: 'Số dư không đủ. Vui lòng nạp thêm tiền!' };
     }
 
-    const newBalance = userBalance - song.price;
+    const newBalance = userBalance - priceToPay;
     const newPurchased = [...purchasedSongIds, song.id];
     setUserBalance(newBalance);
     setPurchasedSongIds(newPurchased);
@@ -1183,6 +1210,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addVoucher,
         removeVoucher,
         downloadSong,
+        songFormatMap,
+        setSongAudioFormat,
+        isDownloadModalOpen,
+        setIsDownloadModalOpen,
+        songToDownload,
+        openDownloadModal,
       }}
     >
       {children}

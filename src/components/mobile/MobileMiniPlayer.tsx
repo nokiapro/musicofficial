@@ -61,9 +61,7 @@ export const MobileMiniPlayer: React.FC = () => {
               } flex items-center justify-center overflow-hidden animate-spin-slow ${
                 !isPlaying ? 'paused' : ''
               } ${currentSong.coverImage ? 'absolute inset-0 -z-10' : ''}`}
-            >
-              <div className="w-2.5 h-2.5 rounded-full bg-[#231b2e]" />
-            </div>
+            />
           </div>
 
           <div className="truncate">

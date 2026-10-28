@@ -48,11 +48,13 @@ export const MobileAppLayout: React.FC = () => {
     setSelectedLrcSong,
     setSongToBuy,
     setIsBuyModalOpen,
+    setIsDemoLimitModalOpen,
     userBalance,
     setIsTopUpModalOpen,
     openShareModal,
     openAddToPlaylistModal,
     downloadSong,
+    openDownloadModal,
     playlists,
     createPlaylist,
     deletePlaylist,
@@ -333,7 +335,7 @@ export const MobileAppLayout: React.FC = () => {
                     <div className="shrink-0 flex items-center gap-1.5">
                       {isPurchased ? (
                         <button
-                          onClick={() => downloadSong(song, song.audioFormat)}
+                          onClick={() => openDownloadModal(song)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -343,7 +345,7 @@ export const MobileAppLayout: React.FC = () => {
                         <button
                           onClick={() => {
                             setSongToBuy(song);
-                            setIsBuyModalOpen(true);
+                            setIsDemoLimitModalOpen(true);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow active:scale-95 transition-all"
                         >

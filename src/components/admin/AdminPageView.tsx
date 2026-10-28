@@ -80,14 +80,14 @@ export const AdminPageView: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
 
   const [title, setTitle] = useState('');
-  const [artists, setArtists] = useState('');
-  const [album, setAlbum] = useState('');
+  const [artists, setArtists] = useState('XuanKen');
+  const [album, setAlbum] = useState('XuanKen Music Official');
   const [audioFormat, setAudioFormat] = useState<AudioFormat>('MP3');
   const [price, setPrice] = useState('20000');
   const [demoUrl, setDemoUrl] = useState('');
   const [mp3Url, setMp3Url] = useState('');
   const [wavUrl, setWavUrl] = useState('');
-  const [coverImage, setCoverImage] = useState('');
+  const [coverImage, setCoverImage] = useState('https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
   const [durationMinutes, setDurationMinutes] = useState('3');
   const [durationSeconds, setDurationSeconds] = useState('30');
   const [playCountInput, setPlayCountInput] = useState('0');
@@ -321,9 +321,9 @@ export const AdminPageView: React.FC = () => {
   const handleOpenAddModal = () => {
     setEditingSongId(null);
     setTitle('');
-    setArtists('');
-    setAlbum('');
-    setCoverImage('');
+    setArtists('XuanKen');
+    setAlbum('XuanKen Music Official');
+    setCoverImage('https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
     setAudioFormat('MP3');
     setPrice('20000');
     setDurationMinutes('3');
@@ -425,9 +425,9 @@ export const AdminPageView: React.FC = () => {
         id: `song-${Date.now()}`,
         stt: songs.length + 1,
         title: title.trim(),
-        artists: artists.trim(),
-        album: album.trim() || 'XuanKen Official',
-        coverImage: coverImage.trim() || '',
+        artists: artists.trim() || 'XuanKen',
+        album: album.trim() || 'XuanKen Music Official',
+        coverImage: coverImage.trim() || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
         audioFormat,
         price: parseInt(price, 10) || 0,
         playCount: numPlayCount,
@@ -608,9 +608,6 @@ export const AdminPageView: React.FC = () => {
                   {songs.length} bài
                 </span>
               </p>
-              <p className="text-[11px] text-white/50 mt-0.5">
-                Đồng bộ realtime với Firebase RTDB ({'newmusic-5625b'})
-              </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -622,7 +619,7 @@ export const AdminPageView: React.FC = () => {
                 title="Đẩy toàn bộ bài hát, thành viên, playlist lên Firebase ngay"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
-                <span>{isSyncingAll ? 'Đang đẩy lên Firebase...' : '🚀 Đẩy Lên Firebase'}</span>
+                <span>{isSyncingAll ? 'Đang đẩy lên Firebase...' : 'Đẩy Lên Firebase'}</span>
               </button>
 
               {/* Seed Sample Songs Button if empty */}
@@ -691,7 +688,9 @@ export const AdminPageView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {songs.map((song, i) => (
+                    {[...songs]
+                      .sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+                      .map((song, i) => (
                       <tr key={song.id} className="hover:bg-white/5 transition-colors">
                         <td className="py-3 px-4 text-center font-mono text-white/40 font-bold">
                           {song.stt || i + 1}

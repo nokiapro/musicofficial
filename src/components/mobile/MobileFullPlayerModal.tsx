@@ -154,17 +154,13 @@ export const MobileFullPlayerModal: React.FC = () => {
                   <img
                     src={currentSong.coverImage}
                     alt={currentSong.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover rounded-full"
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
-                ) : null}
-                <div className="absolute w-20 h-20 rounded-full bg-[#120822] border-4 border-zinc-900 flex items-center justify-center shadow-lg">
-                  <Disc3 className="w-8 h-8 text-white/70" />
-                </div>
+                ) : (
+                  <Disc3 className="w-16 h-16 text-white/70" />
+                )}
               </div>
-
-              {/* Spindle Pin */}
-              <div className="absolute w-5 h-5 rounded-full bg-zinc-300 border-2 border-zinc-900 shadow" />
             </div>
 
             {/* Sound Wave Spectrum */}
