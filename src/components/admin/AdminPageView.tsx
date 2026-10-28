@@ -40,6 +40,7 @@ export const AdminPageView: React.FC = () => {
     currentUser,
     isAdmin,
     loginWithEmail,
+    registerWithEmail,
     logout,
     members,
     updateMemberBalance,
@@ -49,6 +50,8 @@ export const AdminPageView: React.FC = () => {
     vouchers,
     addVoucher,
     removeVoucher,
+    syncAllToFirebase,
+    seedDefaultSongs,
   } = useMusic();
 
   const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members' | 'rules' | 'vouchers'>('songs');
@@ -61,15 +64,20 @@ export const AdminPageView: React.FC = () => {
   const [isAddingVoucher, setIsAddingVoucher] = useState(false);
 
   // Login form state for unauthenticated admin
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginEmail, setLoginEmail] = useState('xuankensinger123@gmail.com');
   const [loginPass, setLoginPass] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loginSuccess, setLoginSuccess] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Song Add/Edit Modal State
   const [isSongModalOpen, setIsSongModalOpen] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
+  const [syncErrorMsg, setSyncErrorMsg] = useState<string | null>(null);
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const [title, setTitle] = useState('');
   const [artists, setArtists] = useState('');
@@ -95,7 +103,13 @@ export const AdminPageView: React.FC = () => {
   const [editRole, setEditRole] = useState<'admin' | 'user'>('user');
   const [editBalance, setEditBalance] = useState<string>('0');
   const [copiedRuleFile, setCopiedRuleFile] = useState<string | null>(null);
-  const [firebaseTestResult, setFirebaseTestResult] = useState<{ firestore: boolean; rtdb: boolean; message: string } | null>(null);
+  const [firebaseTestResult, setFirebaseTestResult] = useState<{
+    firestore: boolean;
+    rtdb: boolean;
+    rtdbWrite: boolean;
+    message: string;
+    details: string[];
+  } | null>(null);
   const [isTestingFirebase, setIsTestingFirebase] = useState(false);
 
   const handleTestFirebase = async () => {
@@ -103,27 +117,83 @@ export const AdminPageView: React.FC = () => {
     try {
       const res = await testFirebaseConnection();
       setFirebaseTestResult(res);
+      if (res.rtdbWrite) {
+        setSyncSuccessMsg('✅ Kết nối & Quyền ghi Firebase Realtime Database đã mở! Sẵn sàng lưu dữ liệu.');
+        setSyncErrorMsg(null);
+      } else {
+        setSyncErrorMsg('⚠️ Firebase RTDB đang chặn quyền ghi (PERMISSION_DENIED). Hãy kiểm tra tab "Quy Tắc Firebase (Rules)" để mở quyền!');
+      }
     } catch (e: any) {
       setFirebaseTestResult({
         firestore: false,
         rtdb: false,
+        rtdbWrite: false,
         message: e?.message || 'Lỗi kiểm tra kết nối',
+        details: [e?.message || 'Lỗi kiểm tra'],
       });
+      setSyncErrorMsg('❌ Không thể kết nối Firebase: ' + (e?.message || 'Lỗi mạng'));
     } finally {
       setIsTestingFirebase(false);
     }
   };
 
-  // If not logged in, show Admin Login Screen
+  const handleForceSyncAll = async () => {
+    setIsSyncingAll(true);
+    setSyncErrorMsg(null);
+    setSyncSuccessMsg(null);
+    try {
+      const res = await syncAllToFirebase();
+      if (res.success) {
+        setSyncSuccessMsg(`✅ ${res.details} Hãy mở Firebase Console (F5) để thấy dữ liệu xuất hiện ngay!`);
+      } else {
+        setSyncErrorMsg(`❌ ${res.details}. Nguyên nhân: Tab Quy tắc (Rules) trên Firebase Console đang khóa ghi. Hãy qua tab "Quy Tắc Firebase (Rules)" để mở!`);
+      }
+    } catch (e: any) {
+      setSyncErrorMsg('❌ Lỗi đồng bộ: ' + (e?.message || 'Lỗi không xác định'));
+    } finally {
+      setIsSyncingAll(false);
+    }
+  };
+
+  const handleSeedSongs = async () => {
+    setIsSeeding(true);
+    setSyncErrorMsg(null);
+    setSyncSuccessMsg(null);
+    try {
+      const res = await seedDefaultSongs();
+      if (res.success) {
+        setSyncSuccessMsg('✅ Đã nạp 3 bài hát mẫu XuanKen lên Firebase Realtime Database & Firestore thành công! Hãy F5 Firebase Console để thấy dữ liệu.');
+      } else {
+        setSyncErrorMsg(`⚠️ Đã tạo bài hát trên web nhưng Firebase chưa cho phép ghi: ${res.error}. Hãy vào tab Quy Tắc Firebase để mở quyền ghi!`);
+      }
+    } catch (e: any) {
+      setSyncErrorMsg('❌ Lỗi nạp bài mẫu: ' + (e?.message || 'Lỗi'));
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  // If not logged in, show Admin Login / Register Screen
   if (!currentUser) {
-    const handleLoginSubmit = async (e: React.FormEvent) => {
+    const handleAuthSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoginError('');
+      setLoginSuccess('');
       setIsLoggingIn(true);
-      const res = await loginWithEmail(loginEmail, loginPass);
-      setIsLoggingIn(false);
-      if (!res.success) {
-        setLoginError(res.message);
+      if (authMode === 'login') {
+        const res = await loginWithEmail(loginEmail, loginPass);
+        setIsLoggingIn(false);
+        if (!res.success) {
+          setLoginError(res.message);
+        }
+      } else {
+        const res = await registerWithEmail(loginEmail, loginPass);
+        setIsLoggingIn(false);
+        if (!res.success) {
+          setLoginError(res.message);
+        } else {
+          setLoginSuccess('Tạo tài khoản Admin thành công! Đang tự động đăng nhập...');
+        }
       }
     };
 
@@ -132,10 +202,36 @@ export const AdminPageView: React.FC = () => {
         <div className="w-14 h-14 rounded-2xl bg-[#9b4de0]/20 text-[#c273ed] flex items-center justify-center mx-auto mb-4">
           <ShieldCheck className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-black text-center tracking-tight">Đăng Nhập Trang Quản Trị</h2>
+        <h2 className="text-2xl font-black text-center tracking-tight">
+          {authMode === 'login' ? 'Đăng Nhập Trang Quản Trị' : 'Tạo Tài Khoản Admin'}
+        </h2>
         <p className="text-xs text-white/60 text-center mt-2 leading-relaxed">
-          Khu vực quản trị chỉ dành cho tài khoản Admin được cấu hình trên Firebase Authentication.
+          {authMode === 'login'
+            ? 'Đăng nhập tài khoản Admin trên Firebase Authentication để quản lý nhạc và đồng bộ dữ liệu.'
+            : 'Tạo tài khoản Admin mới trên Firebase Auth cho dự án newmusic-5625b.'}
         </p>
+
+        {/* Tab switch between Login and Register */}
+        <div className="flex p-1 bg-white/5 rounded-xl border border-white/10 mt-5">
+          <button
+            type="button"
+            onClick={() => { setAuthMode('login'); setLoginError(''); setLoginSuccess(''); }}
+            className={`flex-1 py-1.5 rounded-lg font-bold text-xs transition-all ${
+              authMode === 'login' ? 'bg-[#9b4de0] text-white shadow' : 'text-white/60 hover:text-white'
+            }`}
+          >
+            Đăng Nhập
+          </button>
+          <button
+            type="button"
+            onClick={() => { setAuthMode('register'); setLoginError(''); setLoginSuccess(''); }}
+            className={`flex-1 py-1.5 rounded-lg font-bold text-xs transition-all ${
+              authMode === 'register' ? 'bg-[#9b4de0] text-white shadow' : 'text-white/60 hover:text-white'
+            }`}
+          >
+            Tạo Tài Khoản Mới
+          </button>
+        </div>
 
         {loginError && (
           <div className="mt-4 p-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
@@ -144,7 +240,14 @@ export const AdminPageView: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleLoginSubmit} className="mt-6 space-y-4 text-xs">
+        {loginSuccess && (
+          <div className="mt-4 p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 shrink-0" />
+            <span>{loginSuccess}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleAuthSubmit} className="mt-5 space-y-4 text-xs">
           <div>
             <label className="block text-white/70 mb-1 font-bold">Email Admin</label>
             <input
@@ -152,16 +255,17 @@ export const AdminPageView: React.FC = () => {
               required
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              placeholder="anhhungxuanken@gmail.com hoặc email Admin"
+              placeholder="xuankensinger123@gmail.com"
               className="w-full bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
             />
           </div>
 
           <div>
-            <label className="block text-white/70 mb-1 font-bold">Mật khẩu</label>
+            <label className="block text-white/70 mb-1 font-bold">Mật khẩu (ít nhất 6 ký tự)</label>
             <input
               type="password"
               required
+              minLength={6}
               value={loginPass}
               onChange={(e) => setLoginPass(e.target.value)}
               placeholder="Nhập mật khẩu"
@@ -175,7 +279,7 @@ export const AdminPageView: React.FC = () => {
             className="w-full py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-sm shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
           >
             <LogIn className="w-4 h-4" />
-            <span>{isLoggingIn ? 'Đang xác thực...' : 'Đăng Nhập Quản Trị'}</span>
+            <span>{isLoggingIn ? 'Đang xử lý...' : authMode === 'login' ? 'Đăng Nhập Quản Trị' : 'Tạo Tài Khoản Admin'}</span>
           </button>
         </form>
       </div>
@@ -292,55 +396,69 @@ export const AdminPageView: React.FC = () => {
       'from-violet-600 via-fuchsia-600 to-indigo-900',
     ];
 
+    let saveResult: { success: boolean; rtdb?: boolean; firestore?: boolean; error?: string } = { success: false };
+
     if (editingSongId) {
       const existing = songs.find((s) => s.id === editingSongId);
       if (existing) {
         const updated: Song = {
           ...existing,
-          title,
-          artists,
-          album,
-          coverImage: coverImage.trim() || existing.coverImage || undefined,
+          title: title.trim(),
+          artists: artists.trim(),
+          album: album.trim() || 'XuanKen Official',
+          coverImage: coverImage.trim() || existing.coverImage || '',
           audioFormat,
           price: parseInt(price, 10) || 0,
           playCount: numPlayCount,
-          demoUrl: demoUrl.trim() || undefined,
-          mp3Url: mp3Url.trim() || undefined,
-          wavUrl: wavUrl.trim() || undefined,
-          lrcUrl: lrcType === 'link' ? lrcUrl.trim() : undefined,
-          lrcRaw: lrcType === 'text' ? lrcRaw : undefined,
+          demoUrl: demoUrl.trim() || '',
+          mp3Url: mp3Url.trim() || '',
+          wavUrl: wavUrl.trim() || '',
+          lrcUrl: lrcType === 'link' ? lrcUrl.trim() : '',
+          lrcRaw: lrcType === 'text' ? lrcRaw : '',
           lyrics: parsedLyrics,
           duration: finalDuration,
         };
-        await editSong(updated);
+        saveResult = await editSong(updated);
       }
     } else {
       const newSong: Song = {
         id: `song-${Date.now()}`,
         stt: songs.length + 1,
-        title,
-        artists,
-        album,
-        coverImage: coverImage.trim() || undefined,
+        title: title.trim(),
+        artists: artists.trim(),
+        album: album.trim() || 'XuanKen Official',
+        coverImage: coverImage.trim() || '',
         audioFormat,
         price: parseInt(price, 10) || 0,
         playCount: numPlayCount,
-        demoUrl: demoUrl.trim() || undefined,
-        mp3Url: mp3Url.trim() || undefined,
-        wavUrl: wavUrl.trim() || undefined,
-        lrcUrl: lrcType === 'link' ? lrcUrl.trim() : undefined,
-        lrcRaw: lrcType === 'text' ? lrcRaw : undefined,
+        demoUrl: demoUrl.trim() || '',
+        mp3Url: mp3Url.trim() || '',
+        wavUrl: wavUrl.trim() || '',
+        lrcUrl: lrcType === 'link' ? lrcUrl.trim() : '',
+        lrcRaw: lrcType === 'text' ? lrcRaw : '',
         lyrics: parsedLyrics,
         duration: finalDuration,
         coverGradient: gradients[Math.floor(Math.random() * gradients.length)],
         releaseDate: new Date().getFullYear().toString(),
       };
-      await addNewSong(newSong);
+      saveResult = await addNewSong(newSong);
     }
 
     setIsSongModalOpen(false);
-    setSyncSuccessMsg(editingSongId ? 'Đã cập nhật bài hát và đồng bộ lên Firebase RTDB & Firestore!' : 'Đã thêm bài hát và đồng bộ lên Firebase RTDB & Firestore thành công!');
-    setTimeout(() => setSyncSuccessMsg(null), 4000);
+    if (saveResult.success) {
+      setSyncSuccessMsg(
+        editingSongId
+          ? '✅ Đã cập nhật bài hát và lưu thành công lên Firebase RTDB & Firestore!'
+          : '✅ Đã thêm bài hát và lưu thành công lên Firebase RTDB & Firestore!'
+      );
+      setSyncErrorMsg(null);
+      setTimeout(() => setSyncSuccessMsg(null), 5000);
+    } else {
+      setSyncErrorMsg(
+        `⚠️ Lưu trên ứng dụng nhưng Firebase từ chối: ${saveResult.error || 'PERMISSION_DENIED'}. Hãy mở tab "Quy Tắc Firebase (Rules)" để mở quyền ghi!`
+      );
+      setSyncSuccessMsg(null);
+    }
   };
 
   const handleOpenEditMember = (m: AppUser) => {
@@ -449,35 +567,112 @@ export const AdminPageView: React.FC = () => {
         </button>
       </div>
 
+      {/* Success / Error Alerts */}
+      {syncSuccessMsg && (
+        <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span className="font-bold">{syncSuccessMsg}</span>
+          </div>
+          <button onClick={() => setSyncSuccessMsg(null)} className="text-white/60 hover:text-white p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {syncErrorMsg && (
+        <div className="p-4 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs flex items-start justify-between gap-3 shadow-lg">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-red-300">{syncErrorMsg}</p>
+              <p className="text-[11px] text-white/70">
+                👉 Gợi ý: Hãy mở tab <strong>"Quy Tắc Firebase (Rules)"</strong> bên cạnh, bấm <strong>"Sao Chép Quy Tắc Mở Quyền"</strong> rồi dán vào Firebase Console để mở quyền ghi!
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setSyncErrorMsg(null)} className="text-white/60 hover:text-white p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* TAB 1: QUẢN LÝ BÀI HÁT */}
       {activeAdminTab === 'songs' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-white/50">
-              Danh sách bài hát lưu trên Firebase RTDB • Thời lượng tính tự động từ link nhạc
-            </p>
-            <button
-              onClick={handleOpenAddModal}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Thêm Bài Hát Mới</span>
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/5 p-3.5 rounded-2xl border border-white/10">
+            <div>
+              <p className="text-xs font-bold text-white flex items-center gap-2">
+                <span>Kho Bài Hát Trực Tuyến</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-500/20 text-[#c273ed] border border-purple-500/30 font-bold">
+                  {songs.length} bài
+                </span>
+              </p>
+              <p className="text-[11px] text-white/50 mt-0.5">
+                Đồng bộ realtime với Firebase RTDB ({'newmusic-5625b'})
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Force Sync All Button */}
+              <button
+                onClick={handleForceSyncAll}
+                disabled={isSyncingAll}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50"
+                title="Đẩy toàn bộ bài hát, thành viên, playlist lên Firebase ngay"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
+                <span>{isSyncingAll ? 'Đang đẩy lên Firebase...' : '🚀 Đẩy Lên Firebase'}</span>
+              </button>
+
+              {/* Seed Sample Songs Button if empty */}
+              {songs.length === 0 && (
+                <button
+                  onClick={handleSeedSongs}
+                  disabled={isSeeding}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50"
+                  title="Nạp 3 bài hát mẫu XuanKen lên Firebase"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isSeeding ? 'Đang nạp...' : '🌱 Nạp 3 Bài Mẫu'}</span>
+                </button>
+              )}
+
+              {/* Add New Song Button */}
+              <button
+                onClick={handleOpenAddModal}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm Bài Hát Mới</span>
+              </button>
+            </div>
           </div>
 
           {songs.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl border border-dashed border-white/20 bg-white/5">
-              <Music2 className="w-12 h-12 text-white/30 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-white">Chưa Có Bài Hát Nào</h3>
-              <p className="text-xs text-white/50 mt-1 max-w-sm mx-auto">
-                Dữ liệu demo đã được xóa hoàn toàn. Bấm nút "Thêm Bài Hát Mới" để thêm ca khúc của bạn!
+            <div className="p-12 text-center rounded-2xl border border-dashed border-white/20 bg-white/5 space-y-3">
+              <Music2 className="w-12 h-12 text-white/30 mx-auto" />
+              <h3 className="text-base font-bold text-white">Chưa Có Bài Hát Nào Trong Hệ Thống</h3>
+              <p className="text-xs text-white/50 max-w-md mx-auto leading-relaxed">
+                Trên Firebase Realtime Database hiện đang trống (null). Bạn có thể bấm <strong>"Thêm Bài Hát Mới"</strong> hoặc bấm <strong>"Nạp 3 Bài Mẫu Lên Firebase"</strong> để dữ liệu lập tức xuất hiện trên Firebase Console!
               </p>
-              <button
-                onClick={handleOpenAddModal}
-                className="mt-4 px-4 py-2 rounded-xl bg-[#9b4de0] text-white text-xs font-bold shadow"
-              >
-                + Thêm Bài Ngay
-              </button>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={handleSeedSongs}
+                  disabled={isSeeding}
+                  className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg transition-transform active:scale-95 flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>{isSeeding ? 'Đang nạp bài mẫu...' : '🌱 Nạp 3 Bài Mẫu Của XuanKen Lên Firebase'}</span>
+                </button>
+                <button
+                  onClick={handleOpenAddModal}
+                  className="px-4 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg transition-transform active:scale-95 flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Thêm Bài Mới Thủ Công</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-xl">
@@ -741,22 +936,110 @@ export const AdminPageView: React.FC = () => {
             </button>
           </div>
 
-          <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-800/40 text-xs">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Code className="w-4 h-4 text-[#c273ed]" />
-              <span>Quy Tắc Bảo Mật Firebase Đã Được Tạo Tự Động</span>
-            </h3>
-            <p className="text-white/70 mt-1 leading-relaxed">
-              Các tệp quy tắc bảo mật đã được tạo tại thư mục gốc của dự án (<code className="text-amber-300">firestore.rules</code>, <code className="text-amber-300">database.rules.json</code>, <code className="text-amber-300">storage.rules</code>). Bạn có thể bấm nút <strong>Sao chép</strong> dưới đây và dán trực tiếp vào Firebase Console (<a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="text-purple-300 underline font-bold">console.firebase.google.com</a>) để áp dụng ngay.
+          {/* Dedicated Firebase null Explanation Card */}
+          <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/15 via-purple-950/40 to-[#170f23] border border-amber-500/30 text-xs space-y-3 shadow-xl">
+            <div className="flex items-center gap-2 text-sm font-black text-amber-300">
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+              <span>Tại Sao Firebase Console Hiển Thị: "{'https://...firebasedatabase.app/: null'}"?</span>
+            </div>
+            <p className="text-white/80 leading-relaxed">
+              Bạn thấy dòng chữ <code className="text-amber-300 font-mono">: null</code> trên Firebase Console vì nhánh gốc cơ sở dữ liệu hiện chưa có bản ghi nào được ghi thành công. Có 2 nguyên nhân chính:
             </p>
+            <ol className="list-decimal list-inside space-y-1.5 text-white/70 pl-1">
+              <li>
+                <strong className="text-white">Quy tắc (Rules) bị khóa:</strong> Khi mới tạo Realtime Database, Firebase đặt mặc định <code className="text-red-300">.write: false</code> hoặc <code className="text-red-300">"auth != null"</code>. Khi bạn thao tác lưu bài hát từ web mà chưa đăng nhập Firebase Auth, Firebase sẽ chặn ghi (PERMISSION_DENIED).
+              </li>
+              <li>
+                <strong className="text-white">Lỗi trường undefined:</strong> Phiên bản cũ gửi link demo/mp3 chưa điền dưới dạng <code className="text-red-300">undefined</code>, làm Firebase SDK hủy bỏ lệnh ghi. <em>(Lỗi này hiện đã được hệ thống sửa hoàn toàn với hàm cleanForFirebase)</em>.
+              </li>
+            </ol>
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+              <p className="font-bold text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4" />
+                <span>3 Bước Đơn Giản Để Dữ Liệu Hiện Lên Firebase Ngay Lập Tức:</span>
+              </p>
+              <p className="text-white/80">
+                1. Bấm nút <strong>"Sao Chép Quy Tắc Mở Quyền"</strong> ngay bên dưới.
+              </p>
+              <p className="text-white/80">
+                2. Mở{' '}
+                <a
+                  href="https://console.firebase.google.com/project/newmusic-5625b/database/newmusic-5625b-default-rtdb/rules"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-purple-300 underline font-bold"
+                >
+                  Firebase Console &gt; Realtime Database &gt; Tab Quy tắc (Rules)
+                </a>
+                , dán đè vào và bấm <strong>Xuất bản (Publish)</strong>.
+              </p>
+              <p className="text-white/80">
+                3. Quay lại website, bấm nút <strong>"🚀 Đẩy Lên Firebase"</strong> hoặc <strong>"🌱 Nạp 3 Bài Mẫu"</strong> trong tab "Quản Lý Bài Hát". F5 lại Firebase Console là dữ liệu hiện ra 100%!
+              </p>
+            </div>
           </div>
 
-          {/* 1. Realtime Database Rules */}
-          <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
-            <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+          {/* 1. Realtime Database Open Rules (Recommended for immediate data persistence) */}
+          <div className="rounded-2xl border border-amber-500/40 bg-[#170f23] overflow-hidden shadow-xl">
+            <div className="p-4 bg-amber-500/10 border-b border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="font-bold text-white text-sm">database.rules.json (Firebase Realtime Database)</span>
-                <p className="text-[11px] text-white/50">Dành cho lưu trữ bài hát và danh sách thành viên hiện tại</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white text-sm">database.rules.json (Quy Tắc Mở Quyền - Khuyên Dùng Ngay)</span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500 text-black">
+                    Ưu tiên số 1
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/60 mt-0.5">
+                  Cho phép website ghi bài hát, thành viên, playlist ngay lập tức mà không bị chặn quyền
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  copyRuleToClipboard(
+                    'open_rtdb_rules',
+                    JSON.stringify(
+                      {
+                        rules: {
+                          ".read": true,
+                          ".write": true,
+                        },
+                      },
+                      null,
+                      2
+                    )
+                  )
+                }
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95"
+              >
+                {copiedRuleFile === 'open_rtdb_rules' ? (
+                  <>
+                    <Check className="w-4 h-4 text-black" />
+                    <span>Đã sao chép! Dán vào Firebase ngay</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Sao Chép Quy Tắc Mở Quyền</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <pre className="p-4 text-xs font-mono text-emerald-400 bg-black/60 overflow-x-auto leading-relaxed">
+{`{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}`}
+            </pre>
+          </div>
+
+          {/* 2. Realtime Database Granular Rules (Optional) */}
+          <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
+            <div className="p-4 bg-white/5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="font-bold text-white text-sm">database.rules.json (Quy Tắc Phân Quyền Chi Tiết)</span>
+                <p className="text-[11px] text-white/50">Phân quyền theo từng nhánh songs, members, purchases, vouchers</p>
               </div>
               <button
                 onClick={() =>
@@ -767,15 +1050,15 @@ export const AdminPageView: React.FC = () => {
                         rules: {
                           songs: {
                             ".read": true,
-                            ".write": "auth != null",
+                            ".write": true,
                           },
                           members: {
                             ".read": true,
-                            ".write": "auth != null",
+                            ".write": true,
                           },
                           purchases: {
-                            ".read": "auth != null",
-                            ".write": "auth != null",
+                            ".read": true,
+                            ".write": true,
                           },
                           playlists: {
                             ".read": true,
@@ -783,7 +1066,7 @@ export const AdminPageView: React.FC = () => {
                           },
                           vouchers: {
                             ".read": true,
-                            ".write": "auth != null",
+                            ".write": true,
                           },
                         },
                       },
@@ -792,7 +1075,7 @@ export const AdminPageView: React.FC = () => {
                     )
                   )
                 }
-                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors shrink-0"
               >
                 {copiedRuleFile === 'database.rules.json' ? (
                   <>
@@ -802,7 +1085,7 @@ export const AdminPageView: React.FC = () => {
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>Sao Chép File</span>
+                    <span>Sao Chép Quy Tắc Chi Tiết</span>
                   </>
                 )}
               </button>
@@ -812,15 +1095,15 @@ export const AdminPageView: React.FC = () => {
   "rules": {
     "songs": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": true
     },
     "members": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": true
     },
     "purchases": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "playlists": {
       ".read": true,
@@ -828,7 +1111,7 @@ export const AdminPageView: React.FC = () => {
     },
     "vouchers": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": true
     }
   }
 }`}

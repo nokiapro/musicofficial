@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import { getDatabase, ref, get } from 'firebase/database';
+import { getFirestore, doc, getDocFromServer, setDoc } from 'firebase/firestore';
+import { getDatabase, ref, get, set } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
 export const firebaseConfig = {
@@ -66,41 +66,61 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test connectivity to Firestore & Realtime Database
-export async function testFirebaseConnection(): Promise<{ firestore: boolean; rtdb: boolean; message: string }> {
+// Test connectivity and actual write/read permissions to Firestore & Realtime Database
+export async function testFirebaseConnection(): Promise<{
+  firestore: boolean;
+  rtdb: boolean;
+  rtdbWrite: boolean;
+  message: string;
+  details: string[];
+}> {
   let firestoreOk = false;
   let rtdbOk = false;
-  const messages: string[] = [];
+  let rtdbWriteOk = false;
+  const details: string[] = [];
 
-  // Check Firestore
+  // 1. Check RTDB read & write
   try {
-    await getDocFromServer(doc(db, 'system', 'ping'));
-    firestoreOk = true;
-    messages.push('Firestore: Đã kết nối');
+    const testRef = ref(rtdb, '_system_ping');
+    await set(testRef, {
+      ping: true,
+      timestamp: Date.now(),
+      tester: 'XuanKenMusicApp'
+    });
+    rtdbOk = true;
+    rtdbWriteOk = true;
+    details.push('Realtime Database: Cho phép ghi & đọc dữ liệu (Rules OK)');
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    if (errorMsg.includes('permission-denied') || errorMsg.includes('not-found') || errorMsg.includes('Missing or insufficient permissions')) {
-      // Server responded with permission check, connection is live!
-      firestoreOk = true;
-      messages.push('Firestore: Hoạt động (Có phản hồi)');
+    if (errorMsg.toLowerCase().includes('permission_denied') || errorMsg.toLowerCase().includes('permission denied')) {
+      rtdbOk = false;
+      rtdbWriteOk = false;
+      details.push('Realtime Database: ⚠️ LỖI PERMISSION_DENIED - Tab Quy tắc (Rules) trên Firebase Console đang CHẶN GHI!');
     } else {
-      messages.push(`Firestore: ${errorMsg}`);
+      details.push(`Realtime Database: ${errorMsg}`);
     }
   }
 
-  // Check RTDB
+  // 2. Check Firestore read & write
   try {
-    await get(ref(rtdb, '.info/connected'));
-    rtdbOk = true;
-    messages.push('Realtime Database: Đã kết nối');
+    const testDoc = doc(db, 'system', 'connection_test');
+    await setDoc(testDoc, { ping: true, timestamp: Date.now() }, { merge: true });
+    firestoreOk = true;
+    details.push('Cloud Firestore: Cho phép ghi & đọc dữ liệu');
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    messages.push(`RTDB: ${errorMsg}`);
+    if (errorMsg.toLowerCase().includes('permission-denied') || errorMsg.toLowerCase().includes('missing or insufficient permissions')) {
+      details.push('Cloud Firestore: ⚠️ LỖI PERMISSION_DENIED (Quy tắc firestore.rules đang chặn ghi)');
+    } else {
+      details.push(`Cloud Firestore: ${errorMsg}`);
+    }
   }
 
   return {
     firestore: firestoreOk,
     rtdb: rtdbOk,
-    message: messages.join(' | ')
+    rtdbWrite: rtdbWriteOk,
+    message: details.join(' • '),
+    details,
   };
 }

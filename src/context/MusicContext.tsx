@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, RewindStats } from '../types/music';
 import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
@@ -79,6 +79,7 @@ interface MusicContextType {
 
   // Auth methods
   loginWithEmail: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
+  registerWithEmail: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   updateUserProfile: (displayName: string, avatarUrl?: string) => Promise<void>;
 
@@ -88,9 +89,11 @@ interface MusicContextType {
   topUpBalance: (amount: number) => void;
 
   // Admin CRUD for Songs & Members
-  addNewSong: (song: Song) => Promise<void>;
-  editSong: (song: Song) => Promise<void>;
-  removeSong: (songId: string) => Promise<void>;
+  addNewSong: (song: Song) => Promise<{ success: boolean; rtdb?: boolean; firestore?: boolean; error?: string }>;
+  editSong: (song: Song) => Promise<{ success: boolean; rtdb?: boolean; firestore?: boolean; error?: string }>;
+  removeSong: (songId: string) => Promise<{ success: boolean; error?: string }>;
+  syncAllToFirebase: () => Promise<{ success: boolean; rtdb: boolean; firestore: boolean; error?: string; details: string }>;
+  seedDefaultSongs: () => Promise<{ success: boolean; error?: string }>;
   updateMemberBalance: (uid: string, newBalance: number) => Promise<void>;
   updateMember: (uid: string, data: { displayName?: string; role?: 'admin' | 'user'; balance?: number }) => Promise<void>;
   removeMember: (uid: string) => Promise<void>;
@@ -347,6 +350,24 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         msg = 'Sai tài khoản hoặc mật khẩu trên Firebase Auth.';
       } else if (error.code === 'auth/invalid-email') {
         msg = 'Định dạng email không hợp lệ.';
+      }
+      return { success: false, message: msg };
+    }
+  };
+
+  const registerWithEmail = async (email: string, pass: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, pass);
+      return { success: true, message: 'Tạo tài khoản thành công!' };
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      let msg = 'Tạo tài khoản thất bại: ' + (error.message || '');
+      if (error.code === 'auth/email-already-in-use') {
+        msg = 'Email này đã tồn tại trên Firebase Auth, vui lòng chuyển sang Đăng nhập!';
+      } else if (error.code === 'auth/weak-password') {
+        msg = 'Mật khẩu quá yếu, cần ít nhất 6 ký tự!';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        msg = 'Chưa bật Email/Password trên Firebase Auth (Hãy vào Firebase Console -> Authentication -> Sign-in method -> Bật Email/Password)!';
       }
       return { success: false, message: msg };
     }
@@ -716,7 +737,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!currentSong) {
       setCurrentSong(newSong);
     }
-    await MusicService.saveSongsToFirebase(updated);
+    const result = await MusicService.saveSongsToFirebase(updated);
+    return result;
   };
 
   const editSong = async (updatedSong: Song) => {
@@ -725,7 +747,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (currentSong?.id === updatedSong.id) {
       setCurrentSong(updatedSong);
     }
-    await MusicService.saveSongsToFirebase(updated);
+    const result = await MusicService.saveSongsToFirebase(updated);
+    return result;
   };
 
   const removeSong = async (songId: string) => {
@@ -739,7 +762,100 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsPlaying(false);
       }
     }
-    await MusicService.saveSongsToFirebase(updated);
+    const result = await MusicService.saveSongsToFirebase(updated);
+    await MusicService.deleteSong(songId);
+    return result;
+  };
+
+  // Sync all state to Firebase in 1 click
+  const syncAllToFirebase = async () => {
+    return await MusicService.syncAllToFirebase(songs, members, playlists, vouchers);
+  };
+
+  // Seed sample songs to Firebase if empty
+  const seedDefaultSongs = async () => {
+    const sampleSongs: Song[] = [
+      {
+        id: 'song-xk-01',
+        stt: 1,
+        title: 'Cơn Mưa Ngang Qua',
+        artists: 'Sơn Tùng M-TP',
+        album: 'XuanKen Official',
+        duration: 215,
+        audioFormat: 'MP3',
+        price: 20000,
+        playCount: 1420,
+        coverImage: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+        coverGradient: 'from-purple-600 via-pink-600 to-indigo-800',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        lrcRaw: '[00:00.00] Cơn Mưa Ngang Qua - Sơn Tùng M-TP\n[00:15.00] Cơn mưa ngang qua, mang em đi xa...\n[00:30.00] Nụ cười ngày nào giờ đã phai nhoà...\n[00:45.00] Anh đứng đây một mình trong bóng tối...',
+        lyrics: [
+          { time: 0, text: 'Cơn Mưa Ngang Qua - Sơn Tùng M-TP' },
+          { time: 15, text: 'Cơn mưa ngang qua, mang em đi xa...' },
+          { time: 30, text: 'Nụ cười ngày nào giờ đã phai nhoà...' },
+          { time: 45, text: 'Anh đứng đây một mình trong bóng tối...' },
+        ],
+        releaseDate: '2026',
+        plays: '1.4K lượt nghe',
+      },
+      {
+        id: 'song-xk-02',
+        stt: 2,
+        title: 'Nơi Này Có Anh',
+        artists: 'Sơn Tùng M-TP',
+        album: 'XuanKen Master Studio',
+        duration: 250,
+        audioFormat: 'WAV',
+        price: 35000,
+        playCount: 2850,
+        coverImage: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+        coverGradient: 'from-amber-500 via-red-600 to-purple-800',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        lrcRaw: '[00:00.00] Nơi Này Có Anh - Sơn Tùng M-TP\n[00:18.00] Em là ai từ đâu bước đến nơi đây dịu dàng chói chang...\n[00:35.00] Nụ cười ba mươi giây làm anh ngây ngất...\n[00:50.00] Cầm tay anh dựa vai anh kề bên anh mãi thôi...',
+        lyrics: [
+          { time: 0, text: 'Nơi Này Có Anh - Sơn Tùng M-TP' },
+          { time: 18, text: 'Em là ai từ đâu bước đến nơi đây dịu dàng chói chang...' },
+          { time: 35, text: 'Nụ cười ba mươi giây làm anh ngây ngất...' },
+          { time: 50, text: 'Cầm tay anh dựa vai anh kề bên anh mãi thôi...' },
+        ],
+        releaseDate: '2026',
+        plays: '2.8K lượt nghe',
+      },
+      {
+        id: 'song-xk-03',
+        stt: 3,
+        title: 'Chúng Ta Của Hiện Tại',
+        artists: 'Sơn Tùng M-TP',
+        album: 'XuanKen Lossless 2026',
+        duration: 300,
+        audioFormat: 'WAV',
+        price: 50000,
+        playCount: 3900,
+        coverImage: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+        coverGradient: 'from-blue-600 via-cyan-600 to-indigo-900',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo3.mp3',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo3.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo3.mp3',
+        lrcRaw: '[00:00.00] Chúng Ta Của Hiện Tại - Sơn Tùng M-TP\n[00:20.00] Mùa thu mang giấc mơ quay về...\n[00:40.00] Vẫn nguyên vẹn như hôm nào...\n[00:58.00] Điều anh luôn giữ kín trong tim...',
+        lyrics: [
+          { time: 0, text: 'Chúng Ta Của Hiện Tại - Sơn Tùng M-TP' },
+          { time: 20, text: 'Mùa thu mang giấc mơ quay về...' },
+          { time: 40, text: 'Vẫn nguyên vẹn như hôm nào...' },
+          { time: 58, text: 'Điều anh luôn giữ kín trong tim...' },
+        ],
+        releaseDate: '2026',
+        plays: '3.9K lượt nghe',
+      },
+    ];
+
+    setSongs(sampleSongs);
+    setCurrentSong(sampleSongs[0]);
+    setQueue(sampleSongs.slice(1));
+    return await MusicService.saveSongsToFirebase(sampleSongs);
   };
 
   const updateMemberBalance = async (uid: string, newBalance: number) => {
@@ -1024,6 +1140,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setActiveDesktopTab,
         setActiveMobileTab,
         loginWithEmail,
+        registerWithEmail,
         logout,
         updateUserProfile,
         isSongPurchased,
@@ -1032,6 +1149,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addNewSong,
         editSong,
         removeSong,
+        syncAllToFirebase,
+        seedDefaultSongs,
         updateMemberBalance,
         updateMember,
         removeMember,

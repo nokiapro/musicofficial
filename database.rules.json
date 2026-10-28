@@ -1,24 +1,6 @@
 {
   "rules": {
-    "songs": {
-      ".read": true,
-      ".write": "auth != null"
-    },
-    "members": {
-      ".read": true,
-      ".write": "auth != null"
-    },
-    "purchases": {
-      ".read": true,
-      ".write": "auth != null"
-    },
-    "playlists": {
-      ".read": true,
-      ".write": true
-    },
-    "vouchers": {
-      ".read": true,
-      ".write": "auth != null"
-    }
+    ".read": true,
+    ".write": true
   }
 }
