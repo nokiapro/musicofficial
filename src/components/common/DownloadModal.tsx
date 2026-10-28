@@ -90,20 +90,20 @@ export const DownloadModal: React.FC = () => {
             disabled={downloadingFormat !== null}
             className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/30 to-blue-500/10 hover:from-blue-600/50 hover:to-blue-500/20 border border-blue-500/40 text-left transition-all group active:scale-[0.98] disabled:opacity-50"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center font-black text-xs">
+            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center font-black text-xs shrink-0">
                 MP3
               </div>
-              <div>
-                <p className="text-xs font-bold text-white group-hover:text-blue-300 transition-colors">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-white group-hover:text-blue-300 transition-colors truncate">
                   Tải Bản MP3 (320kbps)
                 </p>
-                <p className="text-[11px] text-white/50">Dung lượng nhẹ, tương thích mọi thiết bị di động</p>
+                <p className="text-[11px] text-white/50 truncate">Dung lượng nhẹ, tương thích mọi thiết bị di động</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md">
-              <Download className="w-3.5 h-3.5" />
-              <span>{downloadingFormat === 'MP3' ? 'Đang tải...' : 'Tải MP3'}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shrink-0 whitespace-nowrap">
+              <Download className="w-3.5 h-3.5 shrink-0" />
+              <span className="whitespace-nowrap">{downloadingFormat === 'MP3' ? 'Đang tải...' : 'Tải MP3'}</span>
             </div>
           </button>
 
@@ -112,21 +112,21 @@ export const DownloadModal: React.FC = () => {
             disabled={downloadingFormat !== null}
             className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-amber-600/30 to-amber-500/10 hover:from-amber-600/50 hover:to-amber-500/20 border border-amber-500/40 text-left transition-all group active:scale-[0.98] disabled:opacity-50"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-xs">
+            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-xs shrink-0">
                 WAV
               </div>
-              <div>
-                <p className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1.5 truncate">
                   <span>Tải Bản WAV</span>
-                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
                 </p>
-                <p className="text-[11px] text-white/50">Chất lượng âm thanh chuẩn phòng thu, chi tiết sắc nét</p>
+                <p className="text-[11px] text-white/50 truncate">Chất lượng âm thanh chuẩn phòng thu, chi tiết sắc nét</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md">
-              <Download className="w-3.5 h-3.5" />
-              <span>{downloadingFormat === 'WAV' ? 'Đang tải...' : 'Tải WAV'}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shrink-0 whitespace-nowrap">
+              <Download className="w-3.5 h-3.5 shrink-0" />
+              <span className="whitespace-nowrap">{downloadingFormat === 'WAV' ? 'Đang tải...' : 'Tải WAV'}</span>
             </div>
           </button>
         </div>

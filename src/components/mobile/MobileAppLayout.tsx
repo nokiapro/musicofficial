@@ -22,6 +22,7 @@ import {
   Crown,
   History,
   Trash2,
+  MoreVertical,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { MobileTopBar } from './MobileTopBar';
@@ -69,6 +70,7 @@ export const MobileAppLayout: React.FC = () => {
   const [librarySubTab, setLibrarySubTab] = useState<'liked' | 'playlists' | 'purchased' | 'history'>('liked');
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreatingPl, setIsCreatingPl] = useState(false);
+  const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
 
   const totalSongs = songs.length;
   const purchasedCount = songs.filter((s) => isSongPurchased(s.id)).length;
@@ -109,7 +111,7 @@ export const MobileAppLayout: React.FC = () => {
               </div>
             </div>
 
-            {/* MP3 & WAV LOSSLESS Audio Format Switcher */}
+            {/* MP3 & WAV Audio Format Switcher */}
             <div className="flex items-center gap-2">
               <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 text-xs shadow-sm w-full">
                 <button
@@ -130,12 +132,20 @@ export const MobileAppLayout: React.FC = () => {
                       ? 'bg-amber-600 text-white shadow-md ring-1 ring-amber-400/40'
                       : 'text-white/60 hover:text-white'
                   }`}
-                  title="Phát tất cả các bài hát ở định dạng WAV Lossless chất lượng cao"
+                  title="Phát tất cả các bài hát ở định dạng WAV chất lượng cao"
                 >
-                  WAV LOSSLESS
+                  WAV
                 </button>
               </div>
             </div>
+
+            {/* Invisible backdrop when 3-dots popover is open */}
+            {activeMenuSongId && (
+              <div
+                className="fixed inset-0 z-30 bg-transparent"
+                onClick={() => setActiveMenuSongId(null)}
+              />
+            )}
 
             {/* Songs List */}
             <div className="space-y-2">
@@ -151,136 +161,135 @@ export const MobileAppLayout: React.FC = () => {
                       if (isCurrent) togglePlay();
                       else playSong(song);
                     }}
-                    className={`p-2.5 rounded-2xl border transition-colors cursor-pointer flex flex-col gap-2 ${
+                    className={`relative p-2.5 rounded-2xl border transition-colors cursor-pointer flex items-center justify-between gap-2.5 ${
                       isCurrent
                         ? 'bg-[#9b4de0]/20 border-[#9b4de0]/50 shadow-md'
                         : 'bg-white/5 border-white/5 active:bg-white/10'
                     }`}
                   >
-                    {/* Top Row: STT, Cover, Title, Artist, Play state */}
-                    <div className="flex items-center justify-between gap-2.5">
-                      <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
-                        <span className="w-5 text-center text-xs font-bold text-white/40 font-mono">
-                          {song.stt || idx + 1}
-                        </span>
+                    {/* Left Info: STT, Cover, Title, Artist */}
+                    <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
+                      <span className="w-5 text-center text-xs font-bold text-white/40 font-mono">
+                        {song.stt || idx + 1}
+                      </span>
 
-                        <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow bg-zinc-900 border border-white/10">
-                          {song.coverImage ? (
-                            <img
-                              src={song.coverImage}
-                              alt={song.title}
-                              className="w-full h-full object-cover"
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                            />
-                          ) : null}
-                          <div
-                            className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}
-                          >
-                            {isCurrent && isPlaying ? (
-                              <Pause className="w-4 h-4 text-white fill-current" />
-                            ) : (
-                              <Play className="w-4 h-4 text-white fill-current ml-0.5" />
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="truncate">
-                          <p
-                            className={`text-xs font-bold truncate ${
-                              isCurrent ? 'text-[#c273ed]' : 'text-white'
-                            }`}
-                          >
-                            {song.title}
-                          </p>
-                          <p className="text-[10px] text-white/60 truncate mt-0.5">{song.artists}</p>
+                      <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow bg-zinc-900 border border-white/10">
+                        {song.coverImage ? (
+                          <img
+                            src={song.coverImage}
+                            alt={song.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : null}
+                        <div
+                          className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+                        >
+                          {isCurrent && isPlaying ? (
+                            <Pause className="w-4 h-4 text-white fill-current" />
+                          ) : (
+                            <Play className="w-4 h-4 text-white fill-current ml-0.5" />
+                          )}
                         </div>
                       </div>
 
-                      {/* Format Badge: MP3 or WAV */}
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shrink-0 ${
-                          song.audioFormat === 'WAV'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                        }`}
-                      >
-                        {song.audioFormat}
-                      </span>
+                      <div className="truncate flex-1 min-w-0">
+                        <p
+                          className={`text-xs font-bold truncate ${
+                            isCurrent ? 'text-[#c273ed]' : 'text-white'
+                          }`}
+                        >
+                          {song.title}
+                        </p>
+                        <p className="text-[10px] text-white/60 truncate mt-0.5">{song.artists}</p>
+                      </div>
                     </div>
 
-                    {/* Bottom Row: LRC, Duration, Add to Playlist, Share, Buy/Download, Heart */}
-                    <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[11px]">
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedLrcSong(song);
-                          }}
-                          className="flex items-center gap-1 text-[#c273ed] hover:underline font-bold"
-                        >
-                          <FileText className="w-3 h-3" />
-                          <span>LRC</span>
-                        </button>
-                        <span className="text-white/40 font-mono tabular-nums text-[10px]">
-                          {formatDuration(song.duration)}
-                        </span>
-                      </div>
+                    {/* Right: 3-dots Menu Button replacing WAV badge */}
+                    <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setActiveMenuSongId(activeMenuSongId === song.id ? null : song.id)}
+                        className={`p-1.5 rounded-xl transition-all ${
+                          activeMenuSongId === song.id
+                            ? 'bg-[#9b4de0] text-white'
+                            : 'hover:bg-white/10 text-white/60 hover:text-white'
+                        }`}
+                        title="Tùy chọn bài hát"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
 
-                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => openAddToPlaylistModal(song)}
-                          className="p-1 rounded-lg text-white/50 hover:text-white transition-colors"
-                          title="Thêm vào playlist"
+                      {/* 3-dots Popup Dropdown Menu */}
+                      {activeMenuSongId === song.id && (
+                        <div
+                          className="absolute right-0 top-9 w-48 bg-[#231b2e] border border-white/15 rounded-2xl shadow-2xl p-1.5 z-40 text-xs text-white space-y-0.5 animate-in fade-in zoom-in-95 duration-150"
                         >
-                          <ListPlus className="w-3.5 h-3.5" />
-                        </button>
-
-                        <button
-                          onClick={() => openShareModal(song)}
-                          className="p-1 rounded-lg text-white/50 hover:text-white transition-colors"
-                          title="Chia sẻ link bài hát"
-                        >
-                          <Share2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {isPurchased ? (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => downloadSong(song, song.audioFormat)}
-                              className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1"
-                              title="Tải bài hát bản quyền"
-                            >
-                              <Download className="w-3 h-3" />
-                              <span>Tải</span>
-                            </button>
-                            <span className="text-[10px] font-bold text-emerald-400 flex items-center">
-                              <CheckCircle className="w-3 h-3" />
-                            </span>
-                          </div>
-                        ) : (
+                          {/* 1. Yêu thích (Tim) */}
                           <button
                             onClick={() => {
-                              setSongToBuy(song);
-                              setIsBuyModalOpen(true);
+                              toggleLike(song.id);
+                              setActiveMenuSongId(null);
                             }}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#9b4de0] text-white font-bold text-[10px] shadow"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
                           >
-                            <ShoppingCart className="w-3 h-3" />
-                            <span>Mua {(song.price ?? 20000).toLocaleString('vi-VN')}đ</span>
+                            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white/70'}`} />
+                            <span>{isLiked ? 'Đã yêu thích' : 'Yêu thích bài hát'}</span>
                           </button>
-                        )}
 
-                        <button
-                          onClick={() => toggleLike(song.id)}
-                          className="p-1 text-white/40 hover:text-red-400"
-                        >
-                          <Heart
-                            className={`w-3.5 h-3.5 ${
-                              isLiked ? 'text-red-500 fill-red-500' : ''
-                            }`}
-                          />
-                        </button>
-                      </div>
+                          {/* 2. Xem lời bài hát (LRC) */}
+                          <button
+                            onClick={() => {
+                              setSelectedLrcSong(song);
+                              setActiveMenuSongId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#c273ed]" />
+                            <span>Xem lời bài hát (LRC)</span>
+                          </button>
+
+                          {/* 3. Thêm vào playlist */}
+                          <button
+                            onClick={() => {
+                              openAddToPlaylistModal(song);
+                              setActiveMenuSongId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                          >
+                            <ListPlus className="w-3.5 h-3.5 text-blue-400" />
+                            <span>Thêm vào playlist</span>
+                          </button>
+
+                          {/* 4. Chia sẻ link bài hát */}
+                          <button
+                            onClick={() => {
+                              openShareModal(song);
+                              setActiveMenuSongId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                          >
+                            <Share2 className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>Chia sẻ link bài hát</span>
+                          </button>
+
+                          {/* 5. Tải bài hát về máy */}
+                          <button
+                            onClick={() => {
+                              setActiveMenuSongId(null);
+                              if (isPurchased) {
+                                openDownloadModal(song);
+                              } else {
+                                setSongToBuy(song);
+                                setIsDemoLimitModalOpen(true);
+                              }
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>{isPurchased ? 'Tải bài hát về máy' : 'Mua & Tải bài hát'}</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -706,12 +715,12 @@ export const MobileAppLayout: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen text-white flex flex-col items-center justify-start sm:py-6 transition-colors duration-300"
+      className="h-[100dvh] w-full text-white flex flex-col items-center justify-start sm:py-4 transition-colors duration-300 overflow-hidden"
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
       {/* Top Banner on Desktop when viewing Mobile App mode */}
       <div
-        className="hidden sm:flex items-center justify-between w-full max-w-md px-4 py-2 mb-3 rounded-xl border text-xs text-white"
+        className="hidden sm:flex items-center justify-between w-full max-w-[420px] px-4 py-2 mb-2 rounded-xl border text-xs text-white shrink-0"
         style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
       >
         <div className="flex items-center gap-2">
@@ -728,9 +737,9 @@ export const MobileAppLayout: React.FC = () => {
         </button>
       </div>
 
-      {/* Phone Mockup Frame or Direct Full Screen on real phone */}
+      {/* Phone Frame on Desktop or Edge-to-Edge on Mobile Phone */}
       <div
-        className="w-full sm:max-w-[420px] sm:h-[860px] sm:rounded-[44px] sm:border-[8px] sm:border-zinc-800 sm:ring-1 sm:ring-white/20 sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col relative overflow-hidden transition-colors duration-200"
+        className="w-full h-full sm:max-w-[420px] sm:h-[860px] sm:max-h-[92vh] sm:rounded-[44px] sm:border-[8px] sm:border-zinc-800 sm:ring-1 sm:ring-white/20 sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col relative overflow-hidden transition-colors duration-200"
         style={{ backgroundColor: 'var(--bg-primary)' }}
       >
         {/* Dynamic Island / Notch on Desktop Mockup */}

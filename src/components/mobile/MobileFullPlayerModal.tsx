@@ -11,15 +11,15 @@ import {
   Repeat,
   Repeat1,
   Clock,
-  Mic2,
   ListMusic,
   Disc3,
   Sparkles,
   Share2,
   ListPlus,
   Download,
-  Gauge,
-  ShoppingCart,
+  Palette,
+  X,
+  Waves,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Visualizer } from '../common/Visualizer';
@@ -49,19 +49,25 @@ export const MobileFullPlayerModal: React.FC = () => {
     isSongPurchased,
     openShareModal,
     openAddToPlaylistModal,
-    downloadSong,
     setIsAudioSettingsModalOpen,
+    setIsThemeModalOpen,
     setSongToBuy,
-    setIsBuyModalOpen,
+    setIsDemoLimitModalOpen,
+    preferredAudioFormat,
+    songFormatMap,
+    setSongAudioFormat,
+    openDownloadModal,
   } = useMusic();
 
   const [activeTab, setActiveTab] = useState<'disc' | 'lyrics'>('disc');
   const [showQueueSheet, setShowQueueSheet] = useState(false);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
 
   if (!isMobileFullPlayerOpen || !currentSong) return null;
 
   const isLiked = likedSongIds.includes(currentSong.id);
+  const currentFormat = songFormatMap[currentSong.id] || preferredAudioFormat;
   const lyrics = currentSong.lyrics || [];
   const activeLyricIdx = lyrics.findIndex(
     (line, index) =>
@@ -88,10 +94,13 @@ export const MobileFullPlayerModal: React.FC = () => {
       </div>
 
       {/* Top Header */}
-      <header className="relative z-10 px-4 py-3 flex items-center justify-between border-b border-white/5">
+      <header className="relative z-10 px-4 py-2.5 flex items-center justify-between border-b border-white/5">
         <button
-          onClick={() => setIsMobileFullPlayerOpen(false)}
-          className="p-2 -ml-2 rounded-full hover:bg-white/10 text-white/80"
+          onClick={() => {
+            setIsMobileFullPlayerOpen(false);
+            setIsHeaderMenuOpen(false);
+          }}
+          className="p-2 -ml-2 rounded-full hover:bg-white/10 text-white/80 active:scale-95 transition-transform"
         >
           <ChevronDown className="w-6 h-6" />
         </button>
@@ -100,16 +109,73 @@ export const MobileFullPlayerModal: React.FC = () => {
           <p className="text-[10px] text-white/50 uppercase tracking-widest font-semibold">
             Đang phát từ Playlist
           </p>
-          <p className="text-xs font-bold text-white truncate">{currentSong.album}</p>
+          <p className="text-xs font-bold text-white truncate">{currentSong.album || 'XuanKen Music Official'}</p>
         </div>
 
-        <button className="p-2 -mr-2 rounded-full hover:bg-white/10 text-white/80">
-          <MoreVertical className="w-5 h-5" />
-        </button>
+        {/* 3-dots Menu Button at top-right with sleep timer moved into it */}
+        <div className="relative">
+          <button
+            onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+            className="p-2 -mr-2 rounded-full hover:bg-white/10 text-white/80 active:scale-95 transition-transform"
+            title="Tùy chọn mở rộng"
+          >
+            <MoreVertical className="w-5 h-5" />
+            {sleepTimerRemainingSeconds !== null && (
+              <span className="absolute top-1 right-0 w-2 h-2 bg-amber-400 rounded-full border border-black" />
+            )}
+          </button>
+
+          {isHeaderMenuOpen && (
+            <div className="absolute right-0 top-10 w-52 bg-[#231b2e] border border-white/15 rounded-2xl shadow-2xl p-1.5 z-50 text-xs text-white space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+              {/* Hẹn giờ tắt nhạc (Chuyển vào 3 chấm dọc theo yêu cầu) */}
+              <button
+                onClick={() => {
+                  setIsHeaderMenuOpen(false);
+                  setIsSleepTimerModalOpen(true);
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Hẹn giờ tắt nhạc</span>
+                </div>
+                {sleepTimerRemainingSeconds !== null && (
+                  <span className="text-[10px] font-bold text-amber-300 font-mono">
+                    {Math.ceil(sleepTimerRemainingSeconds / 60)}p
+                  </span>
+                )}
+              </button>
+
+              {/* Cài đặt âm thanh (Crossfade) */}
+              <button
+                onClick={() => {
+                  setIsHeaderMenuOpen(false);
+                  setIsAudioSettingsModalOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+              >
+                <Waves className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Nối nhạc Crossfade</span>
+              </button>
+
+              {/* Đổi chủ đề */}
+              <button
+                onClick={() => {
+                  setIsHeaderMenuOpen(false);
+                  setIsThemeModalOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+              >
+                <Palette className="w-3.5 h-3.5 text-[#c273ed]" />
+                <span>Đổi giao diện / Theme</span>
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Tabs Switch: Đĩa nhạc | Lời bài hát */}
-      <div className="relative z-10 flex items-center justify-center gap-6 pt-3 text-xs font-bold">
+      <div className="relative z-10 flex items-center justify-center gap-6 pt-3 text-xs font-bold shrink-0">
         <button
           onClick={() => setActiveTab('disc')}
           className={`pb-1 border-b-2 transition-all ${
@@ -133,14 +199,14 @@ export const MobileFullPlayerModal: React.FC = () => {
       </div>
 
       {/* Center View */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 overflow-hidden">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-2 overflow-hidden min-h-0">
         {activeTab === 'disc' ? (
-          /* Rotating Vinyl View */
-          <div className="flex flex-col items-center justify-center w-full">
-            <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full bg-zinc-950 p-3 shadow-2xl border-4 border-zinc-800/60 flex items-center justify-center">
+          /* Rotating Vinyl View - Optimized size for all screens */
+          <div className="flex flex-col items-center justify-center w-full max-h-[42vh] my-auto">
+            <div className="relative w-[min(65vw,250px)] h-[min(65vw,250px)] max-h-[36vh] aspect-square rounded-full bg-zinc-950 p-2.5 shadow-2xl border-4 border-zinc-800/60 flex items-center justify-center">
               {/* Outer Grooves */}
               <div className="absolute inset-2 rounded-full border border-zinc-800/80 pointer-events-none" />
-              <div className="absolute inset-5 rounded-full border border-zinc-800/60 pointer-events-none" />
+              <div className="absolute inset-4 rounded-full border border-zinc-800/60 pointer-events-none" />
 
               {/* Spinning Disc Center */}
               <div
@@ -164,15 +230,15 @@ export const MobileFullPlayerModal: React.FC = () => {
             </div>
 
             {/* Sound Wave Spectrum */}
-            <div className="mt-6 flex items-center justify-center">
-              <Visualizer barCount={18} height={18} color="#9b4de0" />
+            <div className="mt-3 sm:mt-5 flex items-center justify-center">
+              <Visualizer barCount={18} height={16} color="#9b4de0" />
             </div>
           </div>
         ) : (
           /* Synchronized Karaoke Lyrics View */
           <div
             ref={lyricsContainerRef}
-            className="w-full h-full overflow-y-auto px-4 py-8 space-y-5 text-center select-none"
+            className="w-full h-full overflow-y-auto px-4 py-6 space-y-4 text-center select-none"
           >
             {lyrics.map((line, idx) => {
               const isCurrent = idx === activeLyricIdx;
@@ -184,10 +250,10 @@ export const MobileFullPlayerModal: React.FC = () => {
                   onClick={() => seekTo(line.time)}
                   className={`cursor-pointer transition-all duration-200 font-bold ${
                     isCurrent
-                      ? 'text-xl text-amber-300 scale-105 drop-shadow-[0_2px_12px_rgba(251,191,36,0.6)]'
+                      ? 'text-lg sm:text-xl text-amber-300 scale-105 drop-shadow-[0_2px_12px_rgba(251,191,36,0.6)]'
                       : isPast
-                      ? 'text-sm text-white/40'
-                      : 'text-sm text-white/60'
+                      ? 'text-xs sm:text-sm text-white/40'
+                      : 'text-xs sm:text-sm text-white/60'
                   }`}
                 >
                   {line.text}
@@ -198,83 +264,39 @@ export const MobileFullPlayerModal: React.FC = () => {
         )}
       </main>
 
-      {/* Song Info Bar */}
-      <div className="relative z-10 px-6 flex items-center justify-between">
-        <div className="truncate mr-4 flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-white truncate">{currentSong.title}</h2>
-            <span
-              className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase shrink-0 ${
-                currentSong.audioFormat === 'WAV'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-              }`}
-            >
-              {currentSong.audioFormat}
-            </span>
-          </div>
+      {/* Song Info Bar: Share on Left, Centered Title & Artist (No WAV badge), Heart on Right */}
+      <div className="relative z-10 px-5 flex items-center justify-between gap-3 shrink-0">
+        {/* Left: Share Icon */}
+        <button
+          onClick={() => openShareModal(currentSong)}
+          className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white active:scale-95 transition-all shrink-0"
+          title="Chia sẻ bài hát"
+        >
+          <Share2 className="w-5 h-5" />
+        </button>
+
+        {/* Center: Title & Artist (Centered, NO WAV badge) */}
+        <div className="flex-1 min-w-0 text-center px-2">
+          <h2 className="text-base sm:text-lg font-bold text-white truncate">
+            {currentSong.title}
+          </h2>
           <p className="text-xs text-white/60 truncate mt-0.5">{currentSong.artists}</p>
         </div>
 
+        {/* Right: Heart / Like Icon */}
         <button
           onClick={() => toggleLike(currentSong.id)}
-          className="p-2 text-white/70 hover:text-red-400 active:scale-95 transition-transform shrink-0"
+          className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-red-400 active:scale-95 transition-all shrink-0"
+          title="Yêu thích bài hát"
         >
           <Heart
-            className={`w-6 h-6 ${isLiked ? 'text-red-500 fill-red-500' : ''}`}
+            className={`w-5 h-5 ${isLiked ? 'text-red-500 fill-red-500' : ''}`}
           />
         </button>
       </div>
 
-      {/* Quick Feature Action Bar: Add to Playlist, Share, Download/Buy */}
-      <div className="relative z-10 px-6 mt-2 flex items-center justify-end gap-2">
-        <div className="flex items-center gap-2">
-          {/* Add to Playlist */}
-          <button
-            onClick={() => openAddToPlaylistModal(currentSong)}
-            className="p-2 rounded-full bg-white/10 hover:bg-white/15 text-white/70 hover:text-white active:scale-95 transition-all"
-            title="Thêm vào playlist"
-          >
-            <ListPlus className="w-4 h-4" />
-          </button>
-
-          {/* Share Deep Link */}
-          <button
-            onClick={() => openShareModal(currentSong)}
-            className="p-2 rounded-full bg-white/10 hover:bg-white/15 text-white/70 hover:text-white active:scale-95 transition-all"
-            title="Chia sẻ bài hát trực tiếp"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-
-          {/* Download if purchased, or Buy Button */}
-          {isSongPurchased(currentSong.id) ? (
-            <button
-              onClick={() => downloadSong(currentSong, currentSong.audioFormat)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold active:scale-95 transition-all"
-              title="Tải nhạc bản quyền về máy"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Tải Full</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                setSongToBuy(currentSong);
-                setIsBuyModalOpen(true);
-              }}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-md active:scale-95 transition-all"
-              title="Mua nhạc bản quyền"
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              <span>Mua ({(currentSong.price ?? 20000).toLocaleString('vi-VN')}đ)</span>
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Scrubber Slider */}
-      <div className="relative z-10 px-6 mt-4">
+      <div className="relative z-10 px-6 mt-3 shrink-0">
         <div className="relative flex items-center">
           <input
             type="range"
@@ -310,7 +332,7 @@ export const MobileFullPlayerModal: React.FC = () => {
       </div>
 
       {/* Big Playback Controls Row */}
-      <div className="relative z-10 px-6 py-4 flex items-center justify-between max-w-sm mx-auto w-full">
+      <div className="relative z-10 px-6 py-2 sm:py-3 flex items-center justify-between max-w-sm mx-auto w-full shrink-0">
         <button
           onClick={toggleShuffle}
           className={`p-2 transition-colors ${
@@ -326,7 +348,7 @@ export const MobileFullPlayerModal: React.FC = () => {
 
         <button
           onClick={togglePlay}
-          className="w-16 h-16 rounded-full bg-[#9b4de0] hover:bg-[#8539c9] text-white flex items-center justify-center shadow-xl shadow-[#9b4de0]/40 active:scale-95 transition-transform"
+          className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#9b4de0] hover:bg-[#8539c9] text-white flex items-center justify-center shadow-xl shadow-[#9b4de0]/40 active:scale-95 transition-transform"
         >
           {isPlaying ? (
             <Pause className="w-7 h-7 fill-current" />
@@ -353,36 +375,79 @@ export const MobileFullPlayerModal: React.FC = () => {
         </button>
       </div>
 
-      {/* Bottom Features Row: Timer, Lossless, Karaoke Mic, Queue */}
-      <footer className="relative z-10 px-6 pb-6 pt-2 flex items-center justify-between text-xs text-white/60 border-t border-white/5">
+      {/* Bottom Features Row: Đổi Giao Diện, Thêm Playlist, MP3 / LOSSLESS, Tải Nhạc, Danh Sách Phát */}
+      <footer className="relative z-10 px-5 pb-5 pt-2 flex items-center justify-between text-xs text-white/70 border-t border-white/5 shrink-0">
+        {/* 1. Đổi giao diện chỉ icon thôi */}
         <button
-          onClick={() => setIsSleepTimerModalOpen(true)}
-          className={`flex items-center gap-1 p-2 rounded-lg ${
-            sleepTimerRemainingSeconds !== null ? 'text-[#c273ed] font-bold' : ''
-          }`}
-          title="Hẹn giờ tắt"
+          onClick={() => setIsThemeModalOpen(true)}
+          className="p-2 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-colors active:scale-95"
+          title="Đổi chủ đề giao diện"
         >
-          <Clock className="w-4 h-4" />
-          <span>{sleepTimerRemainingSeconds ? `${Math.ceil(sleepTimerRemainingSeconds / 60)}p` : 'Hẹn giờ'}</span>
+          <Palette className="w-5 h-5" />
         </button>
 
-        <div className="px-2 py-0.5 rounded border border-white/20 text-[10px] font-bold text-white/80">
-          LOSSLESS
+        {/* 2. Thêm bài hát vào playlist */}
+        <button
+          onClick={() => openAddToPlaylistModal(currentSong)}
+          className="p-2 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-colors active:scale-95"
+          title="Thêm vào playlist"
+        >
+          <ListPlus className="w-5 h-5" />
+        </button>
+
+        {/* 3. Chọn chất lượng nhạc nghe MP3 và LOSSLESS */}
+        <div className="flex items-center p-0.5 rounded-xl bg-white/10 border border-white/10 text-[10px] font-bold">
+          <button
+            onClick={() => {
+              setSongAudioFormat(currentSong.id, 'MP3');
+              playSong(currentSong, 'MP3');
+            }}
+            className={`px-2.5 py-1 rounded-lg transition-all ${
+              currentFormat === 'MP3'
+                ? 'bg-blue-600 text-white shadow font-black'
+                : 'text-white/60 hover:text-white'
+            }`}
+            title="Nghe chất lượng MP3"
+          >
+            MP3
+          </button>
+          <button
+            onClick={() => {
+              setSongAudioFormat(currentSong.id, 'WAV');
+              playSong(currentSong, 'WAV');
+            }}
+            className={`px-2.5 py-1 rounded-lg transition-all ${
+              currentFormat === 'WAV'
+                ? 'bg-amber-600 text-white shadow font-black'
+                : 'text-white/60 hover:text-white'
+            }`}
+            title="Nghe chất lượng Lossless WAV"
+          >
+            LOSSLESS
+          </button>
         </div>
 
+        {/* 4. Icon tải nhạc (thay thế karaoke) */}
         <button
-          onClick={() => setActiveTab(activeTab === 'lyrics' ? 'disc' : 'lyrics')}
-          className={`flex items-center gap-1 p-2 rounded-lg ${
-            activeTab === 'lyrics' ? 'text-amber-300 font-bold' : ''
-          }`}
+          onClick={() => {
+            if (isSongPurchased(currentSong.id)) {
+              openDownloadModal(currentSong);
+            } else {
+              setSongToBuy(currentSong);
+              setIsDemoLimitModalOpen(true);
+            }
+          }}
+          className="p-2 rounded-xl hover:bg-white/10 text-emerald-400 hover:text-emerald-300 transition-colors active:scale-95"
+          title={isSongPurchased(currentSong.id) ? "Tải bài hát về máy" : "Mua & Tải bài hát"}
         >
-          <Mic2 className="w-4 h-4" />
-          <span>Karaoke</span>
+          <Download className="w-5 h-5" />
         </button>
 
+        {/* 5. Icon danh sách phát */}
         <button
           onClick={() => setShowQueueSheet(true)}
-          className="p-2 rounded-lg text-white/80 hover:text-white"
+          className="p-2 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-colors active:scale-95"
+          title="Danh sách phát"
         >
           <ListMusic className="w-5 h-5" />
         </button>

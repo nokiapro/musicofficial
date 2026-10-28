@@ -25,8 +25,12 @@ export const MobileMiniPlayer: React.FC = () => {
   return (
     <div
       onClick={() => setIsMobileFullPlayerOpen(true)}
-      className="fixed bottom-14 left-0 right-0 z-30 backdrop-blur-md border-t px-3 py-2 cursor-pointer select-none max-w-md mx-auto transition-colors duration-200"
-      style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
+      className="fixed left-0 right-0 z-30 backdrop-blur-md border-t px-3 py-2 cursor-pointer select-none max-w-md mx-auto transition-colors duration-200"
+      style={{
+        backgroundColor: 'var(--bg-surface)',
+        borderColor: 'var(--border-color)',
+        bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))',
+      }}
     >
       {/* Top thin progress bar with yellow 60s marker */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-white/10">

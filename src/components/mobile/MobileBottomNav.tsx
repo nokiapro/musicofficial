@@ -83,7 +83,11 @@ export const MobileBottomNav: React.FC = () => {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-md border-t px-1 select-none transition-colors duration-200"
-      style={{ backgroundColor: 'var(--bg-player)', borderColor: 'var(--border-color)' }}
+      style={{
+        backgroundColor: 'var(--bg-player)',
+        borderColor: 'var(--border-color)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
     >
       <div
         className={`grid ${
