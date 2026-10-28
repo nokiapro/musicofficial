@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMusic } from '../../context/MusicContext';
-import { Play, Heart } from 'lucide-react';
+import { Play, Heart, Disc } from 'lucide-react';
 
 export const InteractionSplash: React.FC = () => {
   const { songs, playSong } = useMusic();
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(() => {
+    try {
+      return sessionStorage.getItem('xuanken_splash_dismissed') !== 'true';
+    } catch (e) {
+      return true;
+    }
+  });
   const [isHiding, setIsHiding] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const handleStart = () => {
     if (isHiding) return;
     setIsHiding(true);
+    try {
+      sessionStorage.setItem('xuanken_splash_dismissed', 'true');
+    } catch (e) {}
 
     // Pick random song to play from library
     if (songs && songs.length > 0) {
@@ -20,8 +30,18 @@ export const InteractionSplash: React.FC = () => {
 
     setTimeout(() => {
       setIsVisible(false);
-    }, 600);
+    }, 450);
   };
+
+  useEffect(() => {
+    const handleKeyDown = () => {
+      if (isVisible && !isHiding) {
+        handleStart();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVisible, isHiding]);
 
   if (!isVisible) return null;
 
@@ -29,25 +49,29 @@ export const InteractionSplash: React.FC = () => {
     <div
       id="interaction-hint"
       onClick={handleStart}
-      className={`fixed inset-0 z-[10000] flex flex-col justify-center items-center cursor-pointer select-none transition-all duration-600 ${
+      className={`fixed inset-0 z-[10000] flex flex-col justify-center items-center cursor-pointer select-none transition-all duration-500 ${
         isHiding ? 'opacity-0 invisible pointer-events-none' : 'opacity-100 visible'
       }`}
       style={{
-        background: 'linear-gradient(135deg, rgba(30, 30, 40, 0.98), rgba(40, 40, 55, 0.98), rgba(50, 50, 65, 0.98))',
-        backdropFilter: 'blur(10px)',
+        background: 'linear-gradient(135deg, rgba(18, 8, 34, 0.98), rgba(28, 14, 52, 0.98), rgba(18, 8, 34, 0.98))',
+        backdropFilter: 'blur(12px)',
       }}
     >
       {/* Floating Logo with animated pulsing ring */}
       <div className="relative w-28 h-28 sm:w-36 sm:h-36 mb-6 sm:mb-8 animate-[logoFloat_2.5s_ease-in-out_infinite]">
         <div className="absolute -inset-2.5 rounded-full border border-white/40 animate-[pulseRing_2s_linear_infinite]" />
-        <img
-          src="https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png"
-          alt="Logo Xuanken Music"
-          className="w-full h-full object-cover rounded-full border-4 border-white/80 shadow-[0_10px_25px_rgba(0,0,0,0.4)] bg-white"
-          onError={(e) => {
-            e.currentTarget.src = 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/icon.png';
-          }}
-        />
+        {!imgError ? (
+          <img
+            src="https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png"
+            alt="Logo Xuanken Music"
+            className="w-full h-full object-cover rounded-full border-4 border-white/80 shadow-[0_10px_25px_rgba(0,0,0,0.4)] bg-white"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full rounded-full border-4 border-white/80 shadow-2xl bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 flex items-center justify-center">
+            <Disc className="w-14 h-14 sm:w-16 sm:h-16 text-white animate-spin-slow" />
+          </div>
+        )}
       </div>
 
       {/* Animated Gradient Title */}
@@ -69,7 +93,7 @@ export const InteractionSplash: React.FC = () => {
       </p>
 
       {/* Touch To Start Button */}
-      <div className="hint-button flex items-center gap-3.5 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/20 backdrop-blur-xl px-7 sm:px-9 py-3 sm:py-4 rounded-full shadow-[0_8px_25px_rgba(0,0,0,0.3)] transition-all duration-300">
+      <div className="hint-button flex items-center gap-3.5 bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 backdrop-blur-xl px-7 sm:px-9 py-3 sm:py-4 rounded-full shadow-[0_8px_25px_rgba(0,0,0,0.3)] transition-all duration-300">
         <div className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center shadow-md shrink-0">
           <Play className="w-3.5 h-3.5 fill-black ml-0.5 text-black" />
         </div>

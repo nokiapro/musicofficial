@@ -264,7 +264,7 @@ export const MobileAppLayout: React.FC = () => {
                             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#9b4de0] text-white font-bold text-[10px] shadow"
                           >
                             <ShoppingCart className="w-3 h-3" />
-                            <span>Mua {song.price.toLocaleString('vi-VN')}đ</span>
+                            <span>Mua {(song.price ?? 20000).toLocaleString('vi-VN')}đ</span>
                           </button>
                         )}
 
@@ -326,7 +326,7 @@ export const MobileAppLayout: React.FC = () => {
                       </div>
                       <p className="text-[10px] text-white/50 truncate mt-0.5">{song.artists}</p>
                       <p className="text-xs font-bold text-amber-400 mt-1">
-                        {isPurchased ? 'ĐÃ SỞ HỮU' : `${song.price.toLocaleString('vi-VN')} đ`}
+                        {isPurchased ? 'ĐÃ SỞ HỮU' : `${(song.price ?? 20000).toLocaleString('vi-VN')} đ`}
                       </p>
                     </div>
 

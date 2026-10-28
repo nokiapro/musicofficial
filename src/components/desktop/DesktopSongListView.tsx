@@ -192,7 +192,7 @@ export const DesktopSongListView: React.FC = () => {
                             {song.title}
                           </p>
                           <p className="text-[11px] text-white/40 truncate mt-0.5">
-                            Album: {song.album}
+                            Album: {song.album || 'XuanKen Official'}
                           </p>
                         </div>
                       </div>
@@ -290,7 +290,7 @@ export const DesktopSongListView: React.FC = () => {
                             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow transition-transform active:scale-95"
                           >
                             <ShoppingCart className="w-3 h-3" />
-                            <span>Mua {song.price.toLocaleString('vi-VN')}đ</span>
+                            <span>Mua {(song.price ?? 20000).toLocaleString('vi-VN')}đ</span>
                           </button>
                         )}
                       </div>

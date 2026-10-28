@@ -21,12 +21,15 @@ import {
   Code,
   Copy,
   Check,
-  Sparkles,
   Tag,
+  Sparkles,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song, AppUser, AudioFormat, Voucher } from '../../types/music';
 import { audioEngine } from '../../services/audioEngine';
+import { testFirebaseConnection } from '../../services/firebase';
 
 export const AdminPageView: React.FC = () => {
   const {
@@ -92,6 +95,24 @@ export const AdminPageView: React.FC = () => {
   const [editRole, setEditRole] = useState<'admin' | 'user'>('user');
   const [editBalance, setEditBalance] = useState<string>('0');
   const [copiedRuleFile, setCopiedRuleFile] = useState<string | null>(null);
+  const [firebaseTestResult, setFirebaseTestResult] = useState<{ firestore: boolean; rtdb: boolean; message: string } | null>(null);
+  const [isTestingFirebase, setIsTestingFirebase] = useState(false);
+
+  const handleTestFirebase = async () => {
+    setIsTestingFirebase(true);
+    try {
+      const res = await testFirebaseConnection();
+      setFirebaseTestResult(res);
+    } catch (e: any) {
+      setFirebaseTestResult({
+        firestore: false,
+        rtdb: false,
+        message: e?.message || 'Lỗi kiểm tra kết nối',
+      });
+    } finally {
+      setIsTestingFirebase(false);
+    }
+  };
 
   // If not logged in, show Admin Login Screen
   if (!currentUser) {
@@ -131,7 +152,7 @@ export const AdminPageView: React.FC = () => {
               required
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              placeholder="xuankensinger@gmail.com"
+              placeholder="anhhungxuanken@gmail.com hoặc email Admin"
               className="w-full bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
             />
           </div>
@@ -516,7 +537,7 @@ export const AdminPageView: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center font-mono text-amber-300 font-bold">
-                          {song.price.toLocaleString('vi-VN')} đ
+                          {(song.price ?? 20000).toLocaleString('vi-VN')} đ
                         </td>
                         <td className="py-3 px-4 text-center font-mono text-white/60">
                           {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
@@ -633,7 +654,7 @@ export const AdminPageView: React.FC = () => {
                           </button>
                         </td>
                         <td className="py-3 px-4 text-center font-mono font-bold text-emerald-400">
-                          {member.balance.toLocaleString('vi-VN')} đ
+                          {(member.balance || 0).toLocaleString('vi-VN')} đ
                         </td>
                         <td className="py-3 px-4 text-center text-white/60">
                           {member.purchasedSongIds?.length || 0} bài
@@ -676,6 +697,50 @@ export const AdminPageView: React.FC = () => {
       {/* TAB 3: QUY TẮC FIREBASE (RULES - Requirement 1) */}
       {activeAdminTab === 'rules' && (
         <div className="space-y-6">
+          {/* Live Firebase Connectivity Check Card */}
+          <div className="p-5 rounded-2xl bg-[#170f23] border border-white/10 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                <Database className="w-4 h-4" />
+                <span>Trạng Thái Đồng Bộ Firebase Trực Tuyến</span>
+              </div>
+              <h3 className="text-base font-bold text-white mt-1">
+                Kiểm Tra Kết Nối Cloud Firestore & Realtime Database
+              </h3>
+              <p className="text-xs text-white/60 mt-0.5">
+                Dự án Firebase kết nối: <code className="text-amber-300 font-mono">newmusic-5625b</code>
+              </p>
+              {firebaseTestResult && (
+                <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/10 flex flex-col gap-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${firebaseTestResult.rtdb ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-red-400'}`} />
+                    <span className="text-white font-medium">Realtime Database:</span>
+                    <span className={firebaseTestResult.rtdb ? 'text-emerald-300 font-bold' : 'text-red-300'}>
+                      {firebaseTestResult.rtdb ? 'Đang hoạt động (Đọc dữ liệu bài hát thành công)' : 'Chưa kết nối'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${firebaseTestResult.firestore ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-red-400'}`} />
+                    <span className="text-white font-medium">Cloud Firestore:</span>
+                    <span className={firebaseTestResult.firestore ? 'text-emerald-300 font-bold' : 'text-red-300'}>
+                      {firebaseTestResult.firestore ? 'Đang hoạt động (Đọc dữ liệu bài hát thành công)' : 'Chưa kết nối'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-white/50 mt-1">{firebaseTestResult.message}</p>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleTestFirebase}
+              disabled={isTestingFirebase}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-lg shadow-emerald-900/30"
+            >
+              <RefreshCw className={`w-4 h-4 ${isTestingFirebase ? 'animate-spin' : ''}`} />
+              <span>{isTestingFirebase ? 'Đang kiểm tra...' : 'Kiểm Tra Đồng Bộ Ngay'}</span>
+            </button>
+          </div>
+
           <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-800/40 text-xs">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Code className="w-4 h-4 text-[#c273ed]" />
@@ -702,20 +767,23 @@ export const AdminPageView: React.FC = () => {
                         rules: {
                           songs: {
                             ".read": true,
-                            ".write": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
+                            ".write": "auth != null",
                           },
                           members: {
-                            ".read": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
-                            "$uid": {
-                              ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
-                              ".write": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
-                            },
+                            ".read": true,
+                            ".write": "auth != null",
                           },
                           purchases: {
-                            "$uid": {
-                              ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'xuankensinger@gmail.com')",
-                              ".write": "auth != null && auth.uid === $uid",
-                            },
+                            ".read": "auth != null",
+                            ".write": "auth != null",
+                          },
+                          playlists: {
+                            ".read": true,
+                            ".write": true,
+                          },
+                          vouchers: {
+                            ".read": true,
+                            ".write": "auth != null",
                           },
                         },
                       },
@@ -744,20 +812,23 @@ export const AdminPageView: React.FC = () => {
   "rules": {
     "songs": {
       ".read": true,
-      ".write": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')"
+      ".write": "auth != null"
     },
     "members": {
-      ".read": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
-      "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')",
-        ".write": "auth != null && (auth.token.email === 'xuankensinger@gmail.com' || root.child('members').child(auth.uid).child('role').val() === 'admin')"
-      }
+      ".read": true,
+      ".write": "auth != null"
     },
     "purchases": {
-      "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'xuankensinger@gmail.com')",
-        ".write": "auth != null && auth.uid === $uid"
-      }
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "playlists": {
+      ".read": true,
+      ".write": true
+    },
+    "vouchers": {
+      ".read": true,
+      ".write": "auth != null"
     }
   }
 }`}
@@ -778,41 +849,26 @@ export const AdminPageView: React.FC = () => {
                     `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() { return request.auth != null; }
-    function isSuperAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.email == 'xuankensinger@gmail.com' ||
-        request.auth.token.admin == true
-      );
-    }
-    function isUserAdmin() {
-      return isSuperAdmin() || (
-        isAuthenticated() &&
-        exists(/databases/$(database)/documents/members/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
-
     match /songs/{songId} {
       allow read: if true;
-      allow write: if isUserAdmin();
+      allow write: if request.auth != null;
     }
-
     match /members/{userId} {
-      allow read: if isOwner(userId) || isUserAdmin();
-      allow write: if isUserAdmin();
-      allow create: if isOwner(userId) && request.resource.data.role == 'user' && request.resource.data.balance == 0;
+      allow read, write: if request.auth != null;
     }
-
     match /purchases/{purchaseId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isUserAdmin());
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isUserAdmin();
+      allow read, write: if request.auth != null;
     }
-
+    match /playlists/{playlistId} {
+      allow read, write: if true;
+    }
+    match /vouchers/{voucherId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
     match /{document=**} {
-      allow read, write: if isUserAdmin();
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }`
@@ -837,41 +893,26 @@ service cloud.firestore {
 {`rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() { return request.auth != null; }
-    function isSuperAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.email == 'xuankensinger@gmail.com' ||
-        request.auth.token.admin == true
-      );
-    }
-    function isUserAdmin() {
-      return isSuperAdmin() || (
-        isAuthenticated() &&
-        exists(/databases/$(database)/documents/members/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
-
     match /songs/{songId} {
       allow read: if true;
-      allow write: if isUserAdmin();
+      allow write: if request.auth != null;
     }
-
     match /members/{userId} {
-      allow read: if isOwner(userId) || isUserAdmin();
-      allow write: if isUserAdmin();
-      allow create: if isOwner(userId) && request.resource.data.role == 'user' && request.resource.data.balance == 0;
+      allow read, write: if request.auth != null;
     }
-
     match /purchases/{purchaseId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isUserAdmin());
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isUserAdmin();
+      allow read, write: if request.auth != null;
     }
-
+    match /playlists/{playlistId} {
+      allow read, write: if true;
+    }
+    match /vouchers/{voucherId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
     match /{document=**} {
-      allow read, write: if isUserAdmin();
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }`}
@@ -894,10 +935,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && (
-        request.auth.token.email == 'xuankensinger@gmail.com' ||
-        request.auth.token.admin == true
-      );
+      allow write: if request.auth != null;
     }
   }
 }`
@@ -924,10 +962,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && (
-        request.auth.token.email == 'xuankensinger@gmail.com' ||
-        request.auth.token.admin == true
-      );
+      allow write: if request.auth != null;
     }
   }
 }`}

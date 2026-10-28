@@ -271,7 +271,7 @@ export const MobileFullPlayerModal: React.FC = () => {
               title="Mua nhạc bản quyền"
             >
               <ShoppingCart className="w-3.5 h-3.5" />
-              <span>Mua ({currentSong.price.toLocaleString('vi-VN')}đ)</span>
+              <span>Mua ({(currentSong.price ?? 20000).toLocaleString('vi-VN')}đ)</span>
             </button>
           )}
         </div>

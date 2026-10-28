@@ -23,7 +23,7 @@ export const BuySongModal: React.FC = () => {
 
   if (!isBuyModalOpen || !songToBuy) return null;
 
-  const originalPrice = songToBuy.price;
+  const originalPrice = typeof songToBuy.price === 'number' ? songToBuy.price : (Number(songToBuy.price) || 20000);
   const finalPrice = Math.max(0, originalPrice - discountAmount);
 
   const handleApplyCoupon = (codeToApply?: string) => {

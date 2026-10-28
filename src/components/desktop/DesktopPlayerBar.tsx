@@ -126,7 +126,7 @@ export const DesktopPlayerBar: React.FC = () => {
                     }}
                     className="text-[10px] text-amber-400 font-bold hover:underline flex items-center gap-1"
                   >
-                    <span>Demo 60s • Mua ({currentSong.price.toLocaleString('vi-VN')}đ)</span>
+                    <span>Demo 60s • Mua ({(currentSong.price ?? 20000).toLocaleString('vi-VN')}đ)</span>
                   </button>
                 )}
               </div>

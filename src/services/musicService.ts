@@ -6,6 +6,30 @@ import { Song, AppUser, Playlist, Voucher } from '../types/music';
 const STORAGE_KEY_SONGS = 'xuanken_music_songs_v3';
 const STORAGE_KEY_MEMBERS = 'xuanken_music_members_v3';
 
+export function sanitizeSong(raw: any, idFallback: string): Song {
+  return {
+    id: raw?.id || idFallback,
+    stt: typeof raw?.stt === 'number' ? raw.stt : undefined,
+    title: raw?.title || 'Bài Hát Chưa Đặt Tên',
+    artists: raw?.artists || 'XuanKen',
+    album: raw?.album || 'XuanKen Official',
+    duration: typeof raw?.duration === 'number' && raw.duration > 0 ? raw.duration : 210,
+    price: typeof raw?.price === 'number' ? raw.price : (Number(raw?.price) || 20000),
+    audioFormat: raw?.audioFormat === 'WAV' ? 'WAV' : 'MP3',
+    lyrics: Array.isArray(raw?.lyrics) ? raw.lyrics : [],
+    lrcRaw: raw?.lrcRaw || '',
+    lrcUrl: raw?.lrcUrl || '',
+    coverImage: raw?.coverImage || '',
+    coverGradient: raw?.coverGradient || 'from-purple-600 to-indigo-800',
+    demoUrl: raw?.demoUrl || '',
+    mp3Url: raw?.mp3Url || '',
+    wavUrl: raw?.wavUrl || '',
+    playCount: typeof raw?.playCount === 'number' ? raw.playCount : 0,
+    releaseDate: raw?.releaseDate || '',
+    plays: raw?.plays || '0 lượt nghe',
+  };
+}
+
 export const MusicService = {
   // Subscribe to real-time song updates from Firebase RTDB
   subscribeToSongs(onUpdate: (songs: Song[]) => void): () => void {
@@ -15,8 +39,10 @@ export const MusicService = {
         songsRef,
         (snapshot) => {
           if (snapshot.exists()) {
-            const data = snapshot.val();
-            const songsArray: Song[] = Object.values(data);
+            const data = snapshot.val() || {};
+            const songsArray: Song[] = Object.entries(data)
+              .filter(([_, val]: [string, any]) => val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl))
+              .map(([key, val]: [string, any]) => sanitizeSong(val, key));
             // Sort by stt or id
             songsArray.sort((a, b) => (a.stt || 0) - (b.stt || 0));
             localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(songsArray));
@@ -39,8 +65,10 @@ export const MusicService = {
       const dbRef = ref(rtdb);
       const snapshot = await get(child(dbRef, 'songs'));
       if (snapshot.exists()) {
-        const data = snapshot.val();
-        const songsArray: Song[] = Object.values(data);
+        const data = snapshot.val() || {};
+        const songsArray: Song[] = Object.entries(data)
+          .filter(([_, val]: [string, any]) => val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl))
+          .map(([key, val]: [string, any]) => sanitizeSong(val, key));
         songsArray.sort((a, b) => (a.stt || 0) - (b.stt || 0));
         localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(songsArray));
         return songsArray;
@@ -56,7 +84,10 @@ export const MusicService = {
       if (!docsSnap.empty) {
         const songsArray: Song[] = [];
         docsSnap.forEach((d) => {
-          songsArray.push(d.data() as Song);
+          const val = d.data();
+          if (val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl)) {
+            songsArray.push(sanitizeSong(val, d.id));
+          }
         });
         songsArray.sort((a, b) => (a.stt || 0) - (b.stt || 0));
         localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(songsArray));
@@ -69,7 +100,12 @@ export const MusicService = {
     const localCached = localStorage.getItem(STORAGE_KEY_SONGS);
     if (localCached) {
       try {
-        return JSON.parse(localCached);
+        const list = JSON.parse(localCached);
+        if (Array.isArray(list)) {
+          return list
+            .filter((s) => s && (s.title || s.demoUrl || s.mp3Url || s.wavUrl))
+            .map((s, idx) => sanitizeSong(s, s.id || `cached-${idx}`));
+        }
       } catch (e) {
         console.error('Failed to parse cached songs:', e);
       }

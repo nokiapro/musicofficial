@@ -287,7 +287,7 @@ export const DesktopChartPage: React.FC = () => {
                       }}
                       className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black font-bold text-xs border border-amber-500/40 transition-colors shadow-sm shrink-0 whitespace-nowrap"
                     >
-                      Mua ({song.price.toLocaleString('vi-VN')}đ)
+                      Mua ({(song.price ?? 20000).toLocaleString('vi-VN')}đ)
                     </button>
                   )}
                 </div>

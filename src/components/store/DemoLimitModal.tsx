@@ -49,13 +49,13 @@ export const DemoLimitModal: React.FC = () => {
           <div>
             <p className="text-xs text-white/50 uppercase font-semibold">Giá bài hát bản quyền</p>
             <p className="text-xl font-black text-amber-400">
-              {currentSong.price.toLocaleString('vi-VN')} đ
+              {(currentSong.price ?? 20000).toLocaleString('vi-VN')} đ
             </p>
           </div>
           <div className="text-right">
             <p className="text-xs text-white/50">Số dư ví của bạn</p>
             <p className="text-sm font-bold text-white">
-              {userBalance.toLocaleString('vi-VN')} đ
+              {(userBalance || 0).toLocaleString('vi-VN')} đ
             </p>
           </div>
         </div>
@@ -72,7 +72,7 @@ export const DemoLimitModal: React.FC = () => {
             className="flex-1 py-2.5 px-4 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-sm shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 flex items-center justify-center gap-2"
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>Mua Ngay ({currentSong.price.toLocaleString('vi-VN')}đ)</span>
+            <span>Mua Ngay ({(currentSong.price ?? 20000).toLocaleString('vi-VN')}đ)</span>
           </button>
         </div>
       </div>

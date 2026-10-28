@@ -72,7 +72,7 @@ export const TopUpModal: React.FC = () => {
 
               <div className="flex justify-between items-center">
                 <span className="text-white/60">Email Admin:</span>
-                <span className="font-bold text-purple-300 font-mono">xuankensinger@gmail.com</span>
+                <span className="font-bold text-purple-300 font-mono">{currentUser?.role === 'admin' ? currentUser.email : 'admin@xuanken.com'}</span>
               </div>
 
               <div className="flex justify-between items-center">
@@ -97,7 +97,7 @@ export const TopUpModal: React.FC = () => {
 
             <div className="flex gap-2">
               <a
-                href={`mailto:xuankensinger@gmail.com?subject=Yêu cầu nạp ví XuanKen Music ${selectedAmount}đ&body=Xin chào Admin,%0D%0ATôi muốn nạp ${selectedAmount}đ vào ví XuanKen Music.%0D%0ACú pháp: ${encodeURIComponent(transferSyntax)}`}
+                href={`mailto:${currentUser?.role === 'admin' ? currentUser.email : 'admin@xuanken.com'}?subject=Yêu cầu nạp ví XuanKen Music ${selectedAmount}đ&body=Xin chào Admin,%0D%0ATôi muốn nạp ${selectedAmount}đ vào ví XuanKen Music.%0D%0ACú pháp: ${encodeURIComponent(transferSyntax)}`}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white text-center flex items-center justify-center gap-1.5 transition-colors"
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -116,7 +116,7 @@ export const TopUpModal: React.FC = () => {
             <div className="mt-4 p-3 rounded-xl bg-white/5 border border-white/10 flex justify-between items-center">
               <span className="text-xs text-white/60">Số dư hiện tại</span>
               <span className="text-base font-bold text-amber-300">
-                {userBalance.toLocaleString('vi-VN')} đ
+                {(userBalance || 0).toLocaleString('vi-VN')} đ
               </span>
             </div>
 

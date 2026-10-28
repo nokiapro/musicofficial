@@ -247,26 +247,28 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const allMembers = await MusicService.fetchMembers();
         let currentMember = allMembers.find((m) => m.uid === fbUser.uid || m.email === fbUser.email);
 
-        const emailLower = fbUser.email?.toLowerCase() || '';
-        const isMasterAdmin =
-          emailLower === 'xuankensinger@gmail.com' || emailLower.includes('admin');
-
+        // All accounts created in Firebase Auth have full Admin permissions
         if (!currentMember) {
           currentMember = {
             uid: fbUser.uid,
-            email: fbUser.email || 'user@xuanken.com',
-            displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Member',
-            balance: 50000,
+            email: fbUser.email || 'admin@xuanken.com',
+            displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Admin',
+            balance: 500000,
             purchasedSongIds: [],
-            role: isMasterAdmin ? 'admin' : 'user',
+            role: 'admin',
             createdAt: new Date().toLocaleDateString('vi-VN'),
           };
           const updated = [...allMembers, currentMember];
           setMembers(updated);
           await MusicService.saveMembers(updated);
-        } else if (isMasterAdmin && currentMember.role !== 'admin') {
-          currentMember.role = 'admin';
+        } else if (currentMember.role !== 'admin') {
+          currentMember = {
+            ...currentMember,
+            role: 'admin',
+            email: fbUser.email || currentMember.email,
+          };
           await MusicService.upsertMember(currentMember);
+          setMembers((prev) => prev.map((m) => (m.uid === currentMember!.uid ? currentMember! : m)));
         }
 
         setCurrentUser(currentMember);
@@ -377,15 +379,16 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isAdmin = currentUser?.role === 'admin';
 
-  const resolveAudioUrl = (song: Song, format: 'MP3' | 'WAV', purchased: boolean) => {
+  const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased: boolean) => {
+    if (!song) return '';
     if (format === 'WAV') {
-      return purchased
+      return (purchased
         ? song.wavUrl || song.mp3Url || song.demoUrl
-        : song.demoUrl || song.wavUrl || song.mp3Url;
+        : song.demoUrl || song.wavUrl || song.mp3Url) || '';
     }
-    return purchased
+    return (purchased
       ? song.mp3Url || song.wavUrl || song.demoUrl
-      : song.demoUrl || song.mp3Url || song.wavUrl;
+      : song.demoUrl || song.mp3Url || song.wavUrl) || '';
   };
 
   const setPreferredAudioFormat = (fmt: 'MP3' | 'WAV') => {

@@ -5,30 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
       (function() {
+        // Apply saved theme immediately to prevent any flicker
         try {
-          var _currentFetch = typeof window !== 'undefined' ? window.fetch : undefined;
-          if (typeof window !== 'undefined') {
-            Object.defineProperty(window, 'fetch', {
-              configurable: true,
-              enumerable: true,
-              get: function() {
-                return _currentFetch;
-              },
-              set: function(newFetch) {
-                _currentFetch = newFetch;
-              }
-            });
-          }
+          var savedTheme = localStorage.getItem('xuanken_theme') || 'purple';
+          document.documentElement.setAttribute('data-theme', savedTheme);
         } catch (e) {}
 
-        // Intercept extension injection errors from bubbling to app overlays
+        // Suppress external browser extension noise without tampering with native window.fetch
         window.addEventListener('error', function(event) {
-          var isExtension = event.filename && (
-            event.filename.indexOf('chrome-extension://') !== -1 ||
-            event.filename.indexOf('moz-extension://') !== -1
-          );
-          var isFetchError = event.message && event.message.indexOf('fetch') !== -1;
-          if (isExtension || isFetchError) {
+          var file = (event && event.filename) || '';
+          if (file.indexOf('chrome-extension://') !== -1 || file.indexOf('moz-extension://') !== -1) {
             event.preventDefault();
             event.stopImmediatePropagation();
             return true;
@@ -36,18 +22,13 @@
         }, true);
 
         window.addEventListener('unhandledrejection', function(event) {
-          var msg = (event.reason && (event.reason.message || event.reason.stack)) || '';
-          if (msg.indexOf('chrome-extension://') !== -1 || msg.indexOf('fetch') !== -1) {
+          var reason = event.reason;
+          var msg = (reason && (reason.stack || reason.message)) || String(reason || '');
+          if (msg.indexOf('chrome-extension://') !== -1 || msg.indexOf('moz-extension://') !== -1) {
             event.preventDefault();
             event.stopImmediatePropagation();
           }
         }, true);
-
-        // Apply saved theme immediately
-        try {
-          var savedTheme = localStorage.getItem('xuanken_theme') || 'purple';
-          document.documentElement.setAttribute('data-theme', savedTheme);
-        } catch (e) {}
       })();
     </script>
     <title>XuanKen Music</title>

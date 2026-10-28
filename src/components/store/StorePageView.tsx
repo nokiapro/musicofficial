@@ -236,7 +236,7 @@ Bitrate: ${song.audioFormat === 'WAV' ? '24-bit 96kHz Lossless' : '320kbps High 
                     {isPurchased ? 'Trạng thái' : 'Giá bản quyền'}
                   </p>
                   <p className="text-base font-black text-amber-300">
-                    {isPurchased ? 'ĐÃ SỞ HỮU' : `${song.price.toLocaleString('vi-VN')} đ`}
+                    {isPurchased ? 'ĐÃ SỞ HỮU' : `${(song.price ?? 20000).toLocaleString('vi-VN')} đ`}
                   </p>
                 </div>
 
