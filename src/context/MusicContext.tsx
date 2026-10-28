@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab } from '../types/music';
+import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, RewindStats } from '../types/music';
 import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
 import { MusicService } from '../services/musicService';
@@ -80,6 +80,7 @@ interface MusicContextType {
   // Auth methods
   loginWithEmail: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
+  updateUserProfile: (displayName: string, avatarUrl?: string) => Promise<void>;
 
   // Store & Wallet
   isSongPurchased: (songId: string) => boolean;
@@ -94,6 +95,46 @@ interface MusicContextType {
   updateMember: (uid: string, data: { displayName?: string; role?: 'admin' | 'user'; balance?: number }) => Promise<void>;
   removeMember: (uid: string) => Promise<void>;
   toggleMemberRole: (uid: string) => Promise<void>;
+
+  // Audio Format Preference & Crossfade
+  preferredAudioFormat: 'MP3' | 'WAV';
+  setPreferredAudioFormat: (fmt: 'MP3' | 'WAV') => void;
+  crossfadeDuration: number;
+  setCrossfadeDuration: (sec: number) => void;
+  isAudioSettingsModalOpen: boolean;
+  setIsAudioSettingsModalOpen: (open: boolean) => void;
+
+  // Custom Playlists
+  playlists: Playlist[];
+  createPlaylist: (name: string, description?: string) => Promise<Playlist>;
+  deletePlaylist: (id: string) => Promise<void>;
+  addSongToPlaylist: (playlistId: string, songId: string) => Promise<void>;
+  removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<void>;
+  playPlaylist: (playlist: Playlist) => void;
+  isPlaylistModalOpen: boolean;
+  setIsPlaylistModalOpen: (open: boolean) => void;
+  songForPlaylistModal: Song | null;
+  openAddToPlaylistModal: (song: Song) => void;
+
+  // Deep Linking & Share
+  isShareModalOpen: boolean;
+  setIsShareModalOpen: (open: boolean) => void;
+  songToShare: Song | null;
+  openShareModal: (song: Song) => void;
+
+  // XuanKen Rewind Listening Stats
+  isRewindModalOpen: boolean;
+  setIsRewindModalOpen: (open: boolean) => void;
+  rewindStats: RewindStats;
+
+  // Vouchers & Coupons
+  vouchers: Voucher[];
+  applyVoucher: (code: string, currentPrice: number) => { success: boolean; discountAmount: number; finalPrice: number; message: string; voucher?: Voucher };
+  addVoucher: (voucher: Voucher) => Promise<void>;
+  removeVoucher: (id: string) => Promise<void>;
+
+  // Download
+  downloadSong: (song: Song, format?: 'MP3' | 'WAV') => Promise<{ success: boolean; message: string }>;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -113,7 +154,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
   const [purchasedSongIds, setPurchasedSongIds] = useState<string[]>([]);
   const [userBalance, setUserBalance] = useState<number>(0);
-  const [theme, setThemeState] = useState<ThemeId>('purple');
+  const [theme, setThemeState] = useState<ThemeId>(() => {
+    try {
+      const saved = localStorage.getItem('xuanken_theme') as ThemeId;
+      return saved || 'purple';
+    } catch (e) {
+      return 'purple';
+    }
+  });
   const [activeDesktopTab, setActiveDesktopTab] = useState<ActiveDesktopTab>('discover');
   const [activeMobileTab, setActiveMobileTab] = useState<ActiveMobileTab>('discover');
   const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
@@ -130,6 +178,40 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
   const [sleepTimerRemainingSeconds, setSleepTimerRemainingSeconds] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Audio Playback Settings: Format & Crossfade
+  const [preferredAudioFormat, setPreferredAudioFormatState] = useState<'MP3' | 'WAV'>('MP3');
+  const [playbackRate, setPlaybackRateState] = useState<number>(1.0);
+  const [crossfadeDuration, setCrossfadeDurationState] = useState<number>(3);
+  const [isAudioSettingsModalOpen, setIsAudioSettingsModalOpen] = useState<boolean>(false);
+
+  // Playlists
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState<boolean>(false);
+  const [songForPlaylistModal, setSongForPlaylistModal] = useState<Song | null>(null);
+
+  // Share & Deep Linking
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [songToShare, setSongToShare] = useState<Song | null>(null);
+
+  // Rewind Listening Stats
+  const [isRewindModalOpen, setIsRewindModalOpen] = useState<boolean>(false);
+  const [rewindStats, setRewindStats] = useState<RewindStats>(() => {
+    try {
+      const local = localStorage.getItem('xuanken_music_rewind_v1');
+      if (local) return JSON.parse(local);
+    } catch (e) {}
+    return {
+      totalSeconds: 0,
+      totalPlays: 0,
+      songPlays: {},
+      artistPlays: {},
+      lastUpdated: new Date().toISOString(),
+    };
+  });
+
+  // Vouchers
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [viewMode, setViewMode] = useState<'auto' | 'pc' | 'mobile'>('auto');
   const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
 
@@ -204,50 +286,49 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Fetch initial songs and members with real-time RTDB sync
   useEffect(() => {
     MusicService.fetchSongs().then((loadedSongs) => {
-      setSongs(loadedSongs || []);
-      if (loadedSongs && loadedSongs.length > 0) {
-        setQueue(loadedSongs.slice(1));
-        // Requirement 7: Random autoplay if songs exist
-        if (!hasRandomAutoplayTriggered.current) {
-          hasRandomAutoplayTriggered.current = true;
-          const randomIndex = Math.floor(Math.random() * loadedSongs.length);
-          const randomSong = loadedSongs[randomIndex];
-          setCurrentSong(randomSong);
-          setDuration(randomSong.duration && randomSong.duration > 0 ? randomSong.duration : 210);
-          setCurrentTime(0);
-
-          setIsPlaying(true);
-          const activeUrl = randomSong.demoUrl || randomSong.mp3Url || randomSong.wavUrl;
-          audioEngine.playUrl(activeUrl, (dur) => {
-            if ((!randomSong.duration || randomSong.duration <= 0) && dur > 60) {
-              setDuration(dur);
-            }
-          });
-        }
+      const validSongs = loadedSongs || [];
+      setSongs(validSongs);
+      if (validSongs.length > 0) {
+        setQueue(validSongs.slice(1));
+        const firstSong = validSongs[0];
+        setCurrentSong(firstSong);
+        setDuration(firstSong.duration && firstSong.duration > 0 ? firstSong.duration : 210);
+        setCurrentTime(0);
+        setIsPlaying(false);
+      } else {
+        setQueue([]);
+        setCurrentSong(null);
+        setIsPlaying(false);
       }
     });
 
     // Real-time listener for live sync across devices
     const unsubscribeRealtime = MusicService.subscribeToSongs((updatedSongs) => {
-      if (updatedSongs && updatedSongs.length > 0) {
-        setSongs(updatedSongs);
-        setCurrentSong((cur) => {
-          if (!cur) return null;
-          const matched = updatedSongs.find((s) => s.id === cur.id);
-          return matched ? { ...cur, ...matched } : cur;
-        });
-      }
+      const list = updatedSongs || [];
+      setSongs(list);
+      setCurrentSong((cur) => {
+        if (!cur) return list.length > 0 ? list[0] : null;
+        const matched = list.find((s) => s.id === cur.id);
+        return matched ? { ...cur, ...matched } : (list.length > 0 ? list[0] : null);
+      });
     });
 
     MusicService.fetchMembers().then((loadedMembers) => {
       setMembers(loadedMembers || []);
     });
 
+    MusicService.fetchPlaylists().then((loadedPlaylists) => {
+      setPlaylists(loadedPlaylists || []);
+    });
+
+    MusicService.fetchVouchers().then((loadedVouchers) => {
+      setVouchers(loadedVouchers || []);
+    });
+
     return () => {
       unsubscribeRealtime();
     };
   }, []);
-
   const isSongPurchased = (songId: string): boolean => {
     return purchasedSongIds.includes(songId);
   };
@@ -272,6 +353,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const logout = async () => {
     await signOut(auth);
     setCurrentUser(null);
+    setUserBalance(0);
+    setPurchasedSongIds([]);
     if (activeDesktopTab === 'admin') {
       setActiveDesktopTab('discover');
     }
@@ -280,15 +363,52 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const updateUserProfile = async (displayName: string, avatarUrl?: string) => {
+    if (!currentUser) return;
+    const updated: AppUser = {
+      ...currentUser,
+      displayName: displayName.trim() || currentUser.displayName,
+      avatarUrl: avatarUrl !== undefined ? avatarUrl : currentUser.avatarUrl,
+    };
+    setCurrentUser(updated);
+    setMembers((prev) => prev.map((m) => (m.uid === updated.uid ? updated : m)));
+    await MusicService.upsertMember(updated);
+  };
+
   const isAdmin = currentUser?.role === 'admin';
+
+  const resolveAudioUrl = (song: Song, format: 'MP3' | 'WAV', purchased: boolean) => {
+    if (format === 'WAV') {
+      return purchased
+        ? song.wavUrl || song.mp3Url || song.demoUrl
+        : song.demoUrl || song.wavUrl || song.mp3Url;
+    }
+    return purchased
+      ? song.mp3Url || song.wavUrl || song.demoUrl
+      : song.demoUrl || song.mp3Url || song.wavUrl;
+  };
+
+  const setPreferredAudioFormat = (fmt: 'MP3' | 'WAV') => {
+    setPreferredAudioFormatState(fmt);
+    if (currentSong && isPlaying) {
+      const activePurchased = isSongPurchased(currentSong.id);
+      const activeUrl = resolveAudioUrl(currentSong, fmt, activePurchased);
+      if (activeUrl) {
+        audioEngine.playUrl(activeUrl, (dur) => {
+          if ((!currentSong.duration || currentSong.duration <= 0) && dur > 60) {
+            setDuration(dur);
+          }
+        });
+        audioEngine.seek(currentTime);
+      }
+    }
+  };
 
   // Playback timer & 60-second Demo cutoff
   useEffect(() => {
     if (isPlaying && currentSong) {
       const activePurchased = isSongPurchased(currentSong.id);
-      const activeUrl = activePurchased
-        ? currentSong.wavUrl || currentSong.mp3Url || currentSong.demoUrl
-        : currentSong.demoUrl || currentSong.mp3Url;
+      const activeUrl = resolveAudioUrl(currentSong, preferredAudioFormat, activePurchased);
 
       audioEngine.playUrl(activeUrl, (dur) => {
         // Keep full song duration; never overwrite with shorter demo metadata
@@ -314,7 +434,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             handleSongEnd();
             return 0;
           }
-          return prev + 1;
+          const nextTime = prev + 1;
+          audioEngine.updatePositionState(nextTime, duration, playbackRate);
+          return nextTime;
+        });
+
+        // XuanKen Rewind: accumulate listening seconds
+        setRewindStats((prevStats) => {
+          const newStats: RewindStats = {
+            ...prevStats,
+            totalSeconds: (prevStats.totalSeconds || 0) + 1,
+            lastUpdated: new Date().toISOString(),
+          };
+          try {
+            localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
+          } catch (e) {}
+          return newStats;
         });
       }, 1000);
     } else {
@@ -330,7 +465,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         clearInterval(timerRef.current);
       }
     };
-  }, [isPlaying, currentSong, duration, purchasedSongIds]);
+  }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat]);
 
   const handleSongEnd = () => {
     if (repeatMode === 'one') {
@@ -348,6 +483,23 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSongs((prev) => prev.map((s) => (s.id === song.id ? activeSong : s)));
     MusicService.incrementPlayCount(song.id, nextPlayCount);
 
+    // Update XuanKen Rewind for play count & artists
+    setRewindStats((prevStats) => {
+      const songPlays = { ...prevStats.songPlays, [song.id]: (prevStats.songPlays[song.id] || 0) + 1 };
+      const artistPlays = { ...prevStats.artistPlays, [song.artists]: (prevStats.artistPlays[song.artists] || 0) + 1 };
+      const newStats: RewindStats = {
+        ...prevStats,
+        totalPlays: (prevStats.totalPlays || 0) + 1,
+        songPlays,
+        artistPlays,
+        lastUpdated: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
+      } catch (e) {}
+      return newStats;
+    });
+
     if (currentSong?.id !== song.id) {
       if (currentSong) {
         setHistory((prev) => [currentSong, ...prev.filter((s) => s.id !== currentSong.id)]);
@@ -362,9 +514,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsPlaying(true);
 
     const activePurchased = isSongPurchased(song.id);
-    const activeUrl = activePurchased
-      ? song.wavUrl || song.mp3Url || song.demoUrl
-      : song.demoUrl || song.mp3Url;
+    const activeUrl = resolveAudioUrl(song, preferredAudioFormat, activePurchased);
 
     audioEngine.playUrl(activeUrl, (dur) => {
       if ((!song.duration || song.duration <= 0) && dur > 60) {
@@ -397,6 +547,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const target = Math.min(duration, Math.max(0, seconds));
     setCurrentTime(target);
     audioEngine.seek(target);
+    audioEngine.updatePositionState(target, duration, playbackRate);
   };
 
   const nextSong = () => {
@@ -471,7 +622,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     audioEngine.setMuted(nextMuted);
   };
 
-  const setTheme = (t: ThemeId) => setThemeState(t);
+  const setTheme = (t: ThemeId) => {
+    setThemeState(t);
+    try {
+      document.documentElement.setAttribute('data-theme', t);
+      document.body.setAttribute('data-theme', t);
+      localStorage.setItem('xuanken_theme', t);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.setAttribute('data-theme', theme);
+      localStorage.setItem('xuanken_theme', theme);
+    } catch (e) {}
+  }, [theme]);
 
   const setSleepTimer = (minutes: number | null) => {
     setSleepTimerMinutes(minutes);
@@ -630,6 +796,160 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.saveMembers(updated);
   };
 
+
+  // 1. Media Session API for Lockscreen and System Controls
+  useEffect(() => {
+    audioEngine.updateMediaSession(currentSong, isPlaying, {
+      onPlay: () => setIsPlaying(true),
+      onPause: () => setIsPlaying(false),
+      onPrev: prevSong,
+      onNext: nextSong,
+      onSeek: seekTo,
+    });
+  }, [currentSong, isPlaying]);
+
+  // 2. Deep Linking (?song=song-id or ?playlist=playlist-id)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const songParam = params.get('song');
+      if (songParam && songs.length > 0) {
+        const found = songs.find((s) => s.id === songParam || s.id === `song-${songParam}`);
+        if (found) {
+          setCurrentSong(found);
+          setDuration(found.duration && found.duration > 0 ? found.duration : 210);
+        }
+      }
+    } catch (e) {}
+  }, [songs]);
+
+  // 3. Playback Rate & Crossfade setters
+  const setPlaybackRate = (rate: number) => {
+    setPlaybackRateState(rate);
+    audioEngine.setPlaybackRate(rate);
+  };
+
+  const setCrossfadeDuration = (sec: number) => {
+    setCrossfadeDurationState(sec);
+    audioEngine.setCrossfadeDuration(sec);
+  };
+
+  // 4. Custom Playlists Handlers
+  const createPlaylist = async (name: string, description?: string): Promise<Playlist> => {
+    const newPlaylist: Playlist = {
+      id: `pl-${Date.now()}`,
+      name: name.trim() || 'Playlist Mới',
+      description: description?.trim() || '',
+      coverImage: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+      songIds: [],
+      userId: currentUser?.uid,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [newPlaylist, ...playlists];
+    setPlaylists(updated);
+    await MusicService.upsertPlaylist(newPlaylist);
+    return newPlaylist;
+  };
+
+  const deletePlaylist = async (id: string) => {
+    const updated = playlists.filter((p) => p.id !== id);
+    setPlaylists(updated);
+    await MusicService.deletePlaylist(id);
+  };
+
+  const addSongToPlaylist = async (playlistId: string, songId: string) => {
+    const target = playlists.find((p) => p.id === playlistId);
+    if (!target) return;
+    if (target.songIds.includes(songId)) return;
+    const updated: Playlist = {
+      ...target,
+      songIds: [...target.songIds, songId],
+    };
+    const nextList = playlists.map((p) => (p.id === playlistId ? updated : p));
+    setPlaylists(nextList);
+    await MusicService.upsertPlaylist(updated);
+  };
+
+  const removeSongFromPlaylist = async (playlistId: string, songId: string) => {
+    const target = playlists.find((p) => p.id === playlistId);
+    if (!target) return;
+    const updated: Playlist = {
+      ...target,
+      songIds: target.songIds.filter((id) => id !== songId),
+    };
+    const nextList = playlists.map((p) => (p.id === playlistId ? updated : p));
+    setPlaylists(nextList);
+    await MusicService.upsertPlaylist(updated);
+  };
+
+  const playPlaylist = (playlist: Playlist) => {
+    const pSongs = songs.filter((s) => playlist.songIds.includes(s.id));
+    if (pSongs.length > 0) {
+      setQueue(pSongs.slice(1));
+      playSong(pSongs[0]);
+    }
+  };
+
+  const openAddToPlaylistModal = (song: Song) => {
+    setSongForPlaylistModal(song);
+    setIsPlaylistModalOpen(true);
+  };
+
+  // 5. Deep Linking & Share Modal
+  const openShareModal = (song: Song) => {
+    setSongToShare(song);
+    setIsShareModalOpen(true);
+  };
+
+  // 6. Vouchers Handlers
+  const applyVoucher = (code: string, currentPrice: number) => {
+    const cleanCode = code.trim().toUpperCase();
+    const found = vouchers.find((v) => v.code.toUpperCase() === cleanCode && v.isActive);
+    if (!found) {
+      return {
+        success: false,
+        discountAmount: 0,
+        finalPrice: currentPrice,
+        message: 'Mã giảm giá không hợp lệ hoặc đã hết hạn.',
+      };
+    }
+
+    let discount = 0;
+    if (found.discountType === 'percent') {
+      discount = Math.round(currentPrice * (found.discountValue / 100));
+    } else {
+      discount = found.discountValue;
+    }
+
+    discount = Math.min(discount, currentPrice);
+    const finalPrice = Math.max(0, currentPrice - discount);
+
+    return {
+      success: true,
+      discountAmount: discount,
+      finalPrice,
+      message: `Áp dụng thành công: ${found.description}`,
+      voucher: found,
+    };
+  };
+
+  const addVoucher = async (voucher: Voucher) => {
+    const updated = [voucher, ...vouchers.filter((v) => v.id !== voucher.id)];
+    setVouchers(updated);
+    await MusicService.upsertVoucher(voucher);
+  };
+
+  const removeVoucher = async (id: string) => {
+    const updated = vouchers.filter((v) => v.id !== id);
+    setVouchers(updated);
+    await MusicService.deleteVoucher(id);
+  };
+
+  // 7. Download Song
+  const downloadSong = async (song: Song, format: 'MP3' | 'WAV' = 'MP3') => {
+    return MusicService.downloadSongAudio(song, format);
+  };
+
   return (
     <MusicContext.Provider
       value={{
@@ -702,6 +1022,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setActiveMobileTab,
         loginWithEmail,
         logout,
+        updateUserProfile,
         isSongPurchased,
         buySong,
         topUpBalance,
@@ -712,6 +1033,34 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateMember,
         removeMember,
         toggleMemberRole,
+        preferredAudioFormat,
+        setPreferredAudioFormat,
+        crossfadeDuration,
+        setCrossfadeDuration,
+        isAudioSettingsModalOpen,
+        setIsAudioSettingsModalOpen,
+        playlists,
+        createPlaylist,
+        deletePlaylist,
+        addSongToPlaylist,
+        removeSongFromPlaylist,
+        playPlaylist,
+        isPlaylistModalOpen,
+        setIsPlaylistModalOpen,
+        songForPlaylistModal,
+        openAddToPlaylistModal,
+        isShareModalOpen,
+        setIsShareModalOpen,
+        songToShare,
+        openShareModal,
+        isRewindModalOpen,
+        setIsRewindModalOpen,
+        rewindStats,
+        vouchers,
+        applyVoucher,
+        addVoucher,
+        removeVoucher,
+        downloadSong,
       }}
     >
       {children}

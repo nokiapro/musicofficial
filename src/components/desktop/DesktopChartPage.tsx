@@ -59,7 +59,8 @@ export const DesktopChartPage: React.FC = () => {
           <button
             onClick={handlePlayAll}
             disabled={rankedSongs.length === 0}
-            className="w-10 h-10 rounded-full bg-[#9b4de0] hover:bg-[#8539c9] text-white flex items-center justify-center shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 disabled:opacity-40"
+            style={{ backgroundColor: 'var(--color-accent)' }}
+            className="w-10 h-10 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 disabled:opacity-40 hover:opacity-90"
             title="Phát tất cả theo thứ hạng"
           >
             <Play className="w-5 h-5 fill-current ml-0.5" />

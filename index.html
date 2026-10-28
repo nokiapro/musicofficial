@@ -1,23 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
       (function() {
         try {
-          var _origFetch = typeof window !== 'undefined' && window.fetch ? window.fetch.bind(window) : undefined;
-          Object.defineProperty(window, 'fetch', {
-            configurable: true,
-            enumerable: true,
-            get: function() {
-              return _origFetch;
-            },
-            set: function(v) {
-              _origFetch = typeof v === 'function' ? v : _origFetch;
-            }
-          });
+          var _currentFetch = typeof window !== 'undefined' ? window.fetch : undefined;
+          if (typeof window !== 'undefined') {
+            Object.defineProperty(window, 'fetch', {
+              configurable: true,
+              enumerable: true,
+              get: function() {
+                return _currentFetch;
+              },
+              set: function(newFetch) {
+                _currentFetch = newFetch;
+              }
+            });
+          }
         } catch (e) {}
+
         // Intercept extension injection errors from bubbling to app overlays
         window.addEventListener('error', function(event) {
           var isExtension = event.filename && (
@@ -31,6 +34,7 @@
             return true;
           }
         }, true);
+
         window.addEventListener('unhandledrejection', function(event) {
           var msg = (event.reason && (event.reason.message || event.reason.stack)) || '';
           if (msg.indexOf('chrome-extension://') !== -1 || msg.indexOf('fetch') !== -1) {
@@ -38,12 +42,18 @@
             event.stopImmediatePropagation();
           }
         }, true);
+
+        // Apply saved theme immediately
+        try {
+          var savedTheme = localStorage.getItem('xuanken_theme') || 'purple';
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        } catch (e) {}
       })();
     </script>
-    <title>XuanKen Music - Nghe & Mua Nhạc Bản Quyền</title>
-    <meta name="description" content="XuanKen Music - Nền tảng âm nhạc trực tuyến đa nền tảng PC & Mobile: Cửa hàng nhạc bản quyền MP3/WAV, nghe demo 60s, trang quản trị Admin và đồng bộ Firebase." />
-    <meta property="og:title" content="XuanKen Music - Nghe & Mua Nhạc Bản Quyền" />
-    <meta property="og:description" content="XuanKen Music - Nền tảng âm nhạc trực tuyến đa nền tảng PC & Mobile: Cửa hàng nhạc bản quyền MP3/WAV, nghe demo 60s, trang quản trị Admin và đồng bộ Firebase." />
+    <title>XuanKen Music</title>
+    <meta name="description" content="Trình phát & Cổng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV full chất lượng, quản lý kho bài hát Admin và đồng bộ Firebase." />
+    <meta property="og:title" content="XuanKen Music" />
+    <meta property="og:description" content="Trình phát & Cổng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV full chất lượng, quản lý kho bài hát Admin và đồng bộ Firebase." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">

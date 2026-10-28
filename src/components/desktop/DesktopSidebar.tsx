@@ -25,19 +25,25 @@ export const DesktopSidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 h-full shrink-0 flex flex-col justify-between border-r border-white/5 bg-[#170f23] text-white select-none z-20">
+    <aside
+      className="w-64 h-full shrink-0 flex flex-col justify-between border-r text-white select-none z-20 transition-colors duration-200"
+      style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}
+    >
       <div className="flex flex-col">
         {/* Brand Logo: XuanKen Music */}
         <div
           onClick={() => setActiveDesktopTab('discover')}
           className="px-6 py-5 flex items-center gap-2.5 cursor-pointer group"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#9b4de0] via-[#c273ed] to-[#7200a7] flex items-center justify-center shadow-lg shadow-[#9b4de0]/30 group-hover:scale-105 transition-transform">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform"
+            style={{ backgroundColor: 'var(--color-accent)' }}
+          >
             <Disc className="w-6 h-6 text-white animate-spin-slow" />
           </div>
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight text-white uppercase leading-none font-['Roboto_Condensed']">
-              XuanKen <span className="text-[#c273ed]">Music</span>
+              XuanKen <span style={{ color: 'var(--color-accent)' }}>Music</span>
             </span>
             <span className="text-[10px] text-white/50 tracking-wider mt-0.5">
               NGHE & MUA NHẠC BẢN QUYỀN
@@ -53,9 +59,10 @@ export const DesktopSidebar: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => setActiveDesktopTab(item.id)}
+                style={isActive ? { backgroundColor: 'var(--color-accent)' } : undefined}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                   isActive
-                    ? 'bg-[#9b4de0] text-white shadow-lg shadow-[#9b4de0]/20'
+                    ? 'text-white shadow-lg'
                     : 'text-white/70 hover:text-white hover:bg-white/5'
                 }`}
               >

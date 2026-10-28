@@ -22,9 +22,10 @@ import {
   Copy,
   Check,
   Sparkles,
+  Tag,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { Song, AppUser, AudioFormat } from '../../types/music';
+import { Song, AppUser, AudioFormat, Voucher } from '../../types/music';
 import { audioEngine } from '../../services/audioEngine';
 
 export const AdminPageView: React.FC = () => {
@@ -42,9 +43,19 @@ export const AdminPageView: React.FC = () => {
     updateMember,
     removeMember,
     toggleMemberRole,
+    vouchers,
+    addVoucher,
+    removeVoucher,
   } = useMusic();
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members' | 'rules'>('songs');
+  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members' | 'rules' | 'vouchers'>('songs');
+
+  // Voucher form state
+  const [newVoucherCode, setNewVoucherCode] = useState('');
+  const [newVoucherType, setNewVoucherType] = useState<'percent' | 'fixed'>('percent');
+  const [newVoucherVal, setNewVoucherVal] = useState('20');
+  const [newVoucherDesc, setNewVoucherDesc] = useState('');
+  const [isAddingVoucher, setIsAddingVoucher] = useState(false);
 
   // Login form state for unauthenticated admin
   const [loginEmail, setLoginEmail] = useState('');
@@ -54,6 +65,7 @@ export const AdminPageView: React.FC = () => {
 
   // Song Add/Edit Modal State
   const [isSongModalOpen, setIsSongModalOpen] = useState(false);
+  const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
@@ -306,6 +318,8 @@ export const AdminPageView: React.FC = () => {
     }
 
     setIsSongModalOpen(false);
+    setSyncSuccessMsg(editingSongId ? 'Đã cập nhật bài hát và đồng bộ lên Firebase RTDB & Firestore!' : 'Đã thêm bài hát và đồng bộ lên Firebase RTDB & Firestore thành công!');
+    setTimeout(() => setSyncSuccessMsg(null), 4000);
   };
 
   const handleOpenEditMember = (m: AppUser) => {
@@ -362,13 +376,14 @@ export const AdminPageView: React.FC = () => {
         </div>
       </div>
 
-      {/* Admin Tabs: Quản Lý Bài Hát vs Quản Lý Thành Viên vs Quy Tắc Firebase */}
+      {/* Admin Tabs: Quản Lý Bài Hát vs Quản Lý Thành Viên vs Quy Tắc Firebase vs Mã Giảm Giá */}
       <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 w-fit flex-wrap gap-1">
         <button
           onClick={() => setActiveAdminTab('songs')}
+          style={activeAdminTab === 'songs' ? { backgroundColor: 'var(--color-accent)' } : undefined}
           className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
             activeAdminTab === 'songs'
-              ? 'bg-[#9b4de0] text-white shadow'
+              ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
@@ -377,9 +392,10 @@ export const AdminPageView: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveAdminTab('members')}
+          style={activeAdminTab === 'members' ? { backgroundColor: 'var(--color-accent)' } : undefined}
           className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
             activeAdminTab === 'members'
-              ? 'bg-[#9b4de0] text-white shadow'
+              ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
@@ -388,14 +404,27 @@ export const AdminPageView: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveAdminTab('rules')}
+          style={activeAdminTab === 'rules' ? { backgroundColor: 'var(--color-accent)' } : undefined}
           className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
             activeAdminTab === 'rules'
-              ? 'bg-[#9b4de0] text-white shadow'
+              ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
           <Code className="w-4 h-4" />
           <span>Quy Tắc Firebase (Rules)</span>
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('vouchers')}
+          style={activeAdminTab === 'vouchers' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeAdminTab === 'vouchers'
+              ? 'text-white shadow'
+              : 'text-white/60 hover:text-white'
+          }`}
+        >
+          <Tag className="w-4 h-4" />
+          <span>Mã Giảm Giá ({vouchers.length})</span>
         </button>
       </div>
 
@@ -903,6 +932,171 @@ service firebase.storage {
   }
 }`}
             </pre>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: QUẢN LÝ VOUCHER / MÃ GIẢM GIÁ */}
+      {activeAdminTab === 'vouchers' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-white/50">
+              Quản lý mã giảm giá (Voucher / Coupon) cho khách hàng khi mua nhạc bản quyền
+            </p>
+            <button
+              onClick={() => setIsAddingVoucher(!isAddingVoucher)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isAddingVoucher ? 'Đóng Form' : 'Thêm Voucher Mới'}</span>
+            </button>
+          </div>
+
+          {/* Form thêm voucher mới */}
+          {isAddingVoucher && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newVoucherCode.trim()) return;
+                const numVal = parseInt(newVoucherVal, 10) || 0;
+                await addVoucher({
+                  id: `v-${Date.now()}`,
+                  code: newVoucherCode.trim().toUpperCase(),
+                  discountType: newVoucherType,
+                  discountValue: numVal,
+                  description: newVoucherDesc.trim() || (newVoucherType === 'percent' ? `Giảm ${numVal}%` : `Giảm ${numVal.toLocaleString('vi-VN')}đ`),
+                  isActive: true,
+                });
+                setNewVoucherCode('');
+                setNewVoucherDesc('');
+                setIsAddingVoucher(false);
+              }}
+              className="p-4 rounded-2xl bg-[#170f23] border border-purple-500/30 space-y-3"
+            >
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Tag className="w-4 h-4 text-[#c273ed]" />
+                <span>Tạo Mã Giảm Giá Mới</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-white/70 mb-1 font-bold">Mã Code *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newVoucherCode}
+                    onChange={(e) => setNewVoucherCode(e.target.value.toUpperCase())}
+                    placeholder="VD: XUANKEN50"
+                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono uppercase text-xs focus:outline-none focus:border-[#9b4de0]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/70 mb-1 font-bold">Loại Giảm Giá *</label>
+                  <select
+                    value={newVoucherType}
+                    onChange={(e) => setNewVoucherType(e.target.value as 'percent' | 'fixed')}
+                    className="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-[#9b4de0]"
+                  >
+                    <option value="percent">Phần trăm (%)</option>
+                    <option value="fixed">Số tiền cố định (VNĐ)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-white/70 mb-1 font-bold">
+                    Giá trị giảm ({newVoucherType === 'percent' ? '%' : 'VNĐ'}) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={newVoucherVal}
+                    onChange={(e) => setNewVoucherVal(e.target.value)}
+                    placeholder="VD: 50"
+                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#9b4de0]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-white/70 mb-1 font-bold">Mô tả hiển thị</label>
+                <input
+                  type="text"
+                  value={newVoucherDesc}
+                  onChange={(e) => setNewVoucherDesc(e.target.value)}
+                  placeholder="VD: Giảm 50% cho tất cả bài hát bản quyền"
+                  className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-[#9b4de0]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingVoucher(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-white/70 hover:text-white"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold shadow-md"
+                >
+                  Lưu Voucher
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Danh sách voucher */}
+          <div className="rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
+                    <th className="py-3 px-4 w-12 text-center">STT</th>
+                    <th className="py-3 px-4 min-w-[140px]">MÃ VOUCHER</th>
+                    <th className="py-3 px-4 w-32 text-center">LOẠI GIẢM</th>
+                    <th className="py-3 px-4 w-32 text-center">GIÁ TRỊ</th>
+                    <th className="py-3 px-4 min-w-[200px]">MÔ TẢ</th>
+                    <th className="py-3 px-4 w-28 text-center">TRẠNG THÁI</th>
+                    <th className="py-3 px-4 w-20 text-right">XÓA</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {vouchers.map((v, i) => (
+                    <tr key={v.id} className="hover:bg-white/5 transition-colors">
+                      <td className="py-3 px-4 text-center font-mono text-white/40">{i + 1}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-amber-300 text-sm">{v.code}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="px-2 py-0.5 rounded bg-white/10 text-white font-bold text-[10px]">
+                          {v.discountType === 'percent' ? 'Phần trăm' : 'Số tiền'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-bold text-emerald-400">
+                        {v.discountType === 'percent' ? `${v.discountValue}%` : `${v.discountValue.toLocaleString('vi-VN')}đ`}
+                      </td>
+                      <td className="py-3 px-4 text-white/80">{v.description}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          v.isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'
+                        }`}>
+                          {v.isActive ? 'Đang áp dụng' : 'Tạm khóa'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => {
+                            if (confirm(`Xóa voucher "${v.code}"?`)) {
+                              removeVoucher(v.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white transition-colors"
+                          title="Xóa voucher"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

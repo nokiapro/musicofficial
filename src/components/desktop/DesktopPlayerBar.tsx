@@ -15,6 +15,10 @@ import {
   Tv,
   ShoppingCart,
   CheckCircle,
+  Share2,
+  ListPlus,
+  Download,
+  Gauge,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 
@@ -45,6 +49,9 @@ export const DesktopPlayerBar: React.FC = () => {
     isSongPurchased,
     setSongToBuy,
     setIsBuyModalOpen,
+    openShareModal,
+    openAddToPlaylistModal,
+    downloadSong,
   } = useMusic();
 
   const isLiked = currentSong ? likedSongIds.includes(currentSong.id) : false;
@@ -58,7 +65,10 @@ export const DesktopPlayerBar: React.FC = () => {
   };
 
   return (
-    <footer className="h-24 px-6 border-t border-white/10 bg-[#170f23] text-white flex items-center justify-between select-none z-30 sticky bottom-0">
+    <footer
+      className="h-24 px-6 border-t text-white flex items-center justify-between select-none z-30 sticky bottom-0 transition-colors duration-200"
+      style={{ backgroundColor: 'var(--bg-player)', borderColor: 'var(--border-color)' }}
+    >
       {/* Left: Song Info + Vinyl CD + Format badge & Purchase status */}
       <div className="flex items-center gap-4 w-80 shrink-0">
         {/* Spinning Vinyl Cover with Cover Image support */}
@@ -78,7 +88,7 @@ export const DesktopPlayerBar: React.FC = () => {
               !isPlaying ? 'paused' : ''
             } ${currentSong?.coverImage ? 'absolute inset-0 -z-10' : ''}`}
           >
-            <div className="w-4 h-4 rounded-full bg-[#170f23] border border-zinc-800" />
+            <div className="w-4 h-4 rounded-full bg-[var(--bg-player)] border border-zinc-800" />
           </div>
         </div>
 
@@ -148,6 +158,29 @@ export const DesktopPlayerBar: React.FC = () => {
             >
               <FileText className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => openAddToPlaylistModal(currentSong)}
+              className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              title="Thêm vào playlist cá nhân"
+            >
+              <ListPlus className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => openShareModal(currentSong)}
+              className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              title="Chia sẻ bài hát (Deep link)"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+            {isSongPurchased(currentSong.id) && (
+              <button
+                onClick={() => downloadSong(currentSong, currentSong.audioFormat)}
+                className="p-2 rounded-full hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 transition-colors"
+                title={`Tải file ${currentSong.audioFormat} bản quyền về máy`}
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -176,7 +209,8 @@ export const DesktopPlayerBar: React.FC = () => {
 
           <button
             onClick={togglePlay}
-            className="w-11 h-11 rounded-full bg-[#9b4de0] hover:bg-[#8539c9] text-white flex items-center justify-center shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
+            style={{ backgroundColor: 'var(--color-accent)' }}
+            className="w-11 h-11 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 hover:opacity-90"
             title={isPlaying ? 'Tạm dừng' : 'Phát'}
           >
             {isPlaying ? (

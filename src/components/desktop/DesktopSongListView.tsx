@@ -10,6 +10,8 @@ import {
   Filter,
   Sparkles,
   Music,
+  Share2,
+  ListPlus,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song, AudioFormat } from '../../types/music';
@@ -28,18 +30,16 @@ export const DesktopSongListView: React.FC = () => {
     setSongToBuy,
     setIsBuyModalOpen,
     setActiveDesktopTab,
+    openShareModal,
+    openAddToPlaylistModal,
+    downloadSong,
+    preferredAudioFormat,
+    setPreferredAudioFormat,
   } = useMusic();
 
-  const [formatFilter, setFormatFilter] = useState<'ALL' | 'MP3' | 'WAV'>('ALL');
-  const [purchaseFilter, setPurchaseFilter] = useState<'ALL' | 'PURCHASED' | 'DEMO'>('ALL');
-
-  const filteredSongs = songs.filter((song) => {
-    if (formatFilter !== 'ALL' && song.audioFormat !== formatFilter) return false;
-    const isPurchased = isSongPurchased(song.id);
-    if (purchaseFilter === 'PURCHASED' && !isPurchased) return false;
-    if (purchaseFilter === 'DEMO' && isPurchased) return false;
-    return true;
-  });
+  const totalSongs = songs.length;
+  const purchasedCount = songs.filter((s) => isSongPurchased(s.id)).length;
+  const unpurchasedCount = Math.max(0, totalSongs - purchasedCount);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return '03:30';
@@ -58,91 +58,51 @@ export const DesktopSongListView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 select-none">
-      {/* Header with Title and Quick Filter Segmented Controls */}
+      {/* Header with Title and MP3 / WAV LOSSLESS Global Format Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase">
             Danh Sách Bài Hát
           </h1>
           <p className="text-xs text-white/60 mt-1">
-            Tổng cộng {songs.length} ca khúc • Nhạc chưa mua sẽ nghe thử 60 giây, mua rồi sẽ nghe full
+            Tổng cộng {totalSongs} bài hát • Đã mua: <span className="text-emerald-400 font-bold">{purchasedCount} bài</span> • Chưa mua: <span className="text-amber-400 font-bold">{unpurchasedCount} bài</span>
           </p>
         </div>
 
-        {/* Filter Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Format filter: ALL / MP3 / WAV */}
-          <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10 text-xs">
+        {/* MP3 & WAV LOSSLESS Audio Format Switcher */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 text-xs shadow-sm">
             <button
-              onClick={() => setFormatFilter('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                formatFilter === 'ALL'
-                  ? 'bg-[#9b4de0] text-white shadow'
+              onClick={() => setPreferredAudioFormat('MP3')}
+              className={`px-4 py-1.5 rounded-xl font-bold transition-all ${
+                preferredAudioFormat === 'MP3'
+                  ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400/40'
                   : 'text-white/60 hover:text-white'
               }`}
-            >
-              TẤT CẢ
-            </button>
-            <button
-              onClick={() => setFormatFilter('MP3')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                formatFilter === 'MP3'
-                  ? 'bg-blue-600 text-white shadow'
-                  : 'text-white/60 hover:text-white'
-              }`}
+              title="Phát tất cả các bài hát ở định dạng MP3 (320kbps)"
             >
               MP3
             </button>
             <button
-              onClick={() => setFormatFilter('WAV')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                formatFilter === 'WAV'
-                  ? 'bg-amber-600 text-white shadow'
+              onClick={() => setPreferredAudioFormat('WAV')}
+              className={`px-4 py-1.5 rounded-xl font-bold transition-all ${
+                preferredAudioFormat === 'WAV'
+                  ? 'bg-amber-600 text-white shadow-md ring-1 ring-amber-400/40'
                   : 'text-white/60 hover:text-white'
               }`}
+              title="Phát tất cả các bài hát ở định dạng WAV Lossless chất lượng cao"
             >
               WAV LOSSLESS
-            </button>
-          </div>
-
-          {/* Status filter: ALL / ĐÃ MUA / DEMO */}
-          <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10 text-xs">
-            <button
-              onClick={() => setPurchaseFilter('ALL')}
-              className={`px-2.5 py-1.5 rounded-lg font-semibold transition-all ${
-                purchaseFilter === 'ALL'
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Tất cả
-            </button>
-            <button
-              onClick={() => setPurchaseFilter('PURCHASED')}
-              className={`px-2.5 py-1.5 rounded-lg font-semibold transition-all ${
-                purchaseFilter === 'PURCHASED'
-                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Đã mua (Full)
-            </button>
-            <button
-              onClick={() => setPurchaseFilter('DEMO')}
-              className={`px-2.5 py-1.5 rounded-lg font-semibold transition-all ${
-                purchaseFilter === 'DEMO'
-                  ? 'bg-amber-600/30 text-amber-300 border border-amber-500/40'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Chưa mua (Demo 60s)
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Table: STT - TÊN BÀI - TÊN CA SỸ - LRC - THỜI LƯỢNG BÀI HÁT - MP3 HAY WAV */}
-      <div className="rounded-2xl border border-white/10 bg-[#170f23]/80 overflow-hidden shadow-2xl">
+      <div
+        className="rounded-2xl border overflow-hidden shadow-2xl transition-colors duration-200"
+        style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -157,7 +117,7 @@ export const DesktopSongListView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">
-              {filteredSongs.length === 0 ? (
+              {songs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center text-white/50">
                     <Music className="w-10 h-10 text-white/20 mx-auto mb-2" />
@@ -172,7 +132,7 @@ export const DesktopSongListView: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredSongs.map((song, index) => {
+                songs.map((song, index) => {
                   const isCurrent = currentSong?.id === song.id;
                   const isCurrentPlaying = isCurrent && isPlaying;
                   const isPurchased = isSongPurchased(song.id);
@@ -278,18 +238,49 @@ export const DesktopSongListView: React.FC = () => {
                       </span>
                     </td>
 
-                    {/* Status & Purchase Action */}
+                    {/* Status & Actions: Download, Playlist, Share, Buy */}
                     <td className="py-3.5 px-4 text-right">
-                      {isPurchased ? (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold text-xs">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>Đã mua (Full)</span>
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-2">
-                          <span className="text-[11px] text-amber-400/90 font-bold hidden sm:inline">
-                            Demo 60s
-                          </span>
+                      <div className="inline-flex items-center gap-1.5 justify-end">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAddToPlaylistModal(song);
+                          }}
+                          className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                          title="Thêm vào playlist cá nhân"
+                        >
+                          <ListPlus className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openShareModal(song);
+                          }}
+                          className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                          title="Chia sẻ bài hát (Deep link)"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </button>
+
+                        {isPurchased ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadSong(song, song.audioFormat);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-colors"
+                              title={`Tải file ${song.audioFormat} bản quyền về máy`}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Tải về</span>
+                            </button>
+                            <span className="p-1 text-emerald-400" title="Đã sở hữu bản quyền full bài">
+                              <CheckCircle className="w-4 h-4" />
+                            </span>
+                          </div>
+                        ) : (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -301,8 +292,8 @@ export const DesktopSongListView: React.FC = () => {
                             <ShoppingCart className="w-3 h-3" />
                             <span>Mua {song.price.toLocaleString('vi-VN')}đ</span>
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

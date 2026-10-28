@@ -22,15 +22,19 @@ export const DesktopQueueDrawer: React.FC = () => {
   if (!isQueueDrawerOpen) return null;
 
   return (
-    <aside className="w-80 h-full border-l border-white/5 bg-[#170f23] text-white flex flex-col z-20 shrink-0 select-none animate-in slide-in-from-right duration-200">
+    <aside
+      className="w-80 h-full border-l text-white flex flex-col z-20 shrink-0 select-none animate-in slide-in-from-right duration-200 transition-colors"
+      style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}
+    >
       {/* Header with Tabs */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center p-1 bg-white/10 rounded-full">
           <button
             onClick={() => setActiveTab('queue')}
+            style={activeTab === 'queue' ? { backgroundColor: 'var(--color-accent)' } : undefined}
             className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
               activeTab === 'queue'
-                ? 'bg-[#9b4de0] text-white shadow'
+                ? 'text-white shadow'
                 : 'text-white/60 hover:text-white'
             }`}
           >
@@ -38,9 +42,10 @@ export const DesktopQueueDrawer: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('history')}
+            style={activeTab === 'history' ? { backgroundColor: 'var(--color-accent)' } : undefined}
             className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
               activeTab === 'history'
-                ? 'bg-[#9b4de0] text-white shadow'
+                ? 'text-white shadow'
                 : 'text-white/60 hover:text-white'
             }`}
           >

@@ -116,7 +116,10 @@ export const DesktopAppLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#120822] text-white flex-col select-none">
+    <div
+      className="flex h-screen w-screen overflow-hidden text-white flex-col select-none transition-colors duration-200"
+      style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+    >
       {/* Top Body Row (Sidebar + Main Content + Right Queue Drawer) */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
@@ -136,16 +139,6 @@ export const DesktopAppLayout: React.FC = () => {
 
       {/* Fixed Bottom Player Bar */}
       <DesktopPlayerBar />
-
-      {/* Global Modals */}
-      <KaraokeLyricsModal />
-      <LrcViewerModal />
-      <DemoLimitModal />
-      <BuySongModal />
-      <TopUpModal />
-      <LoginModal />
-      <ThemeSelectorModal />
-      <SleepTimerModal />
     </div>
   );
 };

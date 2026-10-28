@@ -101,9 +101,10 @@ Bitrate: ${song.audioFormat === 'WAV' ? '24-bit 96kHz Lossless' : '320kbps High 
         <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10">
           <button
             onClick={() => setActiveTab('catalog')}
+            style={activeTab === 'catalog' ? { backgroundColor: 'var(--color-accent)' } : undefined}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'catalog'
-                ? 'bg-[#9b4de0] text-white shadow'
+                ? 'text-white shadow'
                 : 'text-white/60 hover:text-white'
             }`}
           >
@@ -111,9 +112,10 @@ Bitrate: ${song.audioFormat === 'WAV' ? '24-bit 96kHz Lossless' : '320kbps High 
           </button>
           <button
             onClick={() => setActiveTab('owned')}
+            style={activeTab === 'owned' ? { backgroundColor: 'var(--color-accent)' } : undefined}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'owned'
-                ? 'bg-[#9b4de0] text-white shadow'
+                ? 'text-white shadow'
                 : 'text-white/60 hover:text-white'
             }`}
           >

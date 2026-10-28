@@ -15,6 +15,11 @@ import {
   ListMusic,
   Disc3,
   Sparkles,
+  Share2,
+  ListPlus,
+  Download,
+  Gauge,
+  ShoppingCart,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Visualizer } from '../common/Visualizer';
@@ -42,6 +47,12 @@ export const MobileFullPlayerModal: React.FC = () => {
     queue,
     playSong,
     isSongPurchased,
+    openShareModal,
+    openAddToPlaylistModal,
+    downloadSong,
+    setIsAudioSettingsModalOpen,
+    setSongToBuy,
+    setIsBuyModalOpen,
   } = useMusic();
 
   const [activeTab, setActiveTab] = useState<'disc' | 'lyrics'>('disc');
@@ -193,18 +204,77 @@ export const MobileFullPlayerModal: React.FC = () => {
 
       {/* Song Info Bar */}
       <div className="relative z-10 px-6 flex items-center justify-between">
-        <div className="truncate mr-4">
-          <h2 className="text-lg font-bold text-white truncate">{currentSong.title}</h2>
+        <div className="truncate mr-4 flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-white truncate">{currentSong.title}</h2>
+            <span
+              className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase shrink-0 ${
+                currentSong.audioFormat === 'WAV'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+              }`}
+            >
+              {currentSong.audioFormat}
+            </span>
+          </div>
           <p className="text-xs text-white/60 truncate mt-0.5">{currentSong.artists}</p>
         </div>
+
         <button
           onClick={() => toggleLike(currentSong.id)}
-          className="p-2 text-white/70 hover:text-red-400"
+          className="p-2 text-white/70 hover:text-red-400 active:scale-95 transition-transform shrink-0"
         >
           <Heart
             className={`w-6 h-6 ${isLiked ? 'text-red-500 fill-red-500' : ''}`}
           />
         </button>
+      </div>
+
+      {/* Quick Feature Action Bar: Add to Playlist, Share, Download/Buy */}
+      <div className="relative z-10 px-6 mt-2 flex items-center justify-end gap-2">
+        <div className="flex items-center gap-2">
+          {/* Add to Playlist */}
+          <button
+            onClick={() => openAddToPlaylistModal(currentSong)}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/15 text-white/70 hover:text-white active:scale-95 transition-all"
+            title="Thêm vào playlist"
+          >
+            <ListPlus className="w-4 h-4" />
+          </button>
+
+          {/* Share Deep Link */}
+          <button
+            onClick={() => openShareModal(currentSong)}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/15 text-white/70 hover:text-white active:scale-95 transition-all"
+            title="Chia sẻ bài hát trực tiếp"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+
+          {/* Download if purchased, or Buy Button */}
+          {isSongPurchased(currentSong.id) ? (
+            <button
+              onClick={() => downloadSong(currentSong, currentSong.audioFormat)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold active:scale-95 transition-all"
+              title="Tải nhạc bản quyền về máy"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Tải Full</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setSongToBuy(currentSong);
+                setIsBuyModalOpen(true);
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-md active:scale-95 transition-all"
+              title="Mua nhạc bản quyền"
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              <span>Mua ({currentSong.price.toLocaleString('vi-VN')}đ)</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Scrubber Slider */}

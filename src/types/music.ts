@@ -34,16 +34,47 @@ export interface AppUser {
   uid: string;
   email: string;
   displayName: string;
+  avatarUrl?: string; // Link ảnh hoặc base64 ảnh đại diện
   balance: number; // Số dư ví VNĐ
   purchasedSongIds: string[];
   role: 'admin' | 'user';
   createdAt: string;
 }
 
-export type ThemeId = 'purple' | 'blue' | 'sunset' | 'light';
+export type ThemeId = 'purple' | 'blue' | 'sunset' | 'emerald' | 'gold' | 'dark' | 'rose' | 'light';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
 export type ActiveDesktopTab = 'discover' | 'store' | 'admin' | 'chart' | 'radio' | 'library';
 
-export type ActiveMobileTab = 'discover' | 'store' | 'admin' | 'chart' | 'library';
+export type ActiveMobileTab = 'discover' | 'store' | 'admin' | 'chart' | 'library' | 'profile';
+
+export interface Playlist {
+  id: string;
+  name: string;
+  description?: string;
+  coverImage?: string;
+  songIds: string[];
+  userId?: string;
+  createdAt: string;
+}
+
+export interface Voucher {
+  id: string;
+  code: string; // e.g. XUANKEN50
+  discountType: 'percent' | 'fixed'; // percent (e.g. 50%) or fixed (e.g. 20000 VND)
+  discountValue: number;
+  minSpend?: number;
+  description: string;
+  isActive: boolean;
+}
+
+export interface RewindStats {
+  totalSeconds: number;
+  totalPlays: number;
+  songPlays: Record<string, number>;
+  artistPlays: Record<string, number>;
+  favoriteGenre?: string;
+  lastUpdated: string;
+}
+

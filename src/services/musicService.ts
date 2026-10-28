@@ -1,7 +1,7 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
 import { doc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { rtdb, db } from './firebase';
-import { Song, AppUser } from '../types/music';
+import { Song, AppUser, Playlist, Voucher } from '../types/music';
 
 const STORAGE_KEY_SONGS = 'xuanken_music_songs_v3';
 const STORAGE_KEY_MEMBERS = 'xuanken_music_members_v3';
@@ -236,4 +236,211 @@ export const MusicService = {
       await set(memberRef, null);
     } catch (e) {}
   },
+
+  // Playlists Management
+  async fetchPlaylists(): Promise<Playlist[]> {
+    try {
+      const dbRef = ref(rtdb);
+      const snapshot = await get(child(dbRef, 'playlists'));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const list: Playlist[] = Object.values(data);
+        localStorage.setItem('xuanken_music_playlists_v1', JSON.stringify(list));
+        return list;
+      }
+    } catch (err) {
+      console.warn('Firebase playlists fetch notice:', err);
+    }
+
+    const local = localStorage.getItem('xuanken_music_playlists_v1');
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch (e) {}
+    }
+    return [];
+  },
+
+  async savePlaylists(playlists: Playlist[]): Promise<void> {
+    const clean = JSON.parse(JSON.stringify(playlists));
+    localStorage.setItem('xuanken_music_playlists_v1', JSON.stringify(clean));
+    try {
+      const pRef = ref(rtdb, 'playlists');
+      const map: Record<string, Playlist> = {};
+      clean.forEach((p: Playlist) => {
+        map[p.id] = p;
+      });
+      await set(pRef, map);
+    } catch (e) {}
+  },
+
+  async upsertPlaylist(playlist: Playlist): Promise<void> {
+    const clean = JSON.parse(JSON.stringify(playlist));
+    try {
+      const pRef = ref(rtdb, `playlists/${clean.id}`);
+      await set(pRef, clean);
+    } catch (e) {}
+    // Update local
+    try {
+      const local = localStorage.getItem('xuanken_music_playlists_v1');
+      const list: Playlist[] = local ? JSON.parse(local) : [];
+      const idx = list.findIndex((p) => p.id === clean.id);
+      if (idx >= 0) list[idx] = clean;
+      else list.unshift(clean);
+      localStorage.setItem('xuanken_music_playlists_v1', JSON.stringify(list));
+    } catch (e) {}
+  },
+
+  async deletePlaylist(id: string): Promise<void> {
+    try {
+      const pRef = ref(rtdb, `playlists/${id}`);
+      await set(pRef, null);
+    } catch (e) {}
+    try {
+      const local = localStorage.getItem('xuanken_music_playlists_v1');
+      if (local) {
+        const list: Playlist[] = JSON.parse(local);
+        localStorage.setItem('xuanken_music_playlists_v1', JSON.stringify(list.filter((p) => p.id !== id)));
+      }
+    } catch (e) {}
+  },
+
+  // Vouchers / Coupons Management
+  async fetchVouchers(): Promise<Voucher[]> {
+    const defaultVouchers: Voucher[] = [
+      {
+        id: 'v-xuanken50',
+        code: 'XUANKEN50',
+        discountType: 'percent',
+        discountValue: 50,
+        description: 'Giảm giá 50% tất cả bài hát bản quyền',
+        isActive: true,
+      },
+      {
+        id: 'v-vip2026',
+        code: 'VIP2026',
+        discountType: 'fixed',
+        discountValue: 30000,
+        description: 'Giảm ngay 30.000đ khi mua nhạc',
+        isActive: true,
+      },
+      {
+        id: 'v-promo20',
+        code: 'PROMO20',
+        discountType: 'percent',
+        discountValue: 20,
+        description: 'Ưu đãi 20% cho thành viên mới',
+        isActive: true,
+      },
+    ];
+
+    try {
+      const dbRef = ref(rtdb);
+      const snapshot = await get(child(dbRef, 'vouchers'));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const list: Voucher[] = Object.values(data);
+        localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(list));
+        return list;
+      }
+    } catch (err) {
+      console.warn('Firebase vouchers fetch notice:', err);
+    }
+
+    const local = localStorage.getItem('xuanken_music_vouchers_v1');
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch (e) {}
+    }
+
+    // Initialize with default vouchers
+    localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(defaultVouchers));
+    return defaultVouchers;
+  },
+
+  async saveVouchers(vouchers: Voucher[]): Promise<void> {
+    const clean = JSON.parse(JSON.stringify(vouchers));
+    localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(clean));
+    try {
+      const vRef = ref(rtdb, 'vouchers');
+      const map: Record<string, Voucher> = {};
+      clean.forEach((v: Voucher) => {
+        map[v.id] = v;
+      });
+      await set(vRef, map);
+    } catch (e) {}
+  },
+
+  async upsertVoucher(voucher: Voucher): Promise<void> {
+    const clean = JSON.parse(JSON.stringify(voucher));
+    try {
+      const vRef = ref(rtdb, `vouchers/${clean.id}`);
+      await set(vRef, clean);
+    } catch (e) {}
+    try {
+      const local = localStorage.getItem('xuanken_music_vouchers_v1');
+      const list: Voucher[] = local ? JSON.parse(local) : [];
+      const idx = list.findIndex((v) => v.id === clean.id);
+      if (idx >= 0) list[idx] = clean;
+      else list.push(clean);
+      localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(list));
+    } catch (e) {}
+  },
+
+  async deleteVoucher(voucherId: string): Promise<void> {
+    try {
+      const vRef = ref(rtdb, `vouchers/${voucherId}`);
+      await set(vRef, null);
+    } catch (e) {}
+    try {
+      const local = localStorage.getItem('xuanken_music_vouchers_v1');
+      if (local) {
+        const list: Voucher[] = JSON.parse(local);
+        localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(list.filter((v) => v.id !== voucherId)));
+      }
+    } catch (e) {}
+  },
+
+  // Audio Download Helper for Copyrighted Songs
+  async downloadSongAudio(song: Song, format: 'MP3' | 'WAV' = 'MP3'): Promise<{ success: boolean; message: string }> {
+    const targetUrl = format === 'WAV' ? (song.wavUrl || song.mp3Url || song.demoUrl) : (song.mp3Url || song.wavUrl || song.demoUrl);
+    if (!targetUrl || !targetUrl.trim()) {
+      return { success: false, message: 'Bài hát này chưa có link tải chất lượng cao.' };
+    }
+
+    const cleanTitle = song.title.replace(/[\\/:*?"<>|]/g, '');
+    const cleanArtist = song.artists.replace(/[\\/:*?"<>|]/g, '');
+    const ext = format === 'WAV' && song.wavUrl ? 'wav' : 'mp3';
+    const fileName = `[XuanKen Music] ${cleanTitle} - ${cleanArtist}.${ext}`;
+
+    try {
+      // Try fetching as Blob for clean direct file download
+      const response = await fetch(targetUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
+        return { success: true, message: `Bắt đầu tải bài hát: ${fileName}` };
+      }
+    } catch (e) {
+      // Direct anchor click fallback if CORS prevents fetch
+    }
+
+    const a = document.createElement('a');
+    a.href = targetUrl;
+    a.download = fileName;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return { success: true, message: `Bắt đầu tải bài hát: ${fileName}` };
+  },
 };
+
