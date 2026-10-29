@@ -12,9 +12,10 @@ import {
   Crown,
   MoreVertical,
   Download,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { Song } from '../../types/music';
 
 export const DesktopChartPage: React.FC = () => {
   const {
@@ -24,7 +25,6 @@ export const DesktopChartPage: React.FC = () => {
     toggleLike,
     isSongPurchased,
     setSongToBuy,
-    setIsBuyModalOpen,
     setIsDemoLimitModalOpen,
     setSelectedLrcSong,
     currentSong,
@@ -33,6 +33,9 @@ export const DesktopChartPage: React.FC = () => {
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
+
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -47,13 +50,20 @@ export const DesktopChartPage: React.FC = () => {
 
   const formatDuration = (seconds?: number) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return '3:30';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
+    const totalSecs = Math.floor(seconds);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Requirement 5: Sort songs by highest playCount (nghe nhiều nhất)
+  // Sort songs by highest playCount
   const rankedSongs = [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0));
+
+  const totalSongs = rankedSongs.length;
+  const totalPages = Math.max(1, Math.ceil(totalSongs / PAGE_SIZE));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (validCurrentPage - 1) * PAGE_SIZE;
+  const paginatedSongs = rankedSongs.slice(startIndex, startIndex + PAGE_SIZE);
 
   const handlePlayAll = () => {
     if (rankedSongs.length > 0) {
@@ -98,9 +108,10 @@ export const DesktopChartPage: React.FC = () => {
               Bảng xếp hạng thời gian thực XuanKen Music
             </p>
             <p className="text-sm font-bold text-white mt-0.5">
-              Top 3 Ca Khúc Được Nghe Nhiều Nhất
+              Top 3 Ca Khúc Nghe Nhiều Nhất
             </p>
           </div>
+
           <div className="flex items-center gap-4 text-xs flex-wrap">
             {top3.map((s, idx) => {
               const colors = ['#f59e0b', '#38bdf8', '#f43f5e'];
@@ -121,21 +132,18 @@ export const DesktopChartPage: React.FC = () => {
             <line x1="0" y1="65" x2="600" y2="65" stroke="rgba(255,255,255,0.06)" />
             <line x1="0" y1="100" x2="600" y2="100" stroke="rgba(255,255,255,0.06)" />
 
-            {/* Song #1 curve */}
             <path
               d="M 0,65 Q 80,35 150,22 T 300,15 T 450,28 T 600,12"
               fill="none"
               stroke="#f59e0b"
               strokeWidth="3.5"
             />
-            {/* Song #2 curve */}
             <path
               d="M 0,85 Q 90,75 150,68 T 300,50 T 450,48 T 600,55"
               fill="none"
               stroke="#38bdf8"
               strokeWidth="2.5"
             />
-            {/* Song #3 curve */}
             <path
               d="M 0,105 Q 80,95 150,100 T 300,85 T 450,90 T 600,95"
               fill="none"
@@ -146,28 +154,28 @@ export const DesktopChartPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Chart List Table */}
+      {/* Chart List Table (Requirement 8: bỏ chữ trạng thái đi để MUA, bên cạnh ghi THAO TÁC) */}
       <div className="space-y-2">
-        {/* Table Header with evenly spaced CSS grid */}
-        <div className="grid grid-cols-[64px_1fr_120px_110px_90px_180px] gap-4 px-5 py-3 text-xs font-bold text-white/50 uppercase tracking-wider border-b border-white/10 bg-white/5 rounded-xl">
+        <div className="grid grid-cols-[64px_1fr_110px_110px_90px_110px_80px] gap-4 px-5 py-3 text-xs font-bold text-white/50 uppercase tracking-wider border-b border-white/10 bg-white/5 rounded-xl">
           <span className="text-center">Thứ hạng</span>
           <span>Bài hát</span>
           <span className="text-center">Định dạng</span>
           <span className="text-center">Lượt nghe</span>
           <span className="text-center">Thời lượng</span>
-          <span className="text-right pr-4">Trạng thái mua</span>
+          <span className="text-center">Mua</span>
+          <span className="text-center">Thao tác</span>
         </div>
 
         {/* Songs Rows */}
-        {rankedSongs.length === 0 ? (
+        {paginatedSongs.length === 0 ? (
           <div className="py-16 text-center text-white/50 bg-white/5 rounded-2xl border border-white/5">
             <TrendingUp className="w-10 h-10 text-white/20 mx-auto mb-2" />
             <p className="text-base font-bold text-white">Chưa có bài hát nào trên bảng xếp hạng #xuankenchart</p>
             <p className="text-xs text-white/50 mt-1">Hãy thêm bài hát từ trang Admin để hiển thị thứ hạng âm nhạc.</p>
           </div>
         ) : (
-          rankedSongs.map((song, index) => {
-            const rank = index + 1;
+          paginatedSongs.map((song, index) => {
+            const rank = startIndex + index + 1;
             const isLiked = likedSongIds.includes(song.id);
             const isCurrent = currentSong?.id === song.id;
             const isPurchased = isSongPurchased(song.id);
@@ -185,7 +193,7 @@ export const DesktopChartPage: React.FC = () => {
               <div
                 key={song.id}
                 onClick={() => playSong(song)}
-                className={`grid grid-cols-[64px_1fr_120px_110px_90px_180px] gap-4 px-5 py-3.5 rounded-2xl border cursor-pointer group transition-all items-center ${
+                className={`grid grid-cols-[64px_1fr_110px_110px_90px_110px_80px] gap-4 px-5 py-3.5 rounded-2xl border cursor-pointer group transition-all items-center ${
                   isCurrent
                     ? 'bg-purple-900/40 border-purple-500/50 shadow-xl'
                     : 'bg-white/[0.02] hover:bg-white/[0.08] border-white/5 hover:border-white/15'
@@ -230,7 +238,6 @@ export const DesktopChartPage: React.FC = () => {
                       <Play className={`w-4 h-4 text-white ${isCurrent && isPlaying ? 'hidden' : 'opacity-0 group-hover:opacity-100 transition-opacity'}`} />
                     </div>
                   </div>
-
                   <div className="truncate">
                     <div className="flex items-center gap-2">
                       <p className={`text-sm font-bold truncate ${isCurrent ? 'text-[#c273ed]' : 'text-white group-hover:text-[#c273ed] transition-colors'}`}>
@@ -248,7 +255,7 @@ export const DesktopChartPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Audio format badge (MP3 or WAV only) */}
+                {/* Audio format badge */}
                 <div className="flex items-center justify-center">
                   <span
                     className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
@@ -261,7 +268,7 @@ export const DesktopChartPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Real Play Count (Lượt nghe) */}
+                {/* Real Play Count */}
                 <div className="text-center">
                   <span className="text-xs font-mono font-bold text-emerald-400 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                     <Headphones className="w-3.5 h-3.5 text-emerald-400" />
@@ -274,8 +281,8 @@ export const DesktopChartPage: React.FC = () => {
                   {formatDuration(song.duration)}
                 </div>
 
-                {/* Trạng thái mua & Menu 3 chấm dọc */}
-                <div className="flex items-center justify-end gap-2 pr-1" onClick={(e) => e.stopPropagation()}>
+                {/* MUA Column (Requirement 8) */}
+                <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                   {isPurchased ? (
                     <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 flex items-center gap-1 shrink-0">
                       <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
@@ -293,68 +300,106 @@ export const DesktopChartPage: React.FC = () => {
                       Chưa mua
                     </button>
                   )}
+                </div>
 
-                  {/* 3-dots vertical button */}
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setActiveMenuSongId(activeMenuSongId === song.id ? null : song.id);
-                      }}
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        activeMenuSongId === song.id
-                          ? 'bg-white/20 text-white'
-                          : 'hover:bg-white/10 text-white/60 hover:text-white'
-                      }`}
-                      title="Tùy chọn bài hát"
+                {/* THAO TÁC Column (Requirement 8) */}
+                <div className="flex items-center justify-center relative" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => {
+                      setActiveMenuSongId(activeMenuSongId === song.id ? null : song.id);
+                    }}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      activeMenuSongId === song.id
+                        ? 'bg-white/20 text-white'
+                        : 'hover:bg-white/10 text-white/60 hover:text-white'
+                    }`}
+                    title="Thao tác bài hát"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {activeMenuSongId === song.id && (
+                    <div
+                      ref={menuRef}
+                      className="absolute right-0 top-8 w-44 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-1.5 z-50 text-xs text-white space-y-1 animate-in fade-in duration-150"
                     >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-
-                    {/* Dropdown Menu: Tim, xem lyric, tải về */}
-                    {activeMenuSongId === song.id && (
-                      <div
-                        ref={menuRef}
-                        className="absolute right-0 top-8 w-40 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-1.5 z-50 text-xs text-white space-y-1 animate-in fade-in duration-150"
+                      <button
+                        onClick={() => {
+                          toggleLike(song.id);
+                          setActiveMenuSongId(null);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
                       >
+                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white/70'}`} />
+                        <span>{isLiked ? 'Bỏ thích' : 'Thả tim'}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedLrcSong(song);
+                          setActiveMenuSongId(null);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Xem lyric</span>
+                      </button>
+                      {isPurchased && (
                         <button
                           onClick={() => {
-                            toggleLike(song.id);
+                            openDownloadModal(song);
                             setActiveMenuSongId(null);
                           }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium text-emerald-300 transition-colors"
                         >
-                          <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white/70'}`} />
-                          <span>{isLiked ? 'Bỏ thích' : 'Thả tim'}</span>
+                          <Download className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Tải nhạc về</span>
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedLrcSong(song);
-                            setActiveMenuSongId(null);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-purple-400" />
-                          <span>Xem lyric</span>
-                        </button>
-                        {isPurchased && (
-                          <button
-                            onClick={() => {
-                              openDownloadModal(song);
-                              setActiveMenuSongId(null);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium text-emerald-300 transition-colors"
-                          >
-                            <Download className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Tải nhạc về</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })
+        )}
+
+        {/* Requirement 21: Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-3.5 border-t border-white/10 bg-white/[0.02] rounded-xl mt-4">
+            <p className="text-xs text-white/50">
+              Hiển thị {startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, totalSongs)} trong tổng số {totalSongs} bài hát (20 bài/trang)
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={validCurrentPage === 1}
+                className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-white" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                    validCurrentPage === pageNum
+                      ? 'bg-[#9b4de0] text-white shadow'
+                      : 'border border-white/10 hover:bg-white/10 text-white/70'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={validCurrentPage === totalPages}
+                className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronRight className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

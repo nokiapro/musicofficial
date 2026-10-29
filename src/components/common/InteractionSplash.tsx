@@ -21,13 +21,7 @@ export const InteractionSplash: React.FC = () => {
       sessionStorage.setItem('xuanken_splash_dismissed', 'true');
     } catch (e) {}
 
-    // Pick random song to play from library
-    if (songs && songs.length > 0) {
-      const randomIndex = Math.floor(Math.random() * songs.length);
-      const randomSong = songs[randomIndex];
-      playSong(randomSong);
-    }
-
+    // Dismiss splash without autoplaying any song (Item 5)
     setTimeout(() => {
       setIsVisible(false);
     }, 450);

@@ -256,6 +256,32 @@ input[type="range"] {
   accent-color: var(--color-accent);
 }
 
+/* Item 3: Hide circular thumb on PC player progress bar and volume slider */
+.no-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 0px !important;
+  height: 0px !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+.no-thumb::-moz-range-thumb {
+  width: 0px !important;
+  height: 0px !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+.no-thumb::-ms-thumb {
+  width: 0px !important;
+  height: 0px !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+
 /* Animations for InteractionSplash */
 @keyframes pulseRing {
   0% {

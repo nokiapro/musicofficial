@@ -11,6 +11,8 @@ import {
   Share2,
   ListPlus,
   MoreVertical,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
@@ -27,12 +29,10 @@ export const DesktopSongListView: React.FC = () => {
     isSongPurchased,
     setSelectedLrcSong,
     setSongToBuy,
-    setIsBuyModalOpen,
     setIsDemoLimitModalOpen,
     setActiveDesktopTab,
     openShareModal,
     openAddToPlaylistModal,
-    downloadSong,
     preferredAudioFormat,
     setPreferredAudioFormat,
     songFormatMap,
@@ -43,6 +43,10 @@ export const DesktopSongListView: React.FC = () => {
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Requirement 21: 20 songs per page
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const handleToggleMenu = (e: React.MouseEvent, songId: string) => {
     e.stopPropagation();
@@ -59,7 +63,6 @@ export const DesktopSongListView: React.FC = () => {
     setActiveMenuSongId(songId);
   };
 
-  // Close 3-dots popup on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -75,7 +78,7 @@ export const DesktopSongListView: React.FC = () => {
     };
   }, [activeMenuSongId]);
 
-  // Requirement 6: Sort alphabetically A -> Z (ABCD) by song title
+  // Sort alphabetically A -> Z
   const sortedSongs = [...songs].sort((a, b) =>
     a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' })
   );
@@ -84,10 +87,17 @@ export const DesktopSongListView: React.FC = () => {
   const purchasedCount = sortedSongs.filter((s) => isSongPurchased(s.id)).length;
   const unpurchasedCount = Math.max(0, totalSongs - purchasedCount);
 
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(totalSongs / PAGE_SIZE));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (validCurrentPage - 1) * PAGE_SIZE;
+  const paginatedSongs = sortedSongs.slice(startIndex, startIndex + PAGE_SIZE);
+
   const formatDuration = (seconds?: number) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return '03:30';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
+    const totalSecs = Math.floor(seconds);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
@@ -101,7 +111,7 @@ export const DesktopSongListView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 select-none">
-      {/* Header with Title and MP3 / WAV Global Switcher (Requirement 3: remove 'LOSSLESS') */}
+      {/* Header with Title and MP3 / WAV Global Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase">
@@ -112,7 +122,7 @@ export const DesktopSongListView: React.FC = () => {
           </p>
         </div>
 
-        {/* MP3 & WAV Audio Format Switcher (Requirement 3: just MP3 and WAV) */}
+        {/* MP3 & WAV Audio Format Switcher */}
         <div className="flex items-center gap-2">
           <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 text-xs shadow-sm">
             <button
@@ -141,7 +151,7 @@ export const DesktopSongListView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Table: STT - TÊN BÀI - TÊN CA SỸ - LRC - THỜI LƯỢNG - MP3 HAY WAV - TRẠNG THÁI / MUA */}
+      {/* Main Table: STT - TÊN BÀI - TÊN CA SỸ - LRC - THỜI LƯỢNG - MP3 HAY WAV - MUA - THAO TÁC */}
       <div
         className="rounded-2xl border overflow-hidden shadow-2xl transition-colors duration-200"
         style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
@@ -154,15 +164,17 @@ export const DesktopSongListView: React.FC = () => {
                 <th className="py-3.5 px-4 min-w-[220px]">TÊN BÀI</th>
                 <th className="py-3.5 px-4 min-w-[160px]">TÊN CA SỸ</th>
                 <th className="py-3.5 px-4 text-center w-24">LRC</th>
-                <th className="py-3.5 px-4 text-center w-32">THỜI LƯỢNG</th>
+                <th className="py-3.5 px-4 text-center w-28">THỜI LƯỢNG</th>
                 <th className="py-3.5 px-4 text-center w-36">MP3 HAY WAV</th>
-                <th className="py-3.5 px-4 text-right min-w-[200px]">TRẠNG THÁI / MUA</th>
+                {/* Requirement 2: Bỏ chữ trạng thái đi để lại chữ MUA, và bên phải là THAO TÁC */}
+                <th className="py-3.5 px-4 text-center w-28">MUA</th>
+                <th className="py-3.5 px-4 text-center w-24">THAO TÁC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">
-              {sortedSongs.length === 0 ? (
+              {paginatedSongs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-white/50">
+                  <td colSpan={8} className="py-16 text-center text-white/50">
                     <Music className="w-10 h-10 text-white/20 mx-auto mb-2" />
                     <p className="text-base font-bold text-white">Chưa có bài hát nào trong hệ thống</p>
                     <p className="text-xs text-white/50 mt-1">Dữ liệu demo đã xóa. Hãy vào trang Admin để thêm bài hát mới.</p>
@@ -175,13 +187,12 @@ export const DesktopSongListView: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                sortedSongs.map((song, index) => {
+                paginatedSongs.map((song, idx) => {
+                  const globalIndex = startIndex + idx;
                   const isCurrent = currentSong?.id === song.id;
                   const isCurrentPlaying = isCurrent && isPlaying;
                   const isPurchased = isSongPurchased(song.id);
                   const isLiked = likedSongIds.includes(song.id);
-
-                  // Determine active format for this specific song
                   const activeFormat = songFormatMap[song.id] || preferredAudioFormat;
 
                   return (
@@ -202,7 +213,7 @@ export const DesktopSongListView: React.FC = () => {
                           </div>
                         ) : (
                           <span className="group-hover:hidden">
-                            {index + 1}
+                            {globalIndex + 1}
                           </span>
                         )}
                         {!isCurrentPlaying && (
@@ -259,19 +270,19 @@ export const DesktopSongListView: React.FC = () => {
                       >
                         <button
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white/80 hover:text-white text-xs font-semibold transition-colors"
-                          title="Bấm để xem và tải tệp lời bài hát (.lrc)"
+                          title="Bấm để xem và tải file lời (.lrc)"
                         >
                           <FileText className="w-3.5 h-3.5 text-[#c273ed] group-hover:text-white" />
                           <span>LRC</span>
                         </button>
                       </td>
 
-                      {/* 5: THỜI LƯỢNG BÀI HÁT */}
+                      {/* 5: THỜI LƯỢNG */}
                       <td className="py-3.5 px-4 text-center font-mono text-xs text-white/60 tabular-nums">
                         {formatDuration(song.duration)}
                       </td>
 
-                      {/* 6: MP3 HAY WAV (Requirement 1: user can select per-song format) */}
+                      {/* 6: MP3 HAY WAV */}
                       <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center p-0.5 rounded-xl bg-black/40 border border-white/10 text-[11px] font-bold">
                           <button
@@ -305,42 +316,41 @@ export const DesktopSongListView: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* 7: TRẠNG THÁI / MUA (Requirement 1 & 2: fixed 3-dots dropdown without row expansion) */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="inline-flex items-center gap-2 justify-end">
-                          {isPurchased ? (
-                            <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold inline-flex items-center gap-1.5 shadow-sm">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Đã mua</span>
-                            </span>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSongToBuy(song);
-                                setIsDemoLimitModalOpen(true);
-                              }}
-                              className="px-3 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
-                              title="Bấm để mua bản quyền full bài hát"
-                            >
-                              <ShoppingCart className="w-3.5 h-3.5" />
-                              <span>Chưa mua</span>
-                            </button>
-                          )}
-
-                          {/* 3-dots vertical button */}
+                      {/* 7: MUA (Requirement 2) */}
+                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        {isPurchased ? (
+                          <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold inline-flex items-center gap-1.5 shadow-sm">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Đã mua</span>
+                          </span>
+                        ) : (
                           <button
-                            onClick={(e) => handleToggleMenu(e, song.id)}
-                            className={`p-1.5 rounded-lg transition-colors ${
-                              activeMenuSongId === song.id
-                                ? 'bg-white/20 text-white'
-                                : 'hover:bg-white/10 text-white/60 hover:text-white'
-                            }`}
-                            title="Tùy chọn bài hát"
+                            onClick={() => {
+                              setSongToBuy(song);
+                              setIsDemoLimitModalOpen(true);
+                            }}
+                            className="px-3 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
+                            title="Bấm để mua bản quyền full bài hát"
                           >
-                            <MoreVertical className="w-4 h-4" />
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>Chưa mua</span>
                           </button>
-                        </div>
+                        )}
+                      </td>
+
+                      {/* 8: THAO TÁC (Requirement 2: mục Thao tác bên phải) */}
+                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => handleToggleMenu(e, song.id)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            activeMenuSongId === song.id
+                              ? 'bg-white/20 text-white'
+                              : 'hover:bg-white/10 text-white/60 hover:text-white'
+                          }`}
+                          title="Thao tác bài hát"
+                        >
+                          <MoreVertical className="w-4 h-4 mx-auto" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -350,19 +360,33 @@ export const DesktopSongListView: React.FC = () => {
           </table>
         </div>
 
-        {/* Fixed Dropdown Menu for 3-dots to avoid table stretching (Requirement 2 & 4) */}
+        {/* Fixed Dropdown Menu for 3-dots: Includes Heart / Tim bài hát (Requirement 12) */}
         {activeMenuSongId && menuPosition && (() => {
           const targetSong = sortedSongs.find((s) => s.id === activeMenuSongId);
           if (!targetSong) return null;
           const isTargetPurchased = isSongPurchased(targetSong.id);
+          const isTargetLiked = likedSongIds.includes(targetSong.id);
 
           return (
             <div
               ref={menuRef}
               style={{ top: menuPosition.top, right: menuPosition.right }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed w-48 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-1.5 z-[999] text-xs text-white space-y-1 animate-in fade-in duration-150"
+              className="fixed w-52 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-1.5 z-[999] text-xs text-white space-y-1 animate-in fade-in duration-150"
             >
+              {/* Requirement 12: Tim bài hát */}
+              <button
+                onClick={() => {
+                  toggleLike(targetSong.id);
+                  setActiveMenuSongId(null);
+                  setMenuPosition(null);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
+              >
+                <Heart className={`w-4 h-4 ${isTargetLiked ? 'text-red-500 fill-red-500' : 'text-white/70'}`} />
+                <span>{isTargetLiked ? 'Bỏ tim bài hát' : 'Tim bài hát'}</span>
+              </button>
+
               <button
                 onClick={() => {
                   openAddToPlaylistModal(targetSong);
@@ -403,6 +427,44 @@ export const DesktopSongListView: React.FC = () => {
             </div>
           );
         })()}
+
+        {/* Requirement 21: Pagination Controls (20 bài 1 trang) */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-3.5 border-t border-white/10 bg-white/[0.02]">
+            <p className="text-xs text-white/50">
+              Hiển thị {(validCurrentPage - 1) * PAGE_SIZE + 1} - {Math.min(validCurrentPage * PAGE_SIZE, totalSongs)} trong tổng số {totalSongs} bài hát (20 bài/trang)
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={validCurrentPage === 1}
+                className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-white" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                    validCurrentPage === pageNum
+                      ? 'bg-[#9b4de0] text-white shadow'
+                      : 'border border-white/10 hover:bg-white/10 text-white/70'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={validCurrentPage === totalPages}
+                className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              >
+                <ChevronRight className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

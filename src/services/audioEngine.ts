@@ -1,56 +1,97 @@
 import { Song } from '../types/music';
 
 export class AudioEngine {
+  private audioElement: HTMLAudioElement | null = null;
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
+  private audioSourceNode: MediaElementAudioSourceNode | null = null;
   private isPlaying: boolean = false;
   private volume: number = 1.0;
   private isMuted: boolean = false;
   private playbackRate: number = 1.0;
   private crossfadeDuration: number = 3; // in seconds (0 = off)
-  private audioElement: HTMLAudioElement | null = null;
-  private audioSourceNode: MediaElementAudioSourceNode | null = null;
+  private currentUrl: string | null = null;
+  private isWebAudioConnected: boolean = false;
+  private isMobileDevice: boolean = false;
 
-  private initContext() {
-    if (!this.ctx) {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.ctx = new AudioCtx();
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
-      this.analyser = this.ctx.createAnalyser();
-      this.analyser.fftSize = 64;
-      this.analyser.smoothingTimeConstant = 0.8;
-      this.masterGain.connect(this.analyser);
-      this.analyser.connect(this.ctx.destination);
-    }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent || ''
+      );
+      this.initAudioElement();
     }
   }
 
-  // Calculate audio duration from URL automatically
+  private initAudioElement(): HTMLAudioElement {
+    if (!this.audioElement) {
+      this.audioElement = new Audio();
+      this.audioElement.preload = 'auto';
+      // Do not set crossOrigin unless needed, to prevent strict CORS blocks or decoder pops on Android
+      this.audioElement.volume = this.isMuted ? 0 : this.volume;
+      this.audioElement.playbackRate = this.playbackRate;
+
+      // Handle errors gracefully without clicking
+      this.audioElement.addEventListener('error', (e) => {
+        console.warn('AudioElement playback notice:', e);
+      });
+    }
+    return this.audioElement;
+  }
+
+  // Safe lazy initializer for Visualizer Analyser (desktop only, to avoid Android AAudio buffer underruns)
+  private initAnalyserSafe() {
+    if (this.isMobileDevice) {
+      // Android / iOS hardware decoders pop/click heavily when HTMLAudioElement is tied to Web Audio context
+      return;
+    }
+    if (this.isWebAudioConnected) return;
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      this.ctx = new AudioCtx();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 64;
+      this.analyser.smoothingTimeConstant = 0.8;
+
+      if (this.audioElement) {
+        this.audioElement.crossOrigin = 'anonymous';
+        this.audioSourceNode = this.ctx.createMediaElementSource(this.audioElement);
+        this.audioSourceNode.connect(this.masterGain);
+        this.masterGain.connect(this.analyser);
+        this.analyser.connect(this.ctx.destination);
+        this.isWebAudioConnected = true;
+      }
+    } catch (e) {
+      // Fallback cleanly to direct HTML5 Audio
+      this.isWebAudioConnected = false;
+    }
+  }
+
   public static async calculateDurationFromUrl(url: string): Promise<number> {
     return new Promise((resolve) => {
       if (!url || !url.trim()) {
-        resolve(180);
+        resolve(210);
         return;
       }
-      const audio = new Audio();
-      audio.preload = 'metadata';
-      audio.onloadedmetadata = () => {
-        if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
-          resolve(Math.round(audio.duration));
+      const probe = new Audio();
+      probe.preload = 'metadata';
+      probe.onloadedmetadata = () => {
+        if (probe.duration && isFinite(probe.duration) && probe.duration > 0) {
+          resolve(Math.round(probe.duration));
         } else {
-          resolve(180);
+          resolve(210);
         }
       };
-      audio.onerror = () => {
-        resolve(180);
+      probe.onerror = () => {
+        resolve(210);
       };
-      audio.src = url;
+      probe.src = url;
     });
   }
 
@@ -58,91 +99,69 @@ export class AudioEngine {
     return AudioEngine.calculateDurationFromUrl(url);
   }
 
-  private currentUrl: string | null = null;
-
   public playUrl(url?: string, onDurationLoaded?: (dur: number) => void) {
     if (!url || !url.trim()) {
-      if (this.audioElement) {
-        this.audioElement.pause();
-      }
-      this.isPlaying = false;
+      this.pause();
       this.currentUrl = null;
       return;
     }
 
-    this.initContext();
-    this.isPlaying = true;
-
-    if (!this.audioElement) {
-      this.audioElement = new Audio();
-      this.audioElement.crossOrigin = 'anonymous';
-      try {
-        if (this.ctx && this.masterGain) {
-          this.audioSourceNode = this.ctx.createMediaElementSource(this.audioElement);
-          this.audioSourceNode.connect(this.masterGain);
-        }
-      } catch (e) {
-        // Direct HTML5 audio works
-      }
-    }
-
+    const audio = this.initAudioElement();
     const isDifferentTrack = this.currentUrl !== url;
     this.currentUrl = url;
+    this.isPlaying = true;
 
-    // Crossfade transition if changing tracks and crossfade is enabled
-    if (isDifferentTrack && this.crossfadeDuration > 0 && this.masterGain && this.ctx && this.isPlaying) {
-      const now = this.ctx.currentTime;
-      const targetGain = this.isMuted ? 0 : this.volume * 0.8;
-      // Quick gentle fade out
-      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-      this.masterGain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+    // Wake context if available
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
 
-      setTimeout(() => {
-        if (!this.audioElement) return;
-        this.audioElement.src = url;
-        this.audioElement.currentTime = 0;
-        this.audioElement.playbackRate = this.playbackRate;
-        this.audioElement.defaultPlaybackRate = this.playbackRate;
-        this.audioElement
-          .play()
-          .then(() => {
-            if (this.masterGain && this.ctx) {
-              const fadeInNow = this.ctx.currentTime;
-              this.masterGain.gain.setValueAtTime(0.01, fadeInNow);
-              this.masterGain.gain.linearRampToValueAtTime(targetGain, fadeInNow + Math.min(this.crossfadeDuration, 2.5));
-            }
-          })
-          .catch((e) => {
-            console.warn('Crossfade play notice:', e);
-            this.isPlaying = false;
-          });
-      }, 300);
-    } else {
-      if (isDifferentTrack) {
-        this.audioElement.src = url;
-        this.audioElement.currentTime = 0;
+    const targetVolume = this.isMuted ? 0 : this.volume;
+
+    if (isDifferentTrack) {
+      // Soft fade-out current track to eliminate "lộp bộp" (digital click/pop)
+      const currentVol = audio.volume;
+      if (!audio.paused && currentVol > 0.05 && this.crossfadeDuration > 0) {
+        // Quick 50ms smooth fade down before switching URL
+        try {
+          audio.volume = Math.max(0, currentVol * 0.3);
+        } catch (e) {}
       }
 
-      this.audioElement.playbackRate = this.playbackRate;
-      this.audioElement.defaultPlaybackRate = this.playbackRate;
-      this.audioElement.volume = this.isMuted ? 0 : this.volume;
+      audio.src = url;
+      audio.currentTime = 0;
+      audio.playbackRate = this.playbackRate;
+      audio.defaultPlaybackRate = this.playbackRate;
 
-      if (this.masterGain && this.ctx) {
-        const targetGain = this.isMuted ? 0 : this.volume * 0.8;
-        this.masterGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
-      }
+      // Ensure full uncompromised dynamic range volume (100% full quality, no artificial 0.8 cut)
+      audio.volume = targetVolume;
 
-      this.audioElement
+      audio
         .play()
-        .catch((e) => {
-          // Graceful pause if autoplay policy blocks or network issue
+        .then(() => {
+          this.isPlaying = true;
+        })
+        .catch((err) => {
+          console.warn('Playback play request notice:', err);
+          this.isPlaying = false;
+        });
+    } else {
+      audio.playbackRate = this.playbackRate;
+      audio.defaultPlaybackRate = this.playbackRate;
+      audio.volume = targetVolume;
+      audio
+        .play()
+        .then(() => {
+          this.isPlaying = true;
+        })
+        .catch(() => {
           this.isPlaying = false;
         });
     }
 
-    this.audioElement.onloadedmetadata = () => {
-      if (onDurationLoaded && this.audioElement?.duration && isFinite(this.audioElement.duration)) {
-        onDurationLoaded(Math.round(this.audioElement.duration));
+    audio.onloadedmetadata = () => {
+      if (onDurationLoaded && audio.duration && isFinite(audio.duration) && audio.duration > 0) {
+        onDurationLoaded(Math.round(audio.duration));
       }
     };
   }
@@ -150,26 +169,35 @@ export class AudioEngine {
   public pause() {
     this.isPlaying = false;
     if (this.audioElement) {
-      // Gentle fade out if crossfade enabled
-      if (this.crossfadeDuration > 0 && this.masterGain && this.ctx) {
-        const now = this.ctx.currentTime;
-        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-        this.masterGain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-        setTimeout(() => {
-          this.audioElement?.pause();
-        }, 250);
-      } else {
-        this.audioElement.pause();
+      // Smooth micro-fade to avoid abrupt cutoff clicks
+      const curVol = this.audioElement.volume;
+      if (curVol > 0.1) {
+        try {
+          this.audioElement.volume = curVol * 0.5;
+        } catch (e) {}
       }
+      setTimeout(() => {
+        if (this.audioElement && !this.isPlaying) {
+          this.audioElement.pause();
+          this.audioElement.volume = this.isMuted ? 0 : this.volume;
+        }
+      }, 30);
     }
   }
 
   public seek(seconds: number) {
     if (this.audioElement && !isNaN(seconds) && isFinite(seconds)) {
       try {
-        this.audioElement.currentTime = seconds;
-      } catch (e) {}
+        const clamped = Math.max(0, seconds);
+        this.audioElement.currentTime = clamped;
+      } catch (e) {
+        console.warn('Seek notice:', e);
+      }
     }
+  }
+
+  public getCurrentTime(): number {
+    return this.audioElement ? this.audioElement.currentTime : 0;
   }
 
   public setVolume(val: number) {
@@ -178,8 +206,8 @@ export class AudioEngine {
       this.audioElement.volume = this.isMuted ? 0 : this.volume;
     }
     if (this.masterGain && this.ctx) {
-      const targetGain = this.isMuted ? 0 : this.volume * 0.8;
-      this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
+      const targetGain = this.isMuted ? 0 : this.volume;
+      this.masterGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
     }
   }
 
@@ -188,7 +216,6 @@ export class AudioEngine {
     this.setVolume(this.volume);
   }
 
-  // Playback Speed (0.75x, 1.0x, 1.25x, 1.5x, 2.0x)
   public setPlaybackRate(rate: number) {
     this.playbackRate = Math.max(0.25, Math.min(3.0, rate));
     if (this.audioElement) {
@@ -200,7 +227,6 @@ export class AudioEngine {
     return this.playbackRate;
   }
 
-  // Crossfade duration
   public setCrossfadeDuration(seconds: number) {
     this.crossfadeDuration = Math.max(0, Math.min(10, seconds));
   }
@@ -209,7 +235,6 @@ export class AudioEngine {
     return this.crossfadeDuration;
   }
 
-  // Media Session API for Lockscreen & System Notification Controls
   public updateMediaSession(
     song: Song | null,
     isPlaying: boolean,
@@ -250,19 +275,10 @@ export class AudioEngine {
 
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-      // Set action handlers
-      navigator.mediaSession.setActionHandler('play', () => {
-        actions.onPlay();
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        actions.onPause();
-      });
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        actions.onPrev();
-      });
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        actions.onNext();
-      });
+      navigator.mediaSession.setActionHandler('play', () => actions.onPlay());
+      navigator.mediaSession.setActionHandler('pause', () => actions.onPause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => actions.onPrev());
+      navigator.mediaSession.setActionHandler('nexttrack', () => actions.onNext());
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (details.seekTime !== undefined) {
           actions.onSeek(details.seekTime);
@@ -283,7 +299,6 @@ export class AudioEngine {
     }
   }
 
-  // Live Position scrubber state for Lockscreen & System Notification
   public updatePositionState(position: number, duration: number, rate: number = 1.0) {
     if (typeof window === 'undefined' || !('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) {
       return;
@@ -297,12 +312,13 @@ export class AudioEngine {
         playbackRate: Math.max(0.25, Math.min(3.0, rate)),
         position: Math.min(position, duration),
       });
-    } catch (e) {
-      // Ignore if browser restricts rapid positionState updates
-    }
+    } catch (e) {}
   }
 
   public getFrequencyData(): Uint8Array {
+    if (!this.analyser) {
+      this.initAnalyserSafe();
+    }
     if (!this.analyser) {
       return new Uint8Array(16);
     }

@@ -10,6 +10,8 @@ import {
   Music,
   FileText,
   ShoppingCart,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
@@ -24,23 +26,29 @@ export const StorePageView: React.FC = () => {
     userBalance,
     setIsTopUpModalOpen,
     setSongToBuy,
-    setIsBuyModalOpen,
     setIsDemoLimitModalOpen,
     setSelectedLrcSong,
     isSongPurchased,
-    downloadSong,
     openDownloadModal,
   } = useMusic();
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'owned'>('catalog');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const ownedSongs = songs.filter((s) => isSongPurchased(s.id));
   const rawList = activeTab === 'catalog' ? songs : ownedSongs;
 
-  // Requirement 6: Sort alphabetically A -> Z (ABCD) by song title
+  // Sort alphabetically A -> Z by song title
   const sortedSongs = [...rawList].sort((a, b) =>
     a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' })
   );
+
+  const totalSongs = sortedSongs.length;
+  const totalPages = Math.max(1, Math.ceil(totalSongs / PAGE_SIZE));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (validCurrentPage - 1) * PAGE_SIZE;
+  const paginatedSongs = sortedSongs.slice(startIndex, startIndex + PAGE_SIZE);
 
   return (
     <div className="space-y-6 pb-20 select-none">
@@ -49,13 +57,13 @@ export const StorePageView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#c273ed]">
             <ShoppingBag className="w-4 h-4" />
-            <span>Cửa Hàng Bản Quyền XuanKen Music</span>
+            <span>Cổng Mua Bản Quyền XuanKen Music</span>
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight mt-1">
-            Mua & Sở Hữu Âm Nhạc Chất Lượng Cao
+            Mua & Sở Hữu Nhạc Chất Lượng Cao
           </h1>
           <p className="text-xs text-white/70 mt-1 max-w-xl">
-            Nhạc chưa mua sẽ được nghe thử demo 60 giây. Sau khi mua, bạn được nghe trọn đời không giới hạn và tải về tệp gốc định dạng MP3 320kbps hoặc WAV Lossless.
+            Nhạc chưa mua sẽ được nghe thử demo 60 giây. Sau khi mua, bạn được nghe trọn đời không giới hạn và tải về định dạng MP3 320kbps hoặc WAV Lossless.
           </p>
         </div>
 
@@ -80,11 +88,14 @@ export const StorePageView: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs (Requirement 4: removed format filter buttons) */}
+      {/* Tabs */}
       <div className="flex items-center justify-between border-b border-white/10 pb-3">
         <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10">
           <button
-            onClick={() => setActiveTab('catalog')}
+            onClick={() => {
+              setActiveTab('catalog');
+              setCurrentPage(1);
+            }}
             style={activeTab === 'catalog' ? { backgroundColor: 'var(--color-accent)' } : undefined}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'catalog'
@@ -95,7 +106,10 @@ export const StorePageView: React.FC = () => {
             Tất Cả Bài Hát ({songs.length})
           </button>
           <button
-            onClick={() => setActiveTab('owned')}
+            onClick={() => {
+              setActiveTab('owned');
+              setCurrentPage(1);
+            }}
             style={activeTab === 'owned' ? { backgroundColor: 'var(--color-accent)' } : undefined}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'owned'
@@ -108,8 +122,8 @@ export const StorePageView: React.FC = () => {
         </div>
       </div>
 
-      {/* List / Table View of Store Items (Requirement 5 & 6: clean list view, fixed cover alignment, sorted ABCD) */}
-      {sortedSongs.length === 0 ? (
+      {/* List / Table View */}
+      {paginatedSongs.length === 0 ? (
         <div className="py-16 text-center rounded-2xl border border-dashed border-white/15 bg-white/5">
           <ShoppingBag className="w-12 h-12 text-white/30 mx-auto mb-2" />
           <h3 className="text-base font-bold text-white">Chưa Có Bài Hát Nào Trong Cửa Hàng</h3>
@@ -130,14 +144,17 @@ export const StorePageView: React.FC = () => {
                   <th className="py-3.5 px-4 text-center w-24">LRC</th>
                   <th className="py-3.5 px-4 text-center w-28">ĐỊNH DẠNG</th>
                   <th className="py-3.5 px-4 text-center w-36">GIÁ BẢN QUYỀN</th>
-                  <th className="py-3.5 px-4 text-right min-w-[180px]">THAO TÁC / MUA</th>
+                  {/* Requirement 6: Xóa chữ thao tác đi để chữ MUA phù hợp với dòng dưới là đã mua, bên cạnh ghi là TẢI VỀ */}
+                  <th className="py-3.5 px-4 text-center w-28">MUA</th>
+                  <th className="py-3.5 px-4 text-center w-28">TẢI VỀ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-sm">
-                {sortedSongs.map((song, index) => {
+                {paginatedSongs.map((song, index) => {
                   const isPurchased = isSongPurchased(song.id);
                   const isCurrent = currentSong?.id === song.id;
                   const isCurrentPlaying = isCurrent && isPlaying;
+                  const globalIdx = startIndex + index;
 
                   return (
                     <tr
@@ -157,7 +174,7 @@ export const StorePageView: React.FC = () => {
                             <Pause className="w-3.5 h-3.5 fill-current" />
                           </div>
                         ) : (
-                          <span className="group-hover:hidden">{index + 1}</span>
+                          <span className="group-hover:hidden">{globalIdx + 1}</span>
                         )}
                         {!isCurrentPlaying && (
                           <div className="hidden group-hover:flex w-6 h-6 rounded-full bg-white text-slate-900 items-center justify-center mx-auto shadow">
@@ -166,7 +183,7 @@ export const StorePageView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Bài Hát + Ảnh bìa căn chỉnh chuẩn xác không bị lệch */}
+                      {/* Bài hát */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <div
@@ -217,7 +234,7 @@ export const StorePageView: React.FC = () => {
                       >
                         <button
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white/80 hover:text-white text-xs font-semibold transition-colors"
-                          title="Bấm để xem và tải tệp lời bài hát (.lrc)"
+                          title="Bấm để xem và tải file lời (.lrc)"
                         >
                           <FileText className="w-3.5 h-3.5 text-[#c273ed] group-hover:text-white" />
                           <span>LRC</span>
@@ -242,37 +259,41 @@ export const StorePageView: React.FC = () => {
                         {(song.price ?? 20000).toLocaleString('vi-VN')} đ
                       </td>
 
-                      {/* Thao tác / Mua */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="inline-flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
-                          {isPurchased ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-xs inline-flex items-center gap-1 shadow-sm">
-                                <CheckCircle className="w-3.5 h-3.5" />
-                                <span>Đã mua</span>
-                              </span>
-                              <button
-                                onClick={() => openDownloadModal(song)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition-colors"
-                                title="Tải bài hát (MP3 hoặc WAV)"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Tải về</span>
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setSongToBuy(song);
-                                setIsDemoLimitModalOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
-                            >
-                              <ShoppingCart className="w-3.5 h-3.5" />
-                              <span>Mua Ngay</span>
-                            </button>
-                          )}
-                        </div>
+                      {/* MUA (Requirement 6) */}
+                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        {isPurchased ? (
+                          <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-xs inline-flex items-center gap-1 shadow-sm">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>Đã mua</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setSongToBuy(song);
+                              setIsDemoLimitModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>Mua Ngay</span>
+                          </button>
+                        )}
+                      </td>
+
+                      {/* TẢI VỀ (Requirement 6) */}
+                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        {isPurchased ? (
+                          <button
+                            onClick={() => openDownloadModal(song)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition-colors active:scale-95"
+                            title="Tải bài hát (MP3 hoặc WAV)"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Tải về</span>
+                          </button>
+                        ) : (
+                          <span className="text-white/30 text-xs font-mono">-</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -280,6 +301,44 @@ export const StorePageView: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Requirement 21: Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-3.5 border-t border-white/10 bg-white/[0.02]">
+              <p className="text-xs text-white/50">
+                Hiển thị {startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, totalSongs)} trong tổng số {totalSongs} bài hát (20 bài/trang)
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={validCurrentPage === 1}
+                  className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4 text-white" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                      validCurrentPage === pageNum
+                        ? 'bg-[#9b4de0] text-white shadow'
+                        : 'border border-white/10 hover:bg-white/10 text-white/70'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={validCurrentPage === totalPages}
+                  className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

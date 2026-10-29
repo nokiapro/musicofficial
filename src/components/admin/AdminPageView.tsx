@@ -796,13 +796,9 @@ export const AdminPageView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: QUẢN LÝ THÀNH VIÊN (Requirement 4) */}
+      {/* TAB 2: QUẢN LÝ THÀNH VIÊN */}
       {activeAdminTab === 'members' && (
         <div className="space-y-4">
-          <p className="text-xs text-white/50">
-            Quản lý thành viên, kiểm tra số dư ví, cộng/trừ/xóa tiền và phân quyền Admin/User
-          </p>
-
           {members.length === 0 ? (
             <div className="p-12 text-center rounded-2xl border border-dashed border-white/20 bg-white/5">
               <Users className="w-12 h-12 text-white/30 mx-auto mb-3" />
@@ -855,14 +851,14 @@ export const AdminPageView: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {/* Requirement 3: Nút Chỉnh sửa thành viên (Tên, vai trò, số tiền) */}
+                            {/* Requirement 7: Nút Sửa */}
                             <button
                               onClick={() => handleOpenEditMember(member)}
                               className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/30 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white font-bold flex items-center gap-1 transition-colors"
-                              title="Chỉnh sửa tên hiển thị, vai trò, số tiền"
+                              title="Chỉnh sửa thông tin thành viên"
                             >
                               <Edit3 className="w-3 h-3" />
-                              <span>Sửa Thành Viên</span>
+                              <span>Sửa</span>
                             </button>
 
                             <button

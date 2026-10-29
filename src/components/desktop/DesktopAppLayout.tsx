@@ -11,6 +11,8 @@ import { StorePageView } from '../store/StorePageView';
 import { AdminPageView } from '../admin/AdminPageView';
 import { Radio } from 'lucide-react';
 
+import { DesktopWeeklyTopPage } from './DesktopWeeklyTopPage';
+
 export const DesktopAppLayout: React.FC = () => {
   const { activeDesktopTab, playSong, songs } = useMusic();
 
@@ -61,6 +63,9 @@ export const DesktopAppLayout: React.FC = () => {
 
       case 'chart':
         return <DesktopChartPage />;
+
+      case 'weeklyTop':
+        return <DesktopWeeklyTopPage />;
 
       case 'library':
         return <DesktopLibraryPage />;

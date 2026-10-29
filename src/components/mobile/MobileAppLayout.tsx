@@ -67,10 +67,18 @@ export const MobileAppLayout: React.FC = () => {
     setPreferredAudioFormat,
   } = useMusic();
 
-  const [librarySubTab, setLibrarySubTab] = useState<'liked' | 'playlists' | 'purchased' | 'history'>('liked');
+  const [librarySubTab, setLibrarySubTab] = useState<'liked' | 'playlists' | 'purchased'>('liked');
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreatingPl, setIsCreatingPl] = useState(false);
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
+
+  // Requirement 21: 20 songs per page
+  const PAGE_SIZE = 20;
+  const [discoverPage, setDiscoverPage] = useState(1);
+  const [storePage, setStorePage] = useState(1);
+  const [chartPage, setChartPage] = useState(1);
+  const [likedPage, setLikedPage] = useState(1);
+  const [purchasedPage, setPurchasedPage] = useState(1);
 
   const totalSongs = songs.length;
   const purchasedCount = songs.filter((s) => isSongPurchased(s.id)).length;
@@ -78,6 +86,22 @@ export const MobileAppLayout: React.FC = () => {
 
   const likedSongs = songs.filter((s) => likedSongIds.includes(s.id));
   const ownedSongs = songs.filter((s) => isSongPurchased(s.id));
+
+  const totalDiscoverPages = Math.max(1, Math.ceil(songs.length / PAGE_SIZE));
+  const paginatedDiscoverSongs = songs.slice((discoverPage - 1) * PAGE_SIZE, discoverPage * PAGE_SIZE);
+
+  const totalStorePages = Math.max(1, Math.ceil(songs.length / PAGE_SIZE));
+  const paginatedStoreSongs = songs.slice((storePage - 1) * PAGE_SIZE, storePage * PAGE_SIZE);
+
+  const rankedSongs = [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0));
+  const totalChartPages = Math.max(1, Math.ceil(rankedSongs.length / PAGE_SIZE));
+  const paginatedChartSongs = rankedSongs.slice((chartPage - 1) * PAGE_SIZE, chartPage * PAGE_SIZE);
+
+  const totalLikedPages = Math.max(1, Math.ceil(likedSongs.length / PAGE_SIZE));
+  const paginatedLikedSongs = likedSongs.slice((likedPage - 1) * PAGE_SIZE, likedPage * PAGE_SIZE);
+
+  const totalPurchasedPages = Math.max(1, Math.ceil(ownedSongs.length / PAGE_SIZE));
+  const paginatedOwnedSongs = ownedSongs.slice((purchasedPage - 1) * PAGE_SIZE, purchasedPage * PAGE_SIZE);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return '03:30';
@@ -149,7 +173,7 @@ export const MobileAppLayout: React.FC = () => {
 
             {/* Songs List */}
             <div className="space-y-2">
-              {songs.map((song, idx) => {
+              {paginatedDiscoverSongs.map((song, idx) => {
                 const isCurrent = currentSong ? currentSong.id === song.id : false;
                 const isPurchased = isSongPurchased(song.id);
                 const isLiked = likedSongIds.includes(song.id);
@@ -170,7 +194,7 @@ export const MobileAppLayout: React.FC = () => {
                     {/* Left Info: STT, Cover, Title, Artist */}
                     <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
                       <span className="w-5 text-center text-xs font-bold text-white/40 font-mono">
-                        {song.stt || idx + 1}
+                        {song.stt || (discoverPage - 1) * PAGE_SIZE + idx + 1}
                       </span>
 
                       <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow bg-zinc-900 border border-white/10">
@@ -295,6 +319,44 @@ export const MobileAppLayout: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Pagination Controls (Requirement 21) */}
+            {totalDiscoverPages > 1 && (
+              <div className="flex items-center justify-between pt-3 pb-2 text-xs">
+                <span className="text-white/40 text-[11px]">
+                  Trang {discoverPage} / {totalDiscoverPages}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    disabled={discoverPage === 1}
+                    onClick={() => setDiscoverPage((p) => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                  >
+                    Trước
+                  </button>
+                  {Array.from({ length: totalDiscoverPages }, (_, i) => i + 1).map((pg) => (
+                    <button
+                      key={pg}
+                      onClick={() => setDiscoverPage(pg)}
+                      className={`w-7 h-7 rounded-xl text-xs font-bold transition-all ${
+                        discoverPage === pg
+                          ? 'bg-[#9b4de0] text-white shadow'
+                          : 'bg-white/5 text-white/60'
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                  <button
+                    disabled={discoverPage === totalDiscoverPages}
+                    onClick={() => setDiscoverPage((p) => Math.min(totalDiscoverPages, p + 1))}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -321,7 +383,7 @@ export const MobileAppLayout: React.FC = () => {
 
             {/* Songs in Store */}
             <div className="space-y-2">
-              {songs.map((song) => {
+              {paginatedStoreSongs.map((song) => {
                 const isPurchased = isSongPurchased(song.id);
                 return (
                   <div
@@ -366,11 +428,48 @@ export const MobileAppLayout: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Store Pagination (Requirement 21) */}
+            {totalStorePages > 1 && (
+              <div className="flex items-center justify-between pt-3 pb-2 text-xs">
+                <span className="text-white/40 text-[11px]">
+                  Trang {storePage} / {totalStorePages}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    disabled={storePage === 1}
+                    onClick={() => setStorePage((p) => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                  >
+                    Trước
+                  </button>
+                  {Array.from({ length: totalStorePages }, (_, i) => i + 1).map((pg) => (
+                    <button
+                      key={pg}
+                      onClick={() => setStorePage(pg)}
+                      className={`w-7 h-7 rounded-xl text-xs font-bold transition-all ${
+                        storePage === pg
+                          ? 'bg-[#9b4de0] text-white shadow'
+                          : 'bg-white/5 text-white/60'
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                  <button
+                    disabled={storePage === totalStorePages}
+                    onClick={() => setStorePage((p) => Math.min(totalStorePages, p + 1))}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         );
 
       case 'chart': {
-        const rankedSongs = [...songs].sort((a, b) => (b.playCount || 0) - (a.playCount || 0));
         return (
           <div className="space-y-3 px-3 pb-32 pt-2 select-none">
             <div className="flex items-center justify-between pb-1">
@@ -385,10 +484,9 @@ export const MobileAppLayout: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              {rankedSongs.map((song, i) => {
-                const rank = i + 1;
+              {paginatedChartSongs.map((song, i) => {
+                const rank = (chartPage - 1) * PAGE_SIZE + i + 1;
                 const isCurrent = currentSong?.id === song.id;
-                const isPurchased = isSongPurchased(song.id);
                 return (
                   <div
                     key={song.id}
@@ -446,6 +544,44 @@ export const MobileAppLayout: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Chart Pagination (Requirement 21) */}
+            {totalChartPages > 1 && (
+              <div className="flex items-center justify-between pt-3 pb-2 text-xs">
+                <span className="text-white/40 text-[11px]">
+                  Trang {chartPage} / {totalChartPages}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    disabled={chartPage === 1}
+                    onClick={() => setChartPage((p) => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                  >
+                    Trước
+                  </button>
+                  {Array.from({ length: totalChartPages }, (_, i) => i + 1).map((pg) => (
+                    <button
+                      key={pg}
+                      onClick={() => setChartPage(pg)}
+                      className={`w-7 h-7 rounded-xl text-xs font-bold transition-all ${
+                        chartPage === pg
+                          ? 'bg-[#9b4de0] text-white shadow'
+                          : 'bg-white/5 text-white/60'
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                  <button
+                    disabled={chartPage === totalChartPages}
+                    onClick={() => setChartPage((p) => Math.min(totalChartPages, p + 1))}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                  >
+                    Sau
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         );
       }
@@ -477,7 +613,7 @@ export const MobileAppLayout: React.FC = () => {
               </button>
             </div>
 
-            {/* Sub-tabs: Yêu thích, Playlists, Đã mua, Lịch sử */}
+            {/* Sub-tabs: Yêu thích, Playlists, Đã mua (Lịch sử removed per Req 9) */}
             <div className="flex items-center p-1 bg-white/5 border border-white/10 rounded-xl gap-1 overflow-x-auto no-scrollbar text-xs">
               <button
                 onClick={() => setLibrarySubTab('liked')}
@@ -509,16 +645,6 @@ export const MobileAppLayout: React.FC = () => {
               >
                 Đã mua ({ownedSongs.length})
               </button>
-              <button
-                onClick={() => setLibrarySubTab('history')}
-                className={`flex-1 py-1 px-2.5 rounded-lg font-bold transition-all whitespace-nowrap text-center ${
-                  librarySubTab === 'history'
-                    ? 'bg-[#9b4de0] text-white shadow'
-                    : 'text-white/60 hover:text-white'
-                }`}
-              >
-                Lịch sử
-              </button>
             </div>
 
             {/* Subtab 1: Yêu thích */}
@@ -529,7 +655,7 @@ export const MobileAppLayout: React.FC = () => {
                     Chưa có bài hát yêu thích. Hãy bấm icon tim để lưu bài hát!
                   </div>
                 ) : (
-                  likedSongs.map((song) => (
+                  paginatedLikedSongs.map((song) => (
                     <div
                       key={song.id}
                       onClick={() => playSong(song)}
@@ -552,6 +678,44 @@ export const MobileAppLayout: React.FC = () => {
                       </div>
                     </div>
                   ))
+                )}
+
+                {/* Liked Pagination (Requirement 21) */}
+                {totalLikedPages > 1 && (
+                  <div className="flex items-center justify-between pt-3 pb-2 text-xs">
+                    <span className="text-white/40 text-[11px]">
+                      Trang {likedPage} / {totalLikedPages}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        disabled={likedPage === 1}
+                        onClick={() => setLikedPage((p) => Math.max(1, p - 1))}
+                        className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                      >
+                        Trước
+                      </button>
+                      {Array.from({ length: totalLikedPages }, (_, i) => i + 1).map((pg) => (
+                        <button
+                          key={pg}
+                          onClick={() => setLikedPage(pg)}
+                          className={`w-7 h-7 rounded-xl text-xs font-bold transition-all ${
+                            likedPage === pg
+                              ? 'bg-[#9b4de0] text-white shadow'
+                              : 'bg-white/5 text-white/60'
+                          }`}
+                        >
+                          {pg}
+                        </button>
+                      ))}
+                      <button
+                        disabled={likedPage === totalLikedPages}
+                        onClick={() => setLikedPage((p) => Math.min(totalLikedPages, p + 1))}
+                        className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                      >
+                        Sau
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -642,7 +806,7 @@ export const MobileAppLayout: React.FC = () => {
                     Chưa có bài hát bản quyền nào được mua.
                   </div>
                 ) : (
-                  ownedSongs.map((song) => (
+                  paginatedOwnedSongs.map((song) => (
                     <div
                       key={song.id}
                       onClick={() => playSong(song)}
@@ -668,30 +832,43 @@ export const MobileAppLayout: React.FC = () => {
                     </div>
                   ))
                 )}
-              </div>
-            )}
 
-            {/* Subtab 4: Lịch sử */}
-            {librarySubTab === 'history' && (
-              <div className="space-y-2">
-                {history.length === 0 ? (
-                  <div className="py-12 text-center text-white/40 text-xs bg-white/5 rounded-2xl border border-white/5">
-                    Lịch sử nghe đang trống.
-                  </div>
-                ) : (
-                  history.map((song, i) => (
-                    <div
-                      key={`${song.id}-${i}`}
-                      onClick={() => playSong(song)}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 active:bg-white/10 cursor-pointer"
-                    >
-                      <div className="truncate min-w-0 flex-1">
-                        <p className="text-xs font-bold text-white truncate">{song.title}</p>
-                        <p className="text-[10px] text-white/50 truncate">{song.artists}</p>
-                      </div>
-                      <span className="text-[10px] text-white/40">{formatDuration(song.duration)}</span>
+                {/* Purchased Pagination (Requirement 21) */}
+                {totalPurchasedPages > 1 && (
+                  <div className="flex items-center justify-between pt-3 pb-2 text-xs">
+                    <span className="text-white/40 text-[11px]">
+                      Trang {purchasedPage} / {totalPurchasedPages}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        disabled={purchasedPage === 1}
+                        onClick={() => setPurchasedPage((p) => Math.max(1, p - 1))}
+                        className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                      >
+                        Trước
+                      </button>
+                      {Array.from({ length: totalPurchasedPages }, (_, i) => i + 1).map((pg) => (
+                        <button
+                          key={pg}
+                          onClick={() => setPurchasedPage(pg)}
+                          className={`w-7 h-7 rounded-xl text-xs font-bold transition-all ${
+                            purchasedPage === pg
+                              ? 'bg-[#9b4de0] text-white shadow'
+                              : 'bg-white/5 text-white/60'
+                          }`}
+                        >
+                          {pg}
+                        </button>
+                      ))}
+                      <button
+                        disabled={purchasedPage === totalPurchasedPages}
+                        onClick={() => setPurchasedPage((p) => Math.min(totalPurchasedPages, p + 1))}
+                        className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                      >
+                        Sau
+                      </button>
                     </div>
-                  ))
+                  </div>
                 )}
               </div>
             )}

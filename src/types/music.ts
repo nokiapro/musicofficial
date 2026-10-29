@@ -10,7 +10,7 @@ export interface Song {
   stt?: number;
   title: string;
   artists: string;
-  duration: number; // calculated or specified in seconds
+  duration: number; // in seconds
   coverGradient?: string;
   coverImage?: string; // Link ảnh bìa trực tuyến
   album?: string;
@@ -37,6 +37,7 @@ export interface AppUser {
   avatarUrl?: string; // Link ảnh hoặc base64 ảnh đại diện
   balance: number; // Số dư ví VNĐ
   purchasedSongIds: string[];
+  blockedSongIds?: string[]; // Danh sách bài hát bị chặn
   role: 'admin' | 'user';
   createdAt: string;
 }
@@ -45,7 +46,7 @@ export type ThemeId = 'purple' | 'blue' | 'sunset' | 'emerald' | 'gold' | 'dark'
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
-export type ActiveDesktopTab = 'discover' | 'store' | 'admin' | 'chart' | 'radio' | 'library';
+export type ActiveDesktopTab = 'discover' | 'store' | 'admin' | 'chart' | 'radio' | 'library' | 'weeklyTop';
 
 export type ActiveMobileTab = 'discover' | 'store' | 'admin' | 'chart' | 'library' | 'profile';
 
@@ -62,7 +63,7 @@ export interface Playlist {
 export interface Voucher {
   id: string;
   code: string; // e.g. XUANKEN50
-  discountType: 'percent' | 'fixed'; // percent (e.g. 50%) or fixed (e.g. 20000 VND)
+  discountType: 'percent' | 'fixed'; // percent or fixed
   discountValue: number;
   minSpend?: number;
   description: string;
@@ -78,3 +79,8 @@ export interface RewindStats {
   lastUpdated: string;
 }
 
+export interface WeeklyTopData {
+  weekKey: string; // e.g. "2026-W44"
+  songPlays: Record<string, number>;
+  lastResetAt: string;
+}

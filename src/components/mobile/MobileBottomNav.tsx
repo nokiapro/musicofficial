@@ -112,9 +112,6 @@ export const MobileBottomNav: React.FC = () => {
               }`}>
                 {item.label}
               </span>
-              {isActive && (
-                <span className={`w-1 h-1 rounded-full ${item.dotColor} mt-0.5 shadow-sm`} />
-              )}
             </button>
           );
         })}

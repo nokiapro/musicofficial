@@ -7,12 +7,22 @@ export const XuanKenRewindModal: React.FC = () => {
 
   if (!isRewindModalOpen) return null;
 
-  const totalMinutes = Math.floor(rewindStats.totalSeconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+  const totalSecs = Math.max(0, Math.floor(rewindStats.totalSeconds || 0));
+  const hours = Math.floor(totalSecs / 3600);
+  const remainingSecs = totalSecs % 3600;
+  const minutes = Math.floor(remainingSecs / 60);
+  const seconds = remainingSecs % 60;
 
-  // Calculate top songs
-  const songPlaysList = Object.entries(rewindStats.songPlays)
+  const formattedListeningTime =
+    hours > 0
+      ? `${hours} giờ ${minutes} phút ${seconds} giây`
+      : minutes > 0
+      ? `${minutes} phút ${seconds} giây`
+      : `${seconds} giây`;
+
+  // Calculate top songs accurately from rewindStats.songPlays
+  const songPlaysList = Object.entries(rewindStats.songPlays || {})
+    .filter(([_, count]) => count > 0)
     .map(([id, count]) => {
       const song = songs.find((s) => s.id === id);
       return { id, count, song };
@@ -21,12 +31,14 @@ export const XuanKenRewindModal: React.FC = () => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // Calculate top artist
-  const topArtistEntry = Object.entries(rewindStats.artistPlays)
+  // Calculate top artist accurately from rewindStats.artistPlays
+  const topArtistEntry = Object.entries(rewindStats.artistPlays || {})
+    .filter(([_, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])[0];
-  const topArtist = topArtistEntry ? topArtistEntry[0] : 'XuanKen Official';
+  const topArtist = topArtistEntry ? topArtistEntry[0] : (songs[0]?.artists || 'XuanKen Official');
 
   // Badge calculation
+  const totalMinutes = Math.floor(totalSecs / 60);
   let badgeTitle = 'Thính Giả Khởi Động';
   let badgeDesc = 'Bạn đang bắt đầu hành trình thưởng thức âm nhạc bản quyền.';
   if (totalMinutes >= 120) {
@@ -90,7 +102,7 @@ export const XuanKenRewindModal: React.FC = () => {
               <div>
                 <p className="text-[10px] text-white/50 uppercase font-bold">Thời gian nghe</p>
                 <p className="text-base font-black text-white">
-                  {hours > 0 ? `${hours}h ${minutes}m` : `${minutes} phút`}
+                  {formattedListeningTime}
                 </p>
               </div>
             </div>

@@ -123,23 +123,15 @@ export const MobileProfileView: React.FC = () => {
 
       {/* TOP USER CARD */}
       {!currentUser ? (
-        /* Trạng thái chưa đăng nhập: Avatar mặc định + Chữ Đăng Nhập bên cạnh */
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 backdrop-blur-md shadow-lg flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3.5">
-            <div className="w-16 h-16 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center text-white/60 shrink-0 shadow-inner">
-              <User className="w-8 h-8 stroke-[1.5]" />
-            </div>
-            <div>
-              <p className="text-xs text-white/50 font-medium">Khách vãng lai</p>
-              <h2 className="text-base font-bold text-white tracking-tight">Tài Khoản XuanKen</h2>
-              <p className="text-[10px] text-white/40 mt-0.5">Chưa đăng nhập</p>
-            </div>
+        /* Requirement 14: Xóa khách vãng lai, xóa tài khoản xuanken, căn giữa avatar với chữ chưa đăng nhập */
+        <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg flex flex-col items-center justify-center text-center space-y-3">
+          <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center text-white/50 shadow-inner">
+            <User className="w-10 h-10 stroke-[1.5]" />
           </div>
-
-          {/* Chữ / Nút Đăng Nhập bên cạnh */}
+          <p className="text-sm font-bold text-white/80">Chưa đăng nhập</p>
           <button
             onClick={() => setIsLoginModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all shrink-0"
+            className="px-6 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all mt-1"
           >
             <LogIn className="w-4 h-4" />
             <span>Đăng Nhập</span>
@@ -331,13 +323,14 @@ export const MobileProfileView: React.FC = () => {
         </div>
       )}
 
-      {/* TIỆN ÍCH & CÀI ĐẶT: THÊM MỤC THAY THEME WEB NỔI BẬT */}
-      <div className="space-y-2">
-        <h3 className="text-xs font-bold text-white/70 uppercase tracking-wider px-1">
-          Giao Diện & Tiện Ích
-        </h3>
+      {/* TIỆN ÍCH & CÀI ĐẶT: ẨN KHI CHƯA ĐĂNG NHẬP, ĐÃ ĐĂNG NHẬP MỚI HIỆN (Requirement 14) */}
+      {currentUser && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold text-white/70 uppercase tracking-wider px-1">
+            Giao Diện & Tiện Ích
+          </h3>
 
-        <div className="rounded-2xl bg-white/5 border border-white/10 divide-y divide-white/5 overflow-hidden">
+          <div className="rounded-2xl bg-white/5 border border-white/10 divide-y divide-white/5 overflow-hidden">
           {/* Đổi Theme Web (Yêu cầu 4) */}
           <div
             onClick={() => setIsThemeModalOpen(true)}
@@ -422,6 +415,7 @@ export const MobileProfileView: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* ĐĂNG XUẤT (NẾU ĐÃ ĐĂNG NHẬP) */}
       {currentUser && (

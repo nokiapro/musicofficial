@@ -689,4 +689,59 @@ export const MusicService = {
     document.body.removeChild(a);
     return { success: true, message: `Bắt đầu tải bài hát: ${fileName}` };
   },
+
+  // Weekly Top Plays sync
+  async fetchWeeklyPlays(weekKey: string): Promise<Record<string, number>> {
+    try {
+      const snap = await get(ref(rtdb, `weekly_plays/${weekKey}`));
+      if (snap.exists()) {
+        return snap.val() || {};
+      }
+    } catch (e) {
+      console.warn('Weekly plays fetch notice:', e);
+    }
+    try {
+      const local = localStorage.getItem(`xuanken_weekly_${weekKey}`);
+      if (local) return JSON.parse(local);
+    } catch (e) {}
+    return {};
+  },
+
+  async saveWeeklyPlays(weekKey: string, songPlays: Record<string, number>): Promise<void> {
+    const cleanPlays = cleanForFirebase(songPlays) || {};
+    try {
+      localStorage.setItem(`xuanken_weekly_${weekKey}`, JSON.stringify(cleanPlays));
+      await set(ref(rtdb, `weekly_plays/${weekKey}`), cleanPlays);
+    } catch (e) {
+      console.warn('Weekly plays save notice:', e);
+    }
+  },
+
+  // User Settings sync (theme, crossfade, format, liked, blocked)
+  async saveUserSettings(uid: string, settings: any): Promise<void> {
+    const clean = cleanForFirebase(settings);
+    try {
+      await update(ref(rtdb, `members/${uid}`), clean);
+      await setDoc(doc(db, 'members', uid), clean, { merge: true });
+    } catch (e) {
+      console.warn('User settings save notice:', e);
+    }
+  },
+
+  // Save report error issue
+  async saveSongReport(songId: string, issue: string, userEmail: string): Promise<void> {
+    try {
+      const reportRef = ref(rtdb, `song_reports/${songId}_${Date.now()}`);
+      await set(reportRef, {
+        songId,
+        issue,
+        userEmail,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('Save song report notice:', e);
+    }
+  },
 };
+
+

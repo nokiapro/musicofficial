@@ -144,6 +144,19 @@ interface MusicContextType {
   setIsDownloadModalOpen: (open: boolean) => void;
   songToDownload: Song | null;
   openDownloadModal: (song: Song) => void;
+
+  // Weekly Top (Requirement 22)
+  weeklyPlays: Record<string, number>;
+  currentWeekKey: string;
+
+  // Blocked Songs (Requirement 20)
+  blockedSongIds: string[];
+  blockSong: (songId: string) => void;
+  unblockSong: (songId: string) => void;
+  isSongBlocked: (songId: string) => boolean;
+
+  // Report Issue (Requirement 20)
+  reportSongIssue: (songId: string, issue: string) => Promise<{ success: boolean; message: string }>;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -259,7 +272,49 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Firebase Auth State Listener
+  // Weekly Top Plays (Requirement 22)
+  const [currentWeekKey] = useState<string>(() => {
+    const d = new Date();
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${date.getUTCFullYear()}-W${weekNo}`;
+  });
+
+  const [weeklyPlays, setWeeklyPlays] = useState<Record<string, number>>(() => {
+    try {
+      const local = localStorage.getItem('xuanken_weekly');
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (parsed && parsed.weekKey) {
+          return parsed.songPlays || {};
+        }
+      }
+    } catch (e) {}
+    return {};
+  });
+
+  // Blocked songs list (Requirement 20)
+  const [blockedSongIds, setBlockedSongIds] = useState<string[]>(() => {
+    try {
+      const local = localStorage.getItem('xuanken_blocked_songs');
+      return local ? JSON.parse(local) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Fetch weekly plays from Firebase
+  useEffect(() => {
+    MusicService.fetchWeeklyPlays(currentWeekKey).then((plays) => {
+      if (plays && Object.keys(plays).length > 0) {
+        setWeeklyPlays(plays);
+      }
+    });
+  }, [currentWeekKey]);
+
+  // Firebase Auth State Listener & Device Sync (Requirement 23)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
       setIsAuthLoading(true);
@@ -276,6 +331,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Admin',
             balance: 500000,
             purchasedSongIds: [],
+            blockedSongIds: [],
             role: 'admin',
             createdAt: new Date().toLocaleDateString('vi-VN'),
           };
@@ -292,9 +348,31 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setMembers((prev) => prev.map((m) => (m.uid === currentMember!.uid ? currentMember! : m)));
         }
 
+        // Restore user settings and states from Firebase (Requirement 23)
         setCurrentUser(currentMember);
         setUserBalance(currentMember.balance);
-        setPurchasedSongIds(currentMember.purchasedSongIds || []);
+        if (currentMember.purchasedSongIds) {
+          setPurchasedSongIds(currentMember.purchasedSongIds);
+        }
+        if (currentMember.blockedSongIds) {
+          setBlockedSongIds(currentMember.blockedSongIds);
+        }
+        const memberAny = currentMember as any;
+        if (memberAny.likedSongIds && Array.isArray(memberAny.likedSongIds)) {
+          setLikedSongIds(memberAny.likedSongIds);
+        }
+        if (memberAny.theme) {
+          setThemeState(memberAny.theme);
+          try {
+            localStorage.setItem('xuanken_theme', memberAny.theme);
+          } catch (e) {}
+        }
+        if (memberAny.crossfadeDuration !== undefined) {
+          setCrossfadeDurationState(memberAny.crossfadeDuration);
+        }
+        if (memberAny.preferredAudioFormat) {
+          setPreferredAudioFormatState(memberAny.preferredAudioFormat);
+        }
       } else {
         setCurrentUser(null);
         setUserBalance(0);
@@ -548,13 +626,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return newStats;
     });
 
+    // Update Weekly Plays (Requirement 22)
+    setWeeklyPlays((prevWeekly) => {
+      const updated = {
+        ...prevWeekly,
+        [song.id]: (prevWeekly[song.id] || 0) + 1,
+      };
+      MusicService.saveWeeklyPlays(currentWeekKey, updated);
+      return updated;
+    });
+
     if (currentSong?.id !== song.id) {
       if (currentSong) {
         setHistory((prev) => [currentSong, ...prev.filter((s) => s.id !== currentSong.id)]);
       }
       setCurrentSong(activeSong);
       setCurrentTime(0);
-      // Requirement 2: Always keep full song duration on progress bar (default 210s = 3:30)
       setDuration(song.duration && song.duration > 0 ? song.duration : 210);
     } else {
       setCurrentSong(activeSong);
@@ -574,7 +661,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const togglePlay = () => {
     if (!currentSong && songs.length > 0) {
-      playSong(songs[0]);
+      const unblocked = songs.filter((s) => !blockedSongIds.includes(s.id));
+      if (unblocked.length > 0) {
+        playSong(unblocked[0]);
+      }
       return;
     }
     setIsPlaying((prev) => !prev);
@@ -600,9 +690,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const nextSong = () => {
-    if (queue.length === 0) {
+    const unblockedQueue = queue.filter((s) => !blockedSongIds.includes(s.id));
+    if (unblockedQueue.length === 0) {
       if (repeatMode === 'all') {
-        const resetQueue = songs.filter((s) => s.id !== currentSong?.id);
+        const resetQueue = songs.filter((s) => s.id !== currentSong?.id && !blockedSongIds.includes(s.id));
         setQueue(resetQueue);
         if (resetQueue.length > 0) {
           playSong(resetQueue[0]);
@@ -615,11 +706,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     let nextIndex = 0;
     if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * queue.length);
+      nextIndex = Math.floor(Math.random() * unblockedQueue.length);
     }
 
-    const next = queue[nextIndex];
-    const newQueue = queue.filter((_, i) => i !== nextIndex);
+    const next = unblockedQueue[nextIndex];
+    const newQueue = queue.filter((s) => s.id !== next.id && !blockedSongIds.includes(s.id));
     setQueue(newQueue);
     playSong(next);
   };
@@ -630,9 +721,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    if (history.length > 0) {
-      const prev = history[0];
-      setHistory((h) => h.slice(1));
+    const unblockedHistory = history.filter((s) => !blockedSongIds.includes(s.id));
+    if (unblockedHistory.length > 0) {
+      const prev = unblockedHistory[0];
+      setHistory((h) => h.filter((s) => s.id !== prev.id));
       if (currentSong) setQueue((q) => [currentSong, ...q]);
       playSong(prev);
     } else {
@@ -641,9 +733,51 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleLike = (songId: string) => {
-    setLikedSongIds((prev) =>
-      prev.includes(songId) ? prev.filter((id) => id !== songId) : [...prev, songId]
-    );
+    setLikedSongIds((prev) => {
+      const next = prev.includes(songId) ? prev.filter((id) => id !== songId) : [...prev, songId];
+      if (currentUser?.uid) {
+        MusicService.saveUserSettings(currentUser.uid, { likedSongIds: next });
+      }
+      return next;
+    });
+  };
+
+  const blockSong = (songId: string) => {
+    setBlockedSongIds((prev) => {
+      const next = prev.includes(songId) ? prev : [...prev, songId];
+      try {
+        localStorage.setItem('xuanken_blocked_songs', JSON.stringify(next));
+      } catch (e) {}
+      if (currentUser?.uid) {
+        MusicService.saveUserSettings(currentUser.uid, { blockedSongIds: next });
+      }
+      return next;
+    });
+    if (currentSong?.id === songId) {
+      nextSong();
+    }
+  };
+
+  const unblockSong = (songId: string) => {
+    setBlockedSongIds((prev) => {
+      const next = prev.filter((id) => id !== songId);
+      try {
+        localStorage.setItem('xuanken_blocked_songs', JSON.stringify(next));
+      } catch (e) {}
+      if (currentUser?.uid) {
+        MusicService.saveUserSettings(currentUser.uid, { blockedSongIds: next });
+      }
+      return next;
+    });
+  };
+
+  const isSongBlocked = (songId: string): boolean => {
+    return blockedSongIds.includes(songId);
+  };
+
+  const reportSongIssue = async (songId: string, issue: string): Promise<{ success: boolean; message: string }> => {
+    await MusicService.saveSongReport(songId, issue, currentUser?.email || 'Khách vãng lai');
+    return { success: true, message: 'Đã gửi báo cáo lỗi thành công!' };
   };
 
   const toggleShuffle = () => setIsShuffle((prev) => !prev);
@@ -678,6 +812,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       document.body.setAttribute('data-theme', t);
       localStorage.setItem('xuanken_theme', t);
     } catch (e) {}
+    if (currentUser?.uid) {
+      MusicService.saveUserSettings(currentUser.uid, { theme: t });
+    }
   };
 
   useEffect(() => {
@@ -1216,6 +1353,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsDownloadModalOpen,
         songToDownload,
         openDownloadModal,
+        weeklyPlays,
+        currentWeekKey,
+        blockedSongIds,
+        blockSong,
+        unblockSong,
+        isSongBlocked,
+        reportSongIssue,
       }}
     >
       {children}
