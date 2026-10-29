@@ -23,6 +23,7 @@ import {
   History,
   Trash2,
   MoreVertical,
+  FolderHeart,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { MobileTopBar } from './MobileTopBar';
@@ -65,6 +66,8 @@ export const MobileAppLayout: React.FC = () => {
     rewindStats,
     preferredAudioFormat,
     setPreferredAudioFormat,
+    currentUser,
+    setIsLoginModalOpen,
   } = useMusic();
 
   const [librarySubTab, setLibrarySubTab] = useState<'liked' | 'playlists' | 'purchased'>('liked');
@@ -368,16 +371,16 @@ export const MobileAppLayout: React.FC = () => {
               <div>
                 <p className="text-[10px] font-bold uppercase text-[#c273ed]">Cửa Hàng XuanKen</p>
                 <p className="text-sm font-bold text-white">Mua Nhạc Bản Quyền Full</p>
-                <p className="text-[11px] text-amber-300 font-bold mt-0.5">
-                  Số dư ví: {userBalance.toLocaleString('vi-VN')} đ
+                <p className="text-[11px] text-amber-300 font-bold mt-0.5 whitespace-nowrap">
+                  Số dư ví: <span className="whitespace-nowrap">{userBalance.toLocaleString('vi-VN')}&nbsp;đ</span>
                 </p>
               </div>
               <button
                 onClick={() => setIsTopUpModalOpen(true)}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-all active:scale-95 flex items-center gap-1"
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-all active:scale-95 flex items-center gap-1 shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Nạp ví</span>
+                <span className="whitespace-nowrap">Nạp ví</span>
               </button>
             </div>
 
@@ -398,8 +401,15 @@ export const MobileAppLayout: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-[10px] text-white/50 truncate mt-0.5">{song.artists}</p>
-                      <p className="text-xs font-bold text-amber-400 mt-1">
-                        {isPurchased ? 'ĐÃ SỞ HỮU' : `${(song.price ?? 20000).toLocaleString('vi-VN')} đ`}
+                      {/* Item 10: Cho chữ đ cùng 1 hàng đừng xuống dòng */}
+                      <p className="text-xs font-bold text-amber-400 mt-1 whitespace-nowrap">
+                        {isPurchased ? (
+                          <span className="text-emerald-400 font-extrabold whitespace-nowrap">ĐÃ SỞ HỮU</span>
+                        ) : (
+                          <span className="whitespace-nowrap font-mono">
+                            {(song.price ?? 20000).toLocaleString('vi-VN')}&nbsp;đ
+                          </span>
+                        )}
                       </p>
                     </div>
 
@@ -586,7 +596,36 @@ export const MobileAppLayout: React.FC = () => {
         );
       }
 
-      case 'library':
+      case 'library': {
+        if (!currentUser) {
+          return (
+            <div className="pb-32 px-4 pt-12 flex flex-col items-center justify-center text-center select-none">
+              <div
+                className="w-16 h-16 rounded-3xl flex items-center justify-center text-white mb-4 shadow-xl"
+                style={{ backgroundColor: 'var(--color-accent)' }}
+              >
+                <FolderHeart className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-black text-white mb-2 font-['Roboto_Condensed'] uppercase tracking-tight">
+                Thư Viện Cá Nhân
+              </h2>
+              <p className="text-xs text-white/60 max-w-xs mb-6 leading-relaxed">
+                Vui lòng đăng nhập tài khoản để truy cập Thư Viện Cá Nhân, xem danh sách bài hát yêu thích, bài hát đã mua và quản lý các danh sách phát của riêng bạn.
+              </p>
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                style={{ backgroundColor: 'var(--color-accent)' }}
+                className="px-6 py-2.5 rounded-xl text-white font-bold text-xs shadow-lg hover:opacity-90 transition-all active:scale-95 flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Đăng Nhập Ngay</span>
+              </button>
+            </div>
+          );
+        }
+
+        const userPlaylists = playlists.filter((p) => !p.userId || p.userId === currentUser.uid);
+
         return (
           <div className="space-y-3 px-3 pb-32 pt-2 select-none">
             {/* XuanKen Rewind 2026 Banner */}
@@ -633,7 +672,7 @@ export const MobileAppLayout: React.FC = () => {
                     : 'text-white/60 hover:text-white'
                 }`}
               >
-                Playlists ({playlists.length})
+                Playlists ({userPlaylists.length})
               </button>
               <button
                 onClick={() => setLibrarySubTab('purchased')}
@@ -762,12 +801,12 @@ export const MobileAppLayout: React.FC = () => {
                   </form>
                 )}
 
-                {playlists.length === 0 ? (
+                {userPlaylists.length === 0 ? (
                   <div className="py-12 text-center text-white/40 text-xs bg-white/5 rounded-2xl border border-white/5">
                     Chưa có playlist nào. Hãy bấm "+ Tạo mới" để tạo danh sách phát riêng!
                   </div>
                 ) : (
-                  playlists.map((pl) => (
+                  userPlaylists.map((pl) => (
                     <div
                       key={pl.id}
                       className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-2"
@@ -874,6 +913,7 @@ export const MobileAppLayout: React.FC = () => {
             )}
           </div>
         );
+      }
 
       case 'admin':
         return (

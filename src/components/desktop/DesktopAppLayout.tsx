@@ -12,9 +12,10 @@ import { AdminPageView } from '../admin/AdminPageView';
 import { Radio } from 'lucide-react';
 
 import { DesktopWeeklyTopPage } from './DesktopWeeklyTopPage';
+import { DesktopProfileModal } from './DesktopProfileModal';
 
 export const DesktopAppLayout: React.FC = () => {
-  const { activeDesktopTab, playSong, songs } = useMusic();
+  const { activeDesktopTab, playSong, songs, isProfileModalOpen, setIsProfileModalOpen } = useMusic();
 
   const radioStations = [
     {
@@ -136,6 +137,12 @@ export const DesktopAppLayout: React.FC = () => {
 
       {/* Fixed Bottom Player Bar */}
       <DesktopPlayerBar />
+
+      {/* Desktop Profile Modal */}
+      <DesktopProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
     </div>
   );
 };

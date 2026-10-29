@@ -34,6 +34,7 @@ export const DesktopHeader: React.FC = () => {
     currentUser,
     logout,
     setIsLoginModalOpen,
+    setIsProfileModalOpen,
   } = useMusic();
 
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -84,11 +85,14 @@ export const DesktopHeader: React.FC = () => {
 
   return (
     <header
-      className="h-16 px-8 flex items-center justify-between gap-6 border-b backdrop-blur-md sticky top-0 z-30 select-none transition-colors duration-200"
+      className="h-16 px-8 grid grid-cols-[1fr_minmax(280px,580px)_1fr] items-center gap-4 border-b backdrop-blur-md sticky top-0 z-30 select-none transition-colors duration-200"
       style={{ backgroundColor: 'var(--bg-header)', borderColor: 'var(--border-color)' }}
     >
-      {/* Left: Clean Search Bar directly (Arrows removed) */}
-      <div className="relative flex-1 max-w-xl">
+      {/* Left spacer to perfectly balance the right side controls */}
+      <div className="hidden lg:block" />
+
+      {/* Center: Clean Search Bar (Item 5: Căn giữa khung tìm kiếm) */}
+      <div className="relative w-full max-w-xl mx-auto">
         <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/10 border border-white/10 focus-within:border-[#9b4de0] focus-within:bg-[#231b2e] transition-all">
           <Search className="w-4 h-4 text-white/50 shrink-0" />
           <input
@@ -179,24 +183,46 @@ export const DesktopHeader: React.FC = () => {
       </div>
 
       {/* Right: Login/Profile & Setting Gear Icon on the far right */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-end gap-3">
         {/* User Account / Login Button */}
         {currentUser ? (
           <div className="flex items-center gap-2.5">
-            <div className="flex flex-col text-right">
-              <span className="text-xs font-bold text-white max-w-[130px] truncate leading-tight">
+            <div
+              onClick={() => setIsProfileModalOpen(true)}
+              className="flex flex-col text-right cursor-pointer group"
+              title="Chỉnh sửa tài khoản"
+            >
+              <span className="text-xs font-bold text-white max-w-[130px] truncate leading-tight group-hover:text-[#c273ed] transition-colors">
                 {currentUser.displayName || currentUser.email}
               </span>
               <span className="text-[10px] text-[#c273ed] uppercase font-black">
                 {currentUser.role}
               </span>
             </div>
+
+            {/* Requirement 2: Ảnh 2 ở giao diện PC đồng bộ cả avatar nữa */}
             <button
-              onClick={logout}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500/20 text-white hover:text-red-300 flex items-center justify-center text-xs font-bold transition-colors"
-              title="Đăng xuất"
+              onClick={() => setIsProfileModalOpen(true)}
+              className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20 bg-zinc-900 shrink-0 flex items-center justify-center shadow-md cursor-pointer hover:ring-2 hover:ring-[#c273ed] transition-all"
+              title={`${currentUser.displayName || 'Tài khoản'} - Bấm để chỉnh sửa tài khoản & avatar`}
             >
-              XK
+              {currentUser.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.displayName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : null}
+              <div
+                className={`w-full h-full bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold text-xs ${
+                  currentUser.avatarUrl ? 'absolute inset-0 -z-10' : ''
+                }`}
+              >
+                {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 'XK'}
+              </div>
             </button>
           </div>
         ) : (

@@ -255,8 +255,8 @@ export const StorePageView: React.FC = () => {
                       </td>
 
                       {/* Giá bản quyền */}
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-amber-300">
-                        {(song.price ?? 20000).toLocaleString('vi-VN')} đ
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-amber-300 whitespace-nowrap">
+                        <span className="whitespace-nowrap">{(song.price ?? 20000).toLocaleString('vi-VN')}&nbsp;đ</span>
                       </td>
 
                       {/* MUA (Requirement 6) */}

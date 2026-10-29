@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, RewindStats } from '../types/music';
+import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, RewindStats, SiteSettings } from '../types/music';
 import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
 import { MusicService } from '../services/musicService';
@@ -72,6 +72,8 @@ interface MusicContextType {
   setIsBuyModalOpen: (open: boolean) => void;
   setIsTopUpModalOpen: (open: boolean) => void;
   setIsLoginModalOpen: (open: boolean) => void;
+  isProfileModalOpen: boolean;
+  setIsProfileModalOpen: (open: boolean) => void;
   setSongToBuy: (s: Song | null) => void;
   setSelectedLrcSong: (s: Song | null) => void;
   setActiveDesktopTab: (tab: ActiveDesktopTab) => void;
@@ -157,9 +159,23 @@ interface MusicContextType {
 
   // Report Issue (Requirement 20)
   reportSongIssue: (songId: string, issue: string) => Promise<{ success: boolean; message: string }>;
+
+  // Site Settings (Requirement 11)
+  siteSettings: SiteSettings;
+  updateSiteSettings: (settings: Partial<SiteSettings>) => Promise<void>;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
+
+export const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  siteName: 'XuanKen Music',
+  siteSlogan: 'Nghe & Mua Nhạc Bản Quyền',
+  logoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+  faviconUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+  defaultStartingBalance: 500000,
+  defaultSongPrice: 20000,
+  minListenDurationSeconds: 5,
+};
 
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -176,6 +192,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
   const [purchasedSongIds, setPurchasedSongIds] = useState<string[]>([]);
   const [userBalance, setUserBalance] = useState<number>(0);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
+    try {
+      const local = localStorage.getItem('xuanken_site_settings');
+      if (local) return { ...DEFAULT_SITE_SETTINGS, ...JSON.parse(local) };
+    } catch (e) {}
+    return DEFAULT_SITE_SETTINGS;
+  });
   const [theme, setThemeState] = useState<ThemeId>(() => {
     try {
       const saved = localStorage.getItem('xuanken_theme') as ThemeId;
@@ -195,6 +218,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isBuyModalOpen, setIsBuyModalOpen] = useState<boolean>(false);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState<boolean>(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [songToBuy, setSongToBuy] = useState<Song | null>(null);
   const [selectedLrcSong, setSelectedLrcSong] = useState<Song | null>(null);
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
@@ -257,6 +281,27 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const timerRef = useRef<number | null>(null);
   const sleepTimerIntervalRef = useRef<number | null>(null);
   const hasRandomAutoplayTriggered = useRef<boolean>(false);
+  // Requirement 8: Nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
+  const hasCountedPlayRef = useRef<boolean>(false);
+
+  const updateSiteSettings = async (partial: Partial<SiteSettings>) => {
+    const updated: SiteSettings = { ...siteSettings, ...partial };
+    setSiteSettings(updated);
+    await MusicService.saveSiteSettings(updated);
+    if (updated.siteName) {
+      document.title = `${updated.siteName} - ${updated.siteSlogan || ''}`;
+    }
+    if (updated.faviconUrl) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        document.head.appendChild(link);
+      }
+      link.href = updated.faviconUrl;
+    }
+  };
 
   // Resize listener
   useEffect(() => {
@@ -329,7 +374,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             uid: fbUser.uid,
             email: fbUser.email || 'admin@xuanken.com',
             displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Admin',
-            balance: 500000,
+            balance: siteSettings?.defaultStartingBalance || 500000,
             purchasedSongIds: [],
             blockedSongIds: [],
             role: 'admin',
@@ -360,7 +405,30 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const memberAny = currentMember as any;
         if (memberAny.likedSongIds && Array.isArray(memberAny.likedSongIds)) {
           setLikedSongIds(memberAny.likedSongIds);
+        } else {
+          try {
+            const userLiked = localStorage.getItem(`xuanken_liked_${currentMember.uid}`);
+            setLikedSongIds(userLiked ? JSON.parse(userLiked) : []);
+          } catch (e) {
+            setLikedSongIds([]);
+          }
         }
+
+        // Isolate playlists per user account (Requirement 3)
+        try {
+          const userPlStr = localStorage.getItem(`xuanken_playlists_${currentMember.uid}`);
+          if (userPlStr) {
+            setPlaylists(JSON.parse(userPlStr));
+          } else {
+            MusicService.fetchPlaylists().then((allPl) => {
+              const userFiltered = (allPl || []).filter((p) => !p.userId || p.userId === currentMember!.uid);
+              setPlaylists(userFiltered);
+            });
+          }
+        } catch (e) {
+          setPlaylists([]);
+        }
+
         if (memberAny.theme) {
           setThemeState(memberAny.theme);
           try {
@@ -377,6 +445,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCurrentUser(null);
         setUserBalance(0);
         setPurchasedSongIds([]);
+        setLikedSongIds([]);
+        setPlaylists([]);
       }
       setIsAuthLoading(false);
     });
@@ -419,11 +489,36 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     MusicService.fetchPlaylists().then((loadedPlaylists) => {
-      setPlaylists(loadedPlaylists || []);
+      if (currentUser?.uid) {
+        const userFiltered = (loadedPlaylists || []).filter((p) => !p.userId || p.userId === currentUser.uid);
+        setPlaylists(userFiltered);
+      }
     });
 
     MusicService.fetchVouchers().then((loadedVouchers) => {
       setVouchers(loadedVouchers || []);
+    });
+
+    MusicService.fetchSiteSettings().then((loaded) => {
+      if (loaded) {
+        setSiteSettings((prev) => {
+          const merged = { ...prev, ...loaded };
+          if (merged.siteName) {
+            document.title = `${merged.siteName} - ${merged.siteSlogan || ''}`;
+          }
+          if (merged.faviconUrl) {
+            let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+            if (!link) {
+              link = document.createElement('link');
+              link.type = 'image/x-icon';
+              link.rel = 'shortcut icon';
+              document.head.appendChild(link);
+            }
+            link.href = merged.faviconUrl;
+          }
+          return merged;
+        });
+      }
     });
 
     return () => {
@@ -474,10 +569,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCurrentUser(null);
     setUserBalance(0);
     setPurchasedSongIds([]);
-    if (activeDesktopTab === 'admin') {
+    setLikedSongIds([]);
+    setPlaylists([]);
+    if (activeDesktopTab === 'admin' || activeDesktopTab === 'library') {
       setActiveDesktopTab('discover');
     }
-    if (activeMobileTab === 'admin') {
+    if (activeMobileTab === 'admin' || activeMobileTab === 'library') {
       setActiveMobileTab('discover');
     }
   };
@@ -558,6 +655,48 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
           const nextTime = prev + 1;
           audioEngine.updatePositionState(nextTime, duration, playbackRate);
+
+          // Requirement 8: Phải nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
+          const minSeconds = siteSettings?.minListenDurationSeconds ?? 5;
+          if (!hasCountedPlayRef.current && nextTime >= minSeconds && currentSong) {
+            hasCountedPlayRef.current = true;
+
+            // Increment playCount for #xuankenchart ranking and sync to Firebase
+            setSongs((prevSongs) => {
+              const target = prevSongs.find((s) => s.id === currentSong.id);
+              const nextPlayCount = ((target?.playCount || currentSong.playCount || 0) + 1);
+              MusicService.incrementPlayCount(currentSong.id, nextPlayCount);
+              return prevSongs.map((s) => (s.id === currentSong.id ? { ...s, playCount: nextPlayCount } : s));
+            });
+
+            // Update XuanKen Rewind for play count & artists
+            setRewindStats((prevStats) => {
+              const songPlays = { ...prevStats.songPlays, [currentSong.id]: (prevStats.songPlays[currentSong.id] || 0) + 1 };
+              const artistPlays = { ...prevStats.artistPlays, [currentSong.artists]: (prevStats.artistPlays[currentSong.artists] || 0) + 1 };
+              const newStats: RewindStats = {
+                ...prevStats,
+                totalPlays: (prevStats.totalPlays || 0) + 1,
+                songPlays,
+                artistPlays,
+                lastUpdated: new Date().toISOString(),
+              };
+              try {
+                localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
+              } catch (e) {}
+              return newStats;
+            });
+
+            // Update Weekly Plays
+            setWeeklyPlays((prevWeekly) => {
+              const updated = {
+                ...prevWeekly,
+                [currentSong.id]: (prevWeekly[currentSong.id] || 0) + 1,
+              };
+              MusicService.saveWeeklyPlays(currentWeekKey, updated);
+              return updated;
+            });
+          }
+
           return nextTime;
         });
 
@@ -587,7 +726,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         clearInterval(timerRef.current);
       }
     };
-  }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat, songFormatMap]);
+  }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat, songFormatMap, siteSettings, currentWeekKey]);
 
   const handleSongEnd = () => {
     if (repeatMode === 'one') {
@@ -603,48 +742,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSongFormatMap((prev) => ({ ...prev, [song.id]: formatOverride }));
     }
 
-    // Increment playCount for #xuankenchart ranking and sync to Firebase
-    const nextPlayCount = (song.playCount || 0) + 1;
-    const activeSong = { ...song, playCount: nextPlayCount };
-    setSongs((prev) => prev.map((s) => (s.id === song.id ? activeSong : s)));
-    MusicService.incrementPlayCount(song.id, nextPlayCount);
-
-    // Update XuanKen Rewind for play count & artists
-    setRewindStats((prevStats) => {
-      const songPlays = { ...prevStats.songPlays, [song.id]: (prevStats.songPlays[song.id] || 0) + 1 };
-      const artistPlays = { ...prevStats.artistPlays, [song.artists]: (prevStats.artistPlays[song.artists] || 0) + 1 };
-      const newStats: RewindStats = {
-        ...prevStats,
-        totalPlays: (prevStats.totalPlays || 0) + 1,
-        songPlays,
-        artistPlays,
-        lastUpdated: new Date().toISOString(),
-      };
-      try {
-        localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
-      } catch (e) {}
-      return newStats;
-    });
-
-    // Update Weekly Plays (Requirement 22)
-    setWeeklyPlays((prevWeekly) => {
-      const updated = {
-        ...prevWeekly,
-        [song.id]: (prevWeekly[song.id] || 0) + 1,
-      };
-      MusicService.saveWeeklyPlays(currentWeekKey, updated);
-      return updated;
-    });
+    // Requirement 8: Reset 5s playback counter for this play session
+    hasCountedPlayRef.current = false;
 
     if (currentSong?.id !== song.id) {
       if (currentSong) {
         setHistory((prev) => [currentSong, ...prev.filter((s) => s.id !== currentSong.id)]);
       }
-      setCurrentSong(activeSong);
+      setCurrentSong(song);
       setCurrentTime(0);
       setDuration(song.duration && song.duration > 0 ? song.duration : 210);
     } else {
-      setCurrentSong(activeSong);
+      setCurrentSong(song);
     }
     setIsPlaying(true);
 
@@ -736,6 +845,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLikedSongIds((prev) => {
       const next = prev.includes(songId) ? prev.filter((id) => id !== songId) : [...prev, songId];
       if (currentUser?.uid) {
+        try {
+          localStorage.setItem(`xuanken_liked_${currentUser.uid}`, JSON.stringify(next));
+        } catch (e) {}
         MusicService.saveUserSettings(currentUser.uid, { likedSongIds: next });
       }
       return next;
@@ -1130,6 +1242,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     const updated = [newPlaylist, ...playlists];
     setPlaylists(updated);
+    if (currentUser?.uid) {
+      try {
+        localStorage.setItem(`xuanken_playlists_${currentUser.uid}`, JSON.stringify(updated));
+      } catch (e) {}
+    }
     await MusicService.upsertPlaylist(newPlaylist);
     return newPlaylist;
   };
@@ -1137,6 +1254,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deletePlaylist = async (id: string) => {
     const updated = playlists.filter((p) => p.id !== id);
     setPlaylists(updated);
+    if (currentUser?.uid) {
+      try {
+        localStorage.setItem(`xuanken_playlists_${currentUser.uid}`, JSON.stringify(updated));
+      } catch (e) {}
+    }
     await MusicService.deletePlaylist(id);
   };
 
@@ -1150,6 +1272,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     const nextList = playlists.map((p) => (p.id === playlistId ? updated : p));
     setPlaylists(nextList);
+    if (currentUser?.uid) {
+      try {
+        localStorage.setItem(`xuanken_playlists_${currentUser.uid}`, JSON.stringify(nextList));
+      } catch (e) {}
+    }
     await MusicService.upsertPlaylist(updated);
   };
 
@@ -1162,6 +1289,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     const nextList = playlists.map((p) => (p.id === playlistId ? updated : p));
     setPlaylists(nextList);
+    if (currentUser?.uid) {
+      try {
+        localStorage.setItem(`xuanken_playlists_${currentUser.uid}`, JSON.stringify(nextList));
+      } catch (e) {}
+    }
     await MusicService.upsertPlaylist(updated);
   };
 
@@ -1299,6 +1431,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsBuyModalOpen,
         setIsTopUpModalOpen,
         setIsLoginModalOpen,
+        isProfileModalOpen,
+        setIsProfileModalOpen,
         setSongToBuy,
         setSelectedLrcSong,
         setActiveDesktopTab,
@@ -1360,6 +1494,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         unblockSong,
         isSongBlocked,
         reportSongIssue,
+        siteSettings,
+        updateSiteSettings,
       }}
     >
       {children}

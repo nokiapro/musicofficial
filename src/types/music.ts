@@ -84,3 +84,13 @@ export interface WeeklyTopData {
   songPlays: Record<string, number>;
   lastResetAt: string;
 }
+
+export interface SiteSettings {
+  siteName: string;
+  siteSlogan: string;
+  logoUrl: string;
+  faviconUrl: string;
+  defaultStartingBalance: number;
+  defaultSongPrice: number;
+  minListenDurationSeconds: number;
+}

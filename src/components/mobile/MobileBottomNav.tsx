@@ -14,7 +14,7 @@ interface NavItemConfig {
 }
 
 export const MobileBottomNav: React.FC = () => {
-  const { activeMobileTab, setActiveMobileTab, isAdmin } = useMusic();
+  const { activeMobileTab, setActiveMobileTab, isAdmin, currentUser } = useMusic();
 
   // Navigation items: each section has its own distinctive, vibrant color!
   const navConfigs: NavItemConfig[] = [
@@ -45,7 +45,11 @@ export const MobileBottomNav: React.FC = () => {
       glowColor: 'drop-shadow-[0_0_8px_rgba(6,182,212,0.7)]',
       dotColor: 'bg-[#06b6d4]',
     },
-    {
+  ];
+
+  // Requirement 3: Tab Thư viện cá nhân chỉ khi đăng nhập tài khoản mới hiện
+  if (currentUser) {
+    navConfigs.push({
       id: 'library',
       label: 'Thư Viện',
       icon: <FolderHeart className="w-5 h-5" />,
@@ -53,8 +57,8 @@ export const MobileBottomNav: React.FC = () => {
       inactiveColor: 'text-amber-400/50 hover:text-amber-400/80',
       glowColor: 'drop-shadow-[0_0_8px_rgba(245,158,11,0.7)]',
       dotColor: 'bg-[#f59e0b]',
-    },
-  ];
+    });
+  }
 
   // If user is Admin, insert Admin tab with luxury Gold/Yellow color
   if (isAdmin) {

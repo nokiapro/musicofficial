@@ -12,6 +12,7 @@ import {
   Sparkles,
   ShoppingBag,
   ListMusic,
+  FolderHeart,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Playlist, Song } from '../../types/music';
@@ -31,6 +32,8 @@ export const DesktopLibraryPage: React.FC = () => {
     openShareModal,
     setIsRewindModalOpen,
     rewindStats,
+    currentUser,
+    setIsLoginModalOpen,
   } = useMusic();
 
   // Requirement 9: Xóa mục Lịch sử đi -> chỉ còn Yêu thích, Playlists, Đã mua
@@ -38,6 +41,37 @@ export const DesktopLibraryPage: React.FC = () => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDesc, setNewPlaylistDesc] = useState('');
   const [isCreatingPl, setIsCreatingPl] = useState(false);
+
+  // Requirement 3: Thư viện cá nhân chỉ khi đăng nhập mới hiện
+  if (!currentUser) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[55vh] text-center p-8 rounded-3xl bg-white/5 border border-white/10 select-none">
+        <div
+          className="w-16 h-16 rounded-3xl flex items-center justify-center text-white mb-4 shadow-xl"
+          style={{ backgroundColor: 'var(--color-accent)' }}
+        >
+          <FolderHeart className="w-8 h-8" />
+        </div>
+        <h2 className="text-2xl font-black text-white mb-2 font-['Roboto_Condensed'] uppercase tracking-tight">
+          Thư Viện Cá Nhân
+        </h2>
+        <p className="text-sm text-white/60 max-w-md mb-6 leading-relaxed">
+          Vui lòng đăng nhập để truy cập Thư Viện Cá Nhân, xem danh sách bài hát yêu thích, bài hát đã mua và quản lý các danh sách phát của riêng bạn.
+        </p>
+        <button
+          onClick={() => setIsLoginModalOpen(true)}
+          style={{ backgroundColor: 'var(--color-accent)' }}
+          className="px-6 py-2.5 rounded-xl text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-95 flex items-center gap-2"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Đăng Nhập Ngay</span>
+        </button>
+      </div>
+    );
+  }
+
+  // Requirement 3: Mỗi tài khoản là thư viện mà playlist của người đó nhé
+  const userPlaylists = playlists.filter((p) => !p.userId || p.userId === currentUser.uid);
 
   // Requirement 21: 20 songs per page
   const PAGE_SIZE = 20;
@@ -344,7 +378,7 @@ export const DesktopLibraryPage: React.FC = () => {
           )}
 
           {/* Requirement 11: Render Playlists as LIST instead of cards */}
-          {playlists.length === 0 ? (
+          {userPlaylists.length === 0 ? (
             <div className="py-20 text-center bg-white/5 rounded-3xl border border-white/5">
               <FolderPlus className="w-12 h-12 text-white/20 mx-auto mb-2" />
               <p className="text-base font-bold text-white">Chưa có danh sách phát nào</p>
@@ -365,7 +399,7 @@ export const DesktopLibraryPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {playlists.map((pl, idx) => {
+                    {userPlaylists.map((pl, idx) => {
                       const count = pl.songIds.length;
                       return (
                         <tr key={pl.id} className="hover:bg-white/5 transition-colors group">

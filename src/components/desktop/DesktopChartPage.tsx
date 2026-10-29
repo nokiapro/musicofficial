@@ -125,30 +125,52 @@ export const DesktopChartPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic Chart Visual Curves */}
-        <div className="h-40 w-full relative">
+        {/* Dynamic Chart Visual Curves (Item 4: tỉ lệ đường cong chuẩn nhất theo BXH thực tế) */}
+        <div className="h-44 w-full relative pt-2">
           <svg className="w-full h-full" viewBox="0 0 600 130" preserveAspectRatio="none">
-            <line x1="0" y1="30" x2="600" y2="30" stroke="rgba(255,255,255,0.06)" />
-            <line x1="0" y1="65" x2="600" y2="65" stroke="rgba(255,255,255,0.06)" />
-            <line x1="0" y1="100" x2="600" y2="100" stroke="rgba(255,255,255,0.06)" />
+            <defs>
+              <linearGradient id="chartGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#f59e0b" />
+                <stop offset="100%" stopColor="#fbbf24" />
+              </linearGradient>
+              <linearGradient id="chartGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#0284c7" />
+                <stop offset="100%" stopColor="#38bdf8" />
+              </linearGradient>
+              <linearGradient id="chartGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#e11d48" />
+                <stop offset="100%" stopColor="#fb7185" />
+              </linearGradient>
+            </defs>
 
+            {/* Subtle Horizontal Reference Guidelines */}
+            <line x1="0" y1="28" x2="600" y2="28" stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
+            <line x1="0" y1="62" x2="600" y2="62" stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
+            <line x1="0" y1="96" x2="600" y2="96" stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
+
+            {/* #1 Top Song (Orange/Amber) */}
             <path
-              d="M 0,65 Q 80,35 150,22 T 300,15 T 450,28 T 600,12"
+              d="M 0,72 C 80,60 140,28 220,22 C 300,18 380,32 460,28 C 520,24 560,18 600,14"
               fill="none"
-              stroke="#f59e0b"
+              stroke="url(#chartGrad1)"
               strokeWidth="3.5"
+              strokeLinecap="round"
             />
+            {/* #2 Second Song (Sky Blue) */}
             <path
-              d="M 0,85 Q 90,75 150,68 T 300,50 T 450,48 T 600,55"
+              d="M 0,88 C 80,82 140,65 220,58 C 300,52 380,56 460,60 C 520,62 560,60 600,59"
               fill="none"
-              stroke="#38bdf8"
-              strokeWidth="2.5"
+              stroke="url(#chartGrad2)"
+              strokeWidth="2.8"
+              strokeLinecap="round"
             />
+            {/* #3 Third Song (Rose Pink) */}
             <path
-              d="M 0,105 Q 80,95 150,100 T 300,85 T 450,90 T 600,95"
+              d="M 0,108 C 80,105 140,100 220,95 C 300,88 380,96 460,102 C 520,106 560,104 600,98"
               fill="none"
-              stroke="#f43f5e"
-              strokeWidth="2"
+              stroke="url(#chartGrad3)"
+              strokeWidth="2.2"
+              strokeLinecap="round"
             />
           </svg>
         </div>
@@ -284,9 +306,9 @@ export const DesktopChartPage: React.FC = () => {
                 {/* MUA Column (Requirement 8) */}
                 <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                   {isPurchased ? (
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 flex items-center gap-1 shrink-0">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Đã mua</span>
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 flex items-center justify-center gap-1 shrink-0 whitespace-nowrap">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span className="whitespace-nowrap">Đã mua</span>
                     </span>
                   ) : (
                     <button

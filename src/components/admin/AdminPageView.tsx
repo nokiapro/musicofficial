@@ -25,9 +25,13 @@ import {
   Sparkles,
   RefreshCw,
   Database,
+  Settings,
+  Globe,
+  Sliders,
+  Upload,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { Song, AppUser, AudioFormat, Voucher } from '../../types/music';
+import { Song, AppUser, AudioFormat, Voucher, SiteSettings } from '../../types/music';
 import { audioEngine } from '../../services/audioEngine';
 import { testFirebaseConnection } from '../../services/firebase';
 
@@ -52,9 +56,83 @@ export const AdminPageView: React.FC = () => {
     removeVoucher,
     syncAllToFirebase,
     seedDefaultSongs,
+    siteSettings,
+    updateSiteSettings,
   } = useMusic();
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members' | 'rules' | 'vouchers'>('songs');
+  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members' | 'rules' | 'vouchers' | 'settings'>('songs');
+
+  // Website Settings State (Item 11)
+  const [siteNameInput, setSiteNameInput] = useState(siteSettings?.siteName || 'XuanKen Music');
+  const [siteSloganInput, setSiteSloganInput] = useState(siteSettings?.siteSlogan || 'Nghe & Mua Nhạc Bản Quyền');
+  const [logoUrlInput, setLogoUrlInput] = useState(siteSettings?.logoUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+  const [faviconUrlInput, setFaviconUrlInput] = useState(siteSettings?.faviconUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+  const [defaultBalanceInput, setDefaultBalanceInput] = useState(siteSettings?.defaultStartingBalance?.toString() || '500000');
+  const [defaultSongPriceInput, setDefaultSongPriceInput] = useState(siteSettings?.defaultSongPrice?.toString() || '20000');
+  const [minListenDurationInput, setMinListenDurationInput] = useState(siteSettings?.minListenDurationSeconds?.toString() || '5');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsSuccessMsg, setSettingsSuccessMsg] = useState<string | null>(null);
+
+  // Sync inputs when siteSettings change
+  React.useEffect(() => {
+    if (siteSettings) {
+      setSiteNameInput(siteSettings.siteName || 'XuanKen Music');
+      setSiteSloganInput(siteSettings.siteSlogan || 'Nghe & Mua Nhạc Bản Quyền');
+      setLogoUrlInput(siteSettings.logoUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+      setFaviconUrlInput(siteSettings.faviconUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+      setDefaultBalanceInput((siteSettings.defaultStartingBalance ?? 500000).toString());
+      setDefaultSongPriceInput((siteSettings.defaultSongPrice ?? 20000).toString());
+      setMinListenDurationInput((siteSettings.minListenDurationSeconds ?? 5).toString());
+    }
+  }, [siteSettings]);
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    setSettingsSuccessMsg(null);
+    try {
+      await updateSiteSettings({
+        siteName: siteNameInput.trim() || 'XuanKen Music',
+        siteSlogan: siteSloganInput.trim() || 'Nghe & Mua Nhạc Bản Quyền',
+        logoUrl: logoUrlInput.trim() || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+        faviconUrl: faviconUrlInput.trim() || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+        defaultStartingBalance: Math.max(0, parseInt(defaultBalanceInput, 10) || 500000),
+        defaultSongPrice: Math.max(0, parseInt(defaultSongPriceInput, 10) || 20000),
+        minListenDurationSeconds: Math.max(1, parseInt(minListenDurationInput, 10) || 5),
+      });
+      setSettingsSuccessMsg('Đã lưu cấu hình website thành công! Toàn bộ tên web, ảnh logo, favicon và tiền mặc định đã được cập nhật.');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setLogoUrlInput(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFaviconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setFaviconUrlInput(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Voucher form state
   const [newVoucherCode, setNewVoucherCode] = useState('');
@@ -565,6 +643,19 @@ export const AdminPageView: React.FC = () => {
           <Tag className="w-4 h-4" />
           <span>Mã Giảm Giá ({vouchers.length})</span>
         </button>
+        {/* Item 11: Tab Cài Đặt Website */}
+        <button
+          onClick={() => setActiveAdminTab('settings')}
+          style={activeAdminTab === 'settings' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeAdminTab === 'settings'
+              ? 'text-white shadow'
+              : 'text-white/60 hover:text-white'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          <span>Cài Đặt Website</span>
+        </button>
       </div>
 
       {/* Success / Error Alerts */}
@@ -843,8 +934,8 @@ export const AdminPageView: React.FC = () => {
                             {member.role}
                           </button>
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-emerald-400">
-                          {(member.balance || 0).toLocaleString('vi-VN')} đ
+                        <td className="py-3 px-4 text-center font-mono font-bold text-emerald-400 whitespace-nowrap">
+                          <span className="whitespace-nowrap">{(member.balance || 0).toLocaleString('vi-VN')}&nbsp;đ</span>
                         </td>
                         <td className="py-3 px-4 text-center text-white/60">
                           {member.purchasedSongIds?.length || 0} bài
@@ -1411,6 +1502,235 @@ service firebase.storage {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 5: CÀI ĐẶT WEBSITE (Requirement 11) */}
+      {activeAdminTab === 'settings' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {settingsSuccessMsg && (
+            <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span className="font-bold">{settingsSuccessMsg}</span>
+              </div>
+              <button onClick={() => setSettingsSuccessMsg(null)} className="text-white/60 hover:text-white p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveSettings} className="space-y-6">
+            {/* 1. THÔNG TIN THƯƠNG HIỆU & TIÊU ĐỀ TRANG */}
+            <div className="p-6 rounded-3xl bg-[#170f23] border border-white/10 shadow-2xl space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-white/10">
+                <div className="w-8 h-8 rounded-xl bg-purple-600/30 text-[#c273ed] flex items-center justify-center font-bold">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Thông Tin Nhận Diện Website</h3>
+                  <p className="text-[11px] text-white/50">Cài đặt tên trang web, khẩu hiệu và hình ảnh thương hiệu</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-white/80 mb-1.5">Tên Website / Ứng Dụng *</label>
+                  <input
+                    type="text"
+                    required
+                    value={siteNameInput}
+                    onChange={(e) => setSiteNameInput(e.target.value)}
+                    placeholder="VD: XuanKen Music"
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-[#9b4de0] transition-colors"
+                  />
+                  <p className="text-[10px] text-white/40 mt-1">Xuất hiện trên thanh tiêu đề trình duyệt và thanh điều hướng</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-white/80 mb-1.5">Slogan / Khẩu Hiệu *</label>
+                  <input
+                    type="text"
+                    required
+                    value={siteSloganInput}
+                    onChange={(e) => setSiteSloganInput(e.target.value)}
+                    placeholder="VD: Nghe & Mua Nhạc Bản Quyền"
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#9b4de0] transition-colors"
+                  />
+                  <p className="text-[10px] text-white/40 mt-1">Phụ đề hiển thị bên dưới logo và mô tả chia sẻ</p>
+                </div>
+              </div>
+
+              {/* Logo & Favicon with file upload & preview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                {/* Logo Web */}
+                <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <label className="block text-xs font-bold text-white/90">Ảnh Logo Trang Web (Logo URL / Upload)</label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/20 bg-black/40 flex items-center justify-center shrink-0 shadow-md">
+                      {logoUrlInput ? (
+                        <img
+                          src={logoUrlInput}
+                          alt="Logo Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <Globe className="w-6 h-6 text-white/40" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="url"
+                        value={logoUrlInput}
+                        onChange={(e) => setLogoUrlInput(e.target.value)}
+                        placeholder="https://.../logo.png"
+                        className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
+                      />
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/80 hover:text-white text-xs font-bold cursor-pointer transition-colors">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Tải ảnh từ máy</span>
+                        <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Favicon / Ico */}
+                <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <label className="block text-xs font-bold text-white/90">Ảnh Icon Tab / Favicon (.ico, .png)</label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/20 bg-black/40 flex items-center justify-center shrink-0 shadow-md">
+                      {faviconUrlInput ? (
+                        <img
+                          src={faviconUrlInput}
+                          alt="Favicon Preview"
+                          className="w-8 h-8 object-contain"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <Globe className="w-6 h-6 text-white/40" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="url"
+                        value={faviconUrlInput}
+                        onChange={(e) => setFaviconUrlInput(e.target.value)}
+                        placeholder="https://.../favicon.ico"
+                        className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
+                      />
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/80 hover:text-white text-xs font-bold cursor-pointer transition-colors">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Tải favicon từ máy</span>
+                        <input type="file" accept="image/*" onChange={handleFaviconUpload} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. CẤU HÌNH TIỀN THƯỞNG, GIÁ VÀ LƯỢT NGHE */}
+            <div className="p-6 rounded-3xl bg-[#170f23] border border-white/10 shadow-2xl space-y-4">
+              <div className="flex items-center gap-2.5 pb-3 border-b border-white/10">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                  <Sliders className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Chính Sách & Cấu Hình Mặc Định</h3>
+                  <p className="text-[11px] text-white/50">Cài đặt số dư thành viên mới, giá bán bài hát và quy tắc lượt nghe</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Default wallet balance on first login */}
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1.5">
+                  <label className="block text-xs font-bold text-white/80">
+                    Tiền mặc định khi đăng nhập lần đầu (VNĐ) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10000"
+                    required
+                    value={defaultBalanceInput}
+                    onChange={(e) => setDefaultBalanceInput(e.target.value)}
+                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3.5 py-2.5 font-mono text-emerald-400 font-bold text-sm focus:outline-none focus:border-[#9b4de0]"
+                  />
+                  <p className="text-[10px] text-white/40">
+                    Tương đương: {Number(defaultBalanceInput || 0).toLocaleString('vi-VN')} đ tặng ví
+                  </p>
+                </div>
+
+                {/* Default song price */}
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1.5">
+                  <label className="block text-xs font-bold text-white/80">
+                    Giá bài hát mặc định khi thêm mới (VNĐ) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5000"
+                    required
+                    value={defaultSongPriceInput}
+                    onChange={(e) => setDefaultSongPriceInput(e.target.value)}
+                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3.5 py-2.5 font-mono text-amber-300 font-bold text-sm focus:outline-none focus:border-[#9b4de0]"
+                  />
+                  <p className="text-[10px] text-white/40">
+                    Tương đương: {Number(defaultSongPriceInput || 0).toLocaleString('vi-VN')} đ / bài
+                  </p>
+                </div>
+
+                {/* Min listen duration threshold */}
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1.5">
+                  <label className="block text-xs font-bold text-white/80">
+                    Thời gian nghe tối thiểu để tính 1 lượt (Giây) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    required
+                    value={minListenDurationInput}
+                    onChange={(e) => setMinListenDurationInput(e.target.value)}
+                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3.5 py-2.5 font-mono text-cyan-300 font-bold text-sm focus:outline-none focus:border-[#9b4de0]"
+                  />
+                  <p className="text-[10px] text-white/40">
+                    Hiện tại: {minListenDurationInput || 5} giây (chống spam lượt nghe BXH)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSiteNameInput('XuanKen Music');
+                  setSiteSloganInput('Nghe & Mua Nhạc Bản Quyền');
+                  setLogoUrlInput('https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+                  setFaviconUrlInput('https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+                  setDefaultBalanceInput('500000');
+                  setDefaultSongPriceInput('20000');
+                  setMinListenDurationInput('5');
+                }}
+                className="px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white/70 hover:text-white font-bold text-xs transition-colors"
+              >
+                Đặt Lại Mặc Định
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSavingSettings}
+                className="px-6 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-xs shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSavingSettings ? 'Đang Lưu...' : 'Lưu Cài Đặt Website'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

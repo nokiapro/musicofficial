@@ -1,7 +1,7 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
 import { doc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { rtdb, db } from './firebase';
-import { Song, AppUser, Playlist, Voucher } from '../types/music';
+import { Song, AppUser, Playlist, Voucher, SiteSettings } from '../types/music';
 
 const STORAGE_KEY_SONGS = 'xuanken_music_songs_v3';
 const STORAGE_KEY_MEMBERS = 'xuanken_music_members_v3';
@@ -740,6 +740,33 @@ export const MusicService = {
       });
     } catch (e) {
       console.warn('Save song report notice:', e);
+    }
+  },
+
+  // Site Settings (Requirement 11)
+  async fetchSiteSettings(): Promise<SiteSettings | null> {
+    try {
+      const snapshot = await get(ref(rtdb, 'site_settings'));
+      if (snapshot.exists()) {
+        return snapshot.val();
+      }
+    } catch (e) {
+      console.warn('Site settings fetch notice:', e);
+    }
+    try {
+      const saved = localStorage.getItem('xuanken_site_settings');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return null;
+  },
+
+  async saveSiteSettings(settings: SiteSettings): Promise<void> {
+    const clean = cleanForFirebase(settings);
+    try {
+      localStorage.setItem('xuanken_site_settings', JSON.stringify(clean));
+      await set(ref(rtdb, 'site_settings'), clean);
+    } catch (e) {
+      console.warn('Site settings save notice:', e);
     }
   },
 };

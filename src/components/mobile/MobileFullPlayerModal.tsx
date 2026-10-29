@@ -66,6 +66,34 @@ export const MobileFullPlayerModal: React.FC = () => {
 
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // Item 6: Vuốt sang trái để qua Lời bài hát, vuốt sang phải để về Đĩa nhạc
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    // Khoảng cách vuốt ngang tối thiểu 40px và nghiêng nhiều hơn về phương ngang
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      if (deltaX < 0 && activeTab === 'disc') {
+        // Vuốt sang trái: chuyển sang LỜI BÀI HÁT
+        setActiveTab('lyrics');
+      } else if (deltaX > 0 && activeTab === 'lyrics') {
+        // Vuốt sang phải: chuyển sang ĐĨA NHẠC
+        setActiveTab('disc');
+      }
+    }
+  };
+
   if (!isMobileFullPlayerOpen || !currentSong) return null;
 
   const isLiked = likedSongIds.includes(currentSong.id);
@@ -164,21 +192,22 @@ export const MobileFullPlayerModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Center View - Requirement 17: Ảnh bìa cho lui lên 1 chút */}
-        <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-1 overflow-hidden min-h-0 -mt-2">
+        {/* Center View - Requirement 17: Ảnh bìa cho lui lên 1 chút & Item 6: Hỗ trợ vuốt chuyển tab */}
+        <main
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-1 overflow-hidden min-h-0 -mt-2 touch-pan-y"
+        >
           {activeTab === 'disc' ? (
             /* Rotating Vinyl View */
-            <div className="flex flex-col items-center justify-center w-full max-h-[40vh] my-auto">
+            <div className="flex flex-col items-center justify-center w-full max-h-[40vh] my-auto animate-in fade-in duration-200">
               <div className="relative w-[min(62vw,240px)] h-[min(62vw,240px)] max-h-[35vh] aspect-square rounded-full bg-zinc-950 p-2 shadow-2xl border-4 border-zinc-800/60 flex items-center justify-center">
                 <div className="absolute inset-2 rounded-full border border-zinc-800/80 pointer-events-none" />
                 <div className="absolute inset-4 rounded-full border border-zinc-800/60 pointer-events-none" />
 
                 <div
-                  className={`w-full h-full rounded-full bg-gradient-to-tr ${
-                    currentSong.coverGradient || 'from-purple-600 to-indigo-800'
-                  } flex items-center justify-center overflow-hidden animate-spin-slow ${
-                    !isPlaying ? 'paused' : ''
-                  } shadow-inner relative`}
+                  style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                  className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slow shadow-inner relative"
                 >
                   {currentSong.coverImage ? (
                     <img

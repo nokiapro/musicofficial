@@ -166,9 +166,9 @@ export const DesktopSongListView: React.FC = () => {
                 <th className="py-3.5 px-4 text-center w-24">LRC</th>
                 <th className="py-3.5 px-4 text-center w-28">THỜI LƯỢNG</th>
                 <th className="py-3.5 px-4 text-center w-36">MP3 HAY WAV</th>
-                {/* Requirement 2: Bỏ chữ trạng thái đi để lại chữ MUA, và bên phải là THAO TÁC */}
-                <th className="py-3.5 px-4 text-center w-28">MUA</th>
-                <th className="py-3.5 px-4 text-center w-24">THAO TÁC</th>
+                {/* Requirement 2 & Item 1: MUA column header without wrapping */}
+                <th className="py-3.5 px-4 text-center w-32 min-w-[125px] whitespace-nowrap">MUA</th>
+                <th className="py-3.5 px-4 text-center w-24 whitespace-nowrap">THAO TÁC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">
@@ -316,12 +316,12 @@ export const DesktopSongListView: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* 7: MUA (Requirement 2) */}
-                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      {/* 7: MUA (Item 1: luôn trên 1 dòng, không bị xuống dòng) */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         {isPurchased ? (
-                          <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold inline-flex items-center gap-1.5 shadow-sm">
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Đã mua</span>
+                          <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap shrink-0">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="whitespace-nowrap">Đã mua</span>
                           </span>
                         ) : (
                           <button
@@ -329,11 +329,11 @@ export const DesktopSongListView: React.FC = () => {
                               setSongToBuy(song);
                               setIsDemoLimitModalOpen(true);
                             }}
-                            className="px-3 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
+                            className="px-3 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer inline-flex items-center justify-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0"
                             title="Bấm để mua bản quyền full bài hát"
                           >
-                            <ShoppingCart className="w-3.5 h-3.5" />
-                            <span>Chưa mua</span>
+                            <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
+                            <span className="whitespace-nowrap">Chưa mua</span>
                           </button>
                         )}
                       </td>
