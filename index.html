@@ -1,14 +1,82 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-    <meta name="description" content="An application built with Google AI Studio." />
-    <meta property="og:title" content="My Google AI Studio App" />
-    <meta property="og:description" content="An application built with Google AI Studio." />
+    <script>
+      (function() {
+        // 1. Make window.fetch writable so browser extensions (adblockers, downloaders) can safely intercept fetch without throwing TypeError
+        try {
+          var _origFetch = typeof window.fetch === 'function' ? window.fetch.bind(window) : window.fetch;
+          var _currentFetch = _origFetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return _currentFetch;
+            },
+            set: function(newFetch) {
+              _currentFetch = typeof newFetch === 'function' ? newFetch : _origFetch;
+            },
+            configurable: true,
+            enumerable: true,
+          });
+        } catch (e) {}
+
+        // 2. Prevent chrome-extension and third-party content scripts from crashing the applet
+        window.addEventListener('error', function(event) {
+          var src = (event && (event.filename || (event.error && event.error.stack))) || '';
+          var msg = (event && (event.message || '')) || '';
+          if (
+            typeof src === 'string' &&
+            (src.indexOf('chrome-extension://') !== -1 ||
+              src.indexOf('moz-extension://') !== -1 ||
+              src.indexOf('requests.js') !== -1 ||
+              src.indexOf('executors/') !== -1)
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+          }
+          if (
+            typeof msg === 'string' &&
+            (msg.indexOf('Cannot set property fetch') !== -1 ||
+              msg.indexOf('chrome-extension') !== -1)
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event && event.reason;
+          var msg = (reason && (reason.stack || reason.message)) || String(reason || '');
+          if (
+            msg.indexOf('chrome-extension://') !== -1 ||
+            msg.indexOf('moz-extension://') !== -1 ||
+            msg.indexOf('Cannot set property fetch') !== -1
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        // 3. Pre-hydrate theme from localStorage to avoid flash of unthemed content
+        try {
+          var savedTheme = localStorage.getItem('xuanken_theme') || 'purple';
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        } catch (e) {}
+      })();
+    </script>
+    <title>XuanKen Music</title>
+    <meta name="description" content="Trình phát & Cổng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV full chất lượng, quản lý kho bài hát Admin và đồng bộ Firebase." />
+    <meta property="og:title" content="XuanKen Music" />
+    <meta property="og:description" content="Trình phát & Cổng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV full chất lượng, quản lý kho bài hát Admin và đồng bộ Firebase." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" id="app-favicon" href="https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>

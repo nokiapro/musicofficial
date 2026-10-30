@@ -56,7 +56,7 @@ export const MusicService = {
       const songsRef = ref(rtdb, 'songs');
       return onValue(
         songsRef,
-        (snapshot) => {
+        (snapshot: any) => {
           if (snapshot.exists()) {
             const data = snapshot.val() || {};
             const songsArray: Song[] = Object.entries(data)
@@ -68,7 +68,7 @@ export const MusicService = {
             onUpdate(songsArray);
           }
         },
-        (err) => {
+        (err: any) => {
           console.warn('Realtime sync warning (using cache):', err);
         }
       );
@@ -102,7 +102,7 @@ export const MusicService = {
       const docsSnap = await getDocs(colRef);
       if (!docsSnap.empty) {
         const songsArray: Song[] = [];
-        docsSnap.forEach((d) => {
+        docsSnap.forEach((d: any) => {
           const val = d.data();
           if (val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl)) {
             songsArray.push(sanitizeSong(val, d.id));
