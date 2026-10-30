@@ -768,14 +768,14 @@ export const AdminPageView: React.FC = () => {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center">STT</th>
-                      <th className="py-3 px-4 min-w-[200px]">TÊN BÀI HÁT</th>
-                      <th className="py-3 px-4 min-w-[140px]">CA SỸ</th>
-                      <th className="py-3 px-4 text-center w-20">ĐỊNH DẠNG</th>
-                      <th className="py-3 px-4 text-center w-28">GIÁ BÁN</th>
-                      <th className="py-3 px-4 text-center w-24">THỜI LƯỢNG</th>
-                      <th className="py-3 px-4 text-center w-36">3 LINK NHẠC</th>
-                      <th className="py-3 px-4 text-right w-28">THAO TÁC</th>
+                      <th className="py-3 px-4 w-12 text-center whitespace-nowrap">STT</th>
+                      <th className="py-3 px-4 min-w-[200px] whitespace-nowrap">TÊN BÀI HÁT</th>
+                      <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">CA SỸ</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">ĐỊNH DẠNG</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">GIÁ BÁN</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[100px]">THỜI LƯỢNG</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[130px]">3 LINK NHẠC</th>
+                      <th className="py-3 px-4 text-right whitespace-nowrap min-w-[100px]">THAO TÁC</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -904,13 +904,13 @@ export const AdminPageView: React.FC = () => {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center">STT</th>
-                      <th className="py-3 px-4 min-w-[180px]">EMAIL</th>
-                      <th className="py-3 px-4 min-w-[140px]">TÊN HIỂN THỊ</th>
-                      <th className="py-3 px-4 text-center w-24">VAI TRÒ</th>
-                      <th className="py-3 px-4 text-center w-32">SỐ DƯ VÍ</th>
-                      <th className="py-3 px-4 text-center w-28">ĐÃ MUA</th>
-                      <th className="py-3 px-4 text-right min-w-[180px]">THAO TÁC</th>
+                      <th className="py-3 px-4 w-12 text-center whitespace-nowrap">STT</th>
+                      <th className="py-3 px-4 min-w-[180px] whitespace-nowrap">EMAIL</th>
+                      <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">TÊN HIỂN THỊ</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[90px]">VAI TRÒ</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">SỐ DƯ</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[90px]">ĐÃ MUA</th>
+                      <th className="py-3 px-4 text-right whitespace-nowrap min-w-[150px]">THAO TÁC</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -1453,13 +1453,13 @@ service firebase.storage {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                    <th className="py-3 px-4 w-12 text-center">STT</th>
-                    <th className="py-3 px-4 min-w-[140px]">MÃ VOUCHER</th>
-                    <th className="py-3 px-4 w-32 text-center">LOẠI GIẢM</th>
-                    <th className="py-3 px-4 w-32 text-center">GIÁ TRỊ</th>
-                    <th className="py-3 px-4 min-w-[200px]">MÔ TẢ</th>
-                    <th className="py-3 px-4 w-28 text-center">TRẠNG THÁI</th>
-                    <th className="py-3 px-4 w-20 text-right">XÓA</th>
+                    <th className="py-3 px-4 w-12 text-center whitespace-nowrap">STT</th>
+                    <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">MÃ VOUCHER</th>
+                    <th className="py-3 px-4 min-w-[110px] text-center whitespace-nowrap">LOẠI GIẢM</th>
+                    <th className="py-3 px-4 min-w-[110px] text-center whitespace-nowrap">GIÁ TRỊ</th>
+                    <th className="py-3 px-4 min-w-[180px] whitespace-nowrap">MÔ TẢ</th>
+                    <th className="py-3 px-4 min-w-[110px] text-center whitespace-nowrap">TRẠNG THÁI</th>
+                    <th className="py-3 px-4 min-w-[80px] text-right whitespace-nowrap">XÓA</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -1737,7 +1737,7 @@ service firebase.storage {
       {/* MODAL: CHỈNH SỬA THÀNH VIÊN (Tên hiển thị, vai trò, số tiền - Requirement 3) */}
       {editingMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-[#231b2e] border border-white/10 rounded-2xl shadow-2xl p-6 text-white text-xs">
+          <div className="w-full max-w-md bg-[#231b2e] border border-white/10 rounded-3xl shadow-2xl p-6 text-white text-xs animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h2 className="text-base font-bold flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#c273ed]" />
@@ -1864,7 +1864,7 @@ service firebase.storage {
       {/* MODAL: THÊM / SỬA BÀI HÁT (Requirements 2 & 3) */}
       {isSongModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-[#231b2e] border border-white/10 rounded-2xl shadow-2xl p-6 text-white max-h-[92vh] overflow-y-auto">
+          <div className="w-full max-w-xl bg-[#231b2e] border border-white/10 rounded-3xl shadow-2xl p-6 text-white max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h2 className="text-lg font-bold">
                 {editingSongId ? 'Chỉnh Sửa Bài Hát' : 'Thêm Bài Hát Mới'}

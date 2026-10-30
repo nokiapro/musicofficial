@@ -1,42 +1,14 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script>
-      (function() {
-        try {
-          var savedTheme = localStorage.getItem('xuanken_theme') || 'purple';
-          document.documentElement.setAttribute('data-theme', savedTheme);
-        } catch (e) {}
-        window.addEventListener('error', function(event) {
-          var file = (event && event.filename) || '';
-          if (file.indexOf('chrome-extension://') !== -1 || file.indexOf('moz-extension://') !== -1) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            return true;
-          }
-        }, true);
-        window.addEventListener('unhandledrejection', function(event) {
-          var reason = event.reason;
-          var msg = (reason && (reason.stack || reason.message)) || String(reason || '');
-          if (msg.indexOf('chrome-extension://') !== -1 || msg.indexOf('moz-extension://') !== -1) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-          }
-        }, true);
-      })();
-    </script>
-    <title>XuanKen Music</title>
-    <meta name="description" content="Trình phát & Cổng âm nhạc trực tuyến XuanKen Music" />
-    <meta property="og:title" content="XuanKen Music" />
-    <meta property="og:description" content="Trình phát & Cổng âm nhạc trực tuyến XuanKen Music" />
+    <title>My Google AI Studio App</title>
+    <meta name="description" content="An application built with Google AI Studio." />
+    <meta property="og:title" content="My Google AI Studio App" />
+    <meta property="og:description" content="An application built with Google AI Studio." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" id="app-favicon" href="https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>

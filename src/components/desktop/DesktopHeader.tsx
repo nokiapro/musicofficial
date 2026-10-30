@@ -78,9 +78,11 @@ export const DesktopHeader: React.FC = () => {
   ];
 
   const formatRemaining = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    const total = Math.max(0, Math.floor(seconds));
+    const hrs = Math.floor(total / 3600);
+    const mins = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -335,13 +337,18 @@ export const DesktopHeader: React.FC = () => {
                 </div>
 
                 {sleepTimerRemainingSeconds !== null ? (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-purple-500/15 border border-purple-500/30">
-                    <span className="text-xs text-purple-200">Đang đếm ngược tắt</span>
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-500/15 border border-purple-500/30">
+                    <div>
+                      <p className="text-[10px] text-purple-200 font-bold uppercase tracking-wider">Đang đếm ngược tắt</p>
+                      <p className="text-sm font-mono font-bold text-amber-300 tabular-nums">
+                        {formatRemaining(sleepTimerRemainingSeconds)}
+                      </p>
+                    </div>
                     <button
                       onClick={() => setSleepTimer(null)}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 text-[10px] font-bold hover:bg-red-500/30 transition-colors"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-bold hover:bg-red-500/30 transition-colors"
                     >
-                      <BellOff className="w-3 h-3" />
+                      <BellOff className="w-3.5 h-3.5" />
                       <span>Hủy</span>
                     </button>
                   </div>

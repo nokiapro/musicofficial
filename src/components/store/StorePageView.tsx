@@ -138,15 +138,14 @@ export const StorePageView: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-[11px] font-bold text-white/60 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 text-center w-14">STT</th>
-                  <th className="py-3.5 px-4 min-w-[220px]">BÀI HÁT</th>
-                  <th className="py-3.5 px-4 min-w-[160px]">CA SỸ</th>
-                  <th className="py-3.5 px-4 text-center w-24">LRC</th>
-                  <th className="py-3.5 px-4 text-center w-28">ĐỊNH DẠNG</th>
-                  <th className="py-3.5 px-4 text-center w-36">GIÁ BẢN QUYỀN</th>
-                  {/* Requirement 6: Xóa chữ thao tác đi để chữ MUA phù hợp với dòng dưới là đã mua, bên cạnh ghi là TẢI VỀ */}
-                  <th className="py-3.5 px-4 text-center w-28">MUA</th>
-                  <th className="py-3.5 px-4 text-center w-28">TẢI VỀ</th>
+                  <th className="py-3.5 px-4 text-center w-14 whitespace-nowrap">STT</th>
+                  <th className="py-3.5 px-4 min-w-[220px] whitespace-nowrap">BÀI HÁT</th>
+                  <th className="py-3.5 px-4 min-w-[160px] whitespace-nowrap">CA SỸ</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[80px]">LRC</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[105px]">ĐỊNH DẠNG</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[140px]">GIÁ BẢN QUYỀN</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[100px]">MUA</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[100px]">TẢI VỀ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-sm">

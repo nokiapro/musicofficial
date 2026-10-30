@@ -59,6 +59,7 @@ interface MusicContextType {
   setTheme: (t: ThemeId) => void;
   setViewMode: (mode: 'auto' | 'pc' | 'mobile') => void;
   setSleepTimer: (minutes: number | null) => void;
+  setSleepTimerSeconds: (seconds: number | null) => void;
   addToQueue: (song: Song) => void;
   removeFromQueue: (songId: string) => void;
   clearQueue: () => void;
@@ -593,16 +594,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isAdmin = currentUser?.role === 'admin';
 
-  const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased: boolean) => {
+  const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased?: boolean) => {
     if (!song) return '';
-    if (format === 'WAV') {
-      return (purchased
-        ? song.wavUrl || song.mp3Url || song.demoUrl
-        : song.demoUrl || song.wavUrl || song.mp3Url) || '';
+    // If format is WAV or the song itself is registered as WAV Lossless, always prefer lossless WAV first
+    const wantsWav = format === 'WAV' || song.audioFormat === 'WAV';
+    if (wantsWav) {
+      return (song.wavUrl || song.mp3Url || song.demoUrl) || '';
     }
-    return (purchased
-      ? song.mp3Url || song.wavUrl || song.demoUrl
-      : song.demoUrl || song.mp3Url || song.wavUrl) || '';
+    // High-quality MP3 master (or WAV if MP3 is missing)
+    return (song.mp3Url || song.wavUrl || song.demoUrl) || '';
   };
 
   const setPreferredAudioFormat = (fmt: 'MP3' | 'WAV') => {
@@ -945,6 +945,34 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSleepTimerRemainingSeconds(minutes * 60);
     }
   };
+
+  const setSleepTimerSeconds = (seconds: number | null) => {
+    if (seconds === null || seconds <= 0) {
+      setSleepTimerMinutes(null);
+      setSleepTimerRemainingSeconds(null);
+    } else {
+      setSleepTimerMinutes(Math.ceil(seconds / 60));
+      setSleepTimerRemainingSeconds(seconds);
+    }
+  };
+
+  // Active countdown timer effect for Sleep Timer
+  useEffect(() => {
+    if (sleepTimerRemainingSeconds !== null && sleepTimerRemainingSeconds > 0) {
+      const interval = window.setInterval(() => {
+        setSleepTimerRemainingSeconds((prev) => {
+          if (prev === null || prev <= 1) {
+            audioEngine.pause();
+            setIsPlaying(false);
+            setSleepTimerMinutes(null);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [sleepTimerRemainingSeconds !== null && sleepTimerRemainingSeconds > 0]);
 
   const addToQueue = (song: Song) => {
     setQueue((prev) => (prev.some((s) => s.id === song.id) ? prev : [...prev, song]));
@@ -1418,6 +1446,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setTheme,
         setViewMode,
         setSleepTimer,
+        setSleepTimerSeconds,
         addToQueue,
         removeFromQueue,
         clearQueue,
@@ -1509,4 +1538,22 @@ export const useMusic = () => {
     throw new Error('useMusic must be used within a MusicProvider');
   }
   return context;
+};
+
+export const formatSleepTimerFull = (seconds: number | null | undefined): string => {
+  if (seconds === null || seconds === undefined || seconds <= 0) return '';
+  const total = Math.floor(seconds);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  return `${hrs.toString().padStart(2, '0')} giờ ${mins.toString().padStart(2, '0')} phút ${secs.toString().padStart(2, '0')} giây`;
+};
+
+export const formatSleepTimerDigital = (seconds: number | null | undefined): string => {
+  if (seconds === null || seconds === undefined || seconds <= 0) return '';
+  const total = Math.floor(seconds);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };

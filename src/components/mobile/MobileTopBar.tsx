@@ -210,7 +210,9 @@ export const MobileTopBar: React.FC = () => {
                   </span>
                   {sleepTimerRemainingSeconds !== null && (
                     <span className="text-[10px] font-mono font-bold text-amber-400">
-                      {Math.floor(sleepTimerRemainingSeconds / 60)}:{(sleepTimerRemainingSeconds % 60).toString().padStart(2, '0')}
+                      {Math.floor(sleepTimerRemainingSeconds / 3600).toString().padStart(2, '0')}:
+                      {Math.floor((sleepTimerRemainingSeconds % 3600) / 60).toString().padStart(2, '0')}:
+                      {(sleepTimerRemainingSeconds % 60).toString().padStart(2, '0')}
                     </span>
                   )}
                 </div>

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Visualizer } from '../common/Visualizer';
+import { ProgressBar } from '../common/ProgressBar';
 import { MobilePlayerActionSheet } from './MobilePlayerActionSheet';
 
 export const MobileFullPlayerModal: React.FC = () => {
@@ -288,34 +289,15 @@ export const MobileFullPlayerModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Scrubber Slider - Requirement 18: Xóa badge demo 60s chấm vàng; Requirement 19: Kéo đến đâu phát đúng chỗ đấy */}
+        {/* Progress Bar & Timestamps matching Screenshot 3 with smooth animation and drag */}
         <div className="relative z-10 px-6 shrink-0">
-          <div className="relative flex items-center">
-            <input
-              type="range"
-              min={0}
-              max={duration > 0 ? duration : 210}
-              value={displayTime}
-              onPointerDown={() => setIsDragging(true)}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                setDragTime(val);
-                if (!isDragging) {
-                  handleSeekCommit(val);
-                }
-              }}
-              onPointerUp={(e) => {
-                handleSeekCommit(Number((e.target as HTMLInputElement).value));
-              }}
-              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-
-          {/* Accurate Timestamps: Fix 4:299 bug, NO DEMO 60S BADGE */}
-          <div className="flex items-center justify-between text-xs text-white/50 mt-1 tabular-nums font-mono font-medium">
-            <span>{formatTime(displayTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
+          <ProgressBar
+            currentTime={currentTime}
+            duration={duration}
+            onSeek={seekTo}
+            isPurchased={isSongPurchased(currentSong.id)}
+            showDemoMarker={false}
+          />
         </div>
 
         {/* Big Playback Controls Row - Requirement 4: Tô màu nổi bật khi chọn Shuffle & Repeat */}

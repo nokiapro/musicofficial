@@ -160,15 +160,14 @@ export const DesktopSongListView: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-[11px] font-bold text-white/60 uppercase tracking-wider">
-                <th className="py-3.5 px-4 text-center w-14">STT</th>
-                <th className="py-3.5 px-4 min-w-[220px]">TÊN BÀI</th>
-                <th className="py-3.5 px-4 min-w-[160px]">TÊN CA SỸ</th>
-                <th className="py-3.5 px-4 text-center w-24">LRC</th>
-                <th className="py-3.5 px-4 text-center w-28">THỜI LƯỢNG</th>
-                <th className="py-3.5 px-4 text-center w-36">MP3 HAY WAV</th>
-                {/* Requirement 2 & Item 1: MUA column header without wrapping */}
-                <th className="py-3.5 px-4 text-center w-32 min-w-[125px] whitespace-nowrap">MUA</th>
-                <th className="py-3.5 px-4 text-center w-24 whitespace-nowrap">THAO TÁC</th>
+                <th className="py-3.5 px-4 text-center w-14 whitespace-nowrap">STT</th>
+                <th className="py-3.5 px-4 min-w-[220px] whitespace-nowrap">TÊN BÀI</th>
+                <th className="py-3.5 px-4 min-w-[160px] whitespace-nowrap">TÊN CA SỸ</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[80px]">LRC</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[100px]">THỜI LƯỢNG</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[130px]">MP3 HAY WAV</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[110px]">MUA</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[90px]">THAO TÁC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">

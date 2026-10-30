@@ -147,8 +147,10 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
               </div>
             </div>
             {sleepTimerRemainingSeconds !== null && (
-              <span className="text-[10px] font-bold text-amber-300 font-mono bg-amber-500/20 px-2 py-0.5 rounded-md">
-                {Math.ceil(sleepTimerRemainingSeconds / 60)} phút
+              <span className="text-[10px] font-bold text-amber-300 font-mono bg-amber-500/20 px-2.5 py-1 rounded-md">
+                {Math.floor(sleepTimerRemainingSeconds / 3600).toString().padStart(2, '0')}:
+                {Math.floor((sleepTimerRemainingSeconds % 3600) / 60).toString().padStart(2, '0')}:
+                {(sleepTimerRemainingSeconds % 60).toString().padStart(2, '0')}
               </span>
             )}
           </button>

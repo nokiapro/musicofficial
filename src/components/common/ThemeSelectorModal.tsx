@@ -87,7 +87,7 @@ export const ThemeSelectorModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
       <div
-        className="w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden p-4 sm:p-6 text-white max-h-[90vh] flex flex-col"
+        className="w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden p-4 sm:p-6 text-white max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200"
         style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
       >
         {/* Header */}

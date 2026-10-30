@@ -354,3 +354,93 @@ input[type="range"] {
     transform: scale(1);
   }
 }
+
+/* ==========================================================================
+   Smooth UI Entrance Animations for Modals, Drawers, Dropdowns & Sheets
+   ========================================================================== */
+@keyframes modalBackdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalContentZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes dropdownSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bottomSheetSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawerSlideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInSmooth {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Animation utilities */
+.animate-in {
+  animation-duration: 0.28s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fadeInSmooth;
+}
+
+.zoom-in-95 {
+  animation-name: modalContentZoomIn;
+}
+
+.slide-in-from-bottom {
+  animation-name: bottomSheetSlideUp;
+}
+
+.slide-in-from-right {
+  animation-name: drawerSlideInRight;
+}
+
+.slide-in-from-top-2 {
+  animation-name: dropdownSlideDown;
+}

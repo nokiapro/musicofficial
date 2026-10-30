@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Mic2, Disc3 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Visualizer } from '../common/Visualizer';
+import { ProgressBar } from '../common/ProgressBar';
 
 export const KaraokeLyricsModal: React.FC = () => {
   const {
@@ -159,24 +160,14 @@ export const KaraokeLyricsModal: React.FC = () => {
 
       {/* Bottom Floating Scrubber & Controls */}
       <footer className="relative z-10 px-6 py-4 border-t border-white/10 bg-black/40 backdrop-blur-md flex flex-col gap-2">
-        {/* Scrubber Bar */}
-        <div className="flex items-center gap-3 max-w-3xl mx-auto w-full">
-          <span className="text-xs text-white/60 tabular-nums w-10 text-right">
-            {formatTime(currentTime)}
-          </span>
-          <div className="relative flex-1 flex items-center">
-            <input
-              type="range"
-              min={0}
-              max={duration}
-              value={currentTime}
-              onChange={(e) => seekTo(Number(e.target.value))}
-              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-          <span className="text-xs text-white/60 tabular-nums w-10">
-            {formatTime(duration)}
-          </span>
+        {/* Scrubber Bar matching Screenshot 3 */}
+        <div className="max-w-3xl mx-auto w-full">
+          <ProgressBar
+            currentTime={currentTime}
+            duration={duration}
+            onSeek={seekTo}
+            showDemoMarker={false}
+          />
         </div>
 
         {/* Buttons Row */}

@@ -390,12 +390,12 @@ export const DesktopLibraryPage: React.FC = () => {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center">STT</th>
-                      <th className="py-3 px-4 min-w-[200px]">TÊN PLAYLIST</th>
-                      <th className="py-3 px-4 min-w-[220px]">MÔ TẢ</th>
-                      <th className="py-3 px-4 text-center w-28">SỐ BÀI HÁT</th>
-                      <th className="py-3 px-4 text-center w-36">PHÁT PLAYLIST</th>
-                      <th className="py-3 px-4 text-right w-20">XÓA</th>
+                      <th className="py-3 px-4 w-12 text-center whitespace-nowrap">STT</th>
+                      <th className="py-3 px-4 min-w-[200px] whitespace-nowrap">TÊN PLAYLIST</th>
+                      <th className="py-3 px-4 min-w-[220px] whitespace-nowrap">MÔ TẢ</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[100px]">SỐ BÀI HÁT</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[120px]">PHÁT PLAYLIST</th>
+                      <th className="py-3 px-4 text-right whitespace-nowrap min-w-[70px]">XÓA</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">

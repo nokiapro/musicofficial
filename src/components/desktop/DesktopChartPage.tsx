@@ -178,14 +178,14 @@ export const DesktopChartPage: React.FC = () => {
 
       {/* Chart List Table (Requirement 8: bỏ chữ trạng thái đi để MUA, bên cạnh ghi THAO TÁC) */}
       <div className="space-y-2">
-        <div className="grid grid-cols-[64px_1fr_110px_110px_90px_110px_80px] gap-4 px-5 py-3 text-xs font-bold text-white/50 uppercase tracking-wider border-b border-white/10 bg-white/5 rounded-xl">
-          <span className="text-center">Thứ hạng</span>
-          <span>Bài hát</span>
-          <span className="text-center">Định dạng</span>
-          <span className="text-center">Lượt nghe</span>
-          <span className="text-center">Thời lượng</span>
-          <span className="text-center">Mua</span>
-          <span className="text-center">Thao tác</span>
+        <div className="grid grid-cols-[80px_1fr_110px_110px_90px_110px_90px] gap-4 px-5 py-3 text-xs font-bold text-white/50 uppercase tracking-wider border-b border-white/10 bg-white/5 rounded-xl">
+          <span className="text-center whitespace-nowrap">Thứ hạng</span>
+          <span className="whitespace-nowrap">Bài hát</span>
+          <span className="text-center whitespace-nowrap">Định dạng</span>
+          <span className="text-center whitespace-nowrap">Lượt nghe</span>
+          <span className="text-center whitespace-nowrap">Thời lượng</span>
+          <span className="text-center whitespace-nowrap">Mua</span>
+          <span className="text-center whitespace-nowrap">Thao tác</span>
         </div>
 
         {/* Songs Rows */}
@@ -215,7 +215,7 @@ export const DesktopChartPage: React.FC = () => {
               <div
                 key={song.id}
                 onClick={() => playSong(song)}
-                className={`grid grid-cols-[64px_1fr_110px_110px_90px_110px_80px] gap-4 px-5 py-3.5 rounded-2xl border cursor-pointer group transition-all items-center ${
+                className={`grid grid-cols-[80px_1fr_110px_110px_90px_110px_90px] gap-4 px-5 py-3.5 rounded-2xl border cursor-pointer group transition-all items-center ${
                   isCurrent
                     ? 'bg-purple-900/40 border-purple-500/50 shadow-xl'
                     : 'bg-white/[0.02] hover:bg-white/[0.08] border-white/5 hover:border-white/15'

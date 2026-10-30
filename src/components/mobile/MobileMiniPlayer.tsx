@@ -33,9 +33,9 @@ export const MobileMiniPlayer: React.FC = () => {
       }}
     >
       {/* Top thin progress bar with yellow 60s marker */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-white/10">
+      <div className="absolute top-0 left-0 right-0 h-1 sm:h-1.5 bg-white/15 overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-[#9b4de0] to-[#c273ed] transition-all duration-300"
+          className="h-full bg-white rounded-full transition-[width] duration-300 ease-out shadow-[0_0_6px_rgba(255,255,255,0.5)]"
           style={{ width: `${progressPercent}%` }}
         />
         {!isPurchased && duration > 60 && (

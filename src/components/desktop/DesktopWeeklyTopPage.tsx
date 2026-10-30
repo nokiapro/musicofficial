@@ -103,14 +103,14 @@ export const DesktopWeeklyTopPage: React.FC = () => {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-[11px] font-bold text-white/50 uppercase tracking-wider">
-                <th className="py-3.5 px-4 text-center w-16">THỨ HẠNG</th>
-                <th className="py-3.5 px-4 min-w-[220px]">BÀI HÁT</th>
-                <th className="py-3.5 px-4 min-w-[160px]">CA SỸ</th>
-                <th className="py-3.5 px-4 text-center w-28">ĐỊNH DẠNG</th>
-                <th className="py-3.5 px-4 text-center w-32">LƯỢT NGHE TUẦN</th>
-                <th className="py-3.5 px-4 text-center w-28">THỜI LƯỢNG</th>
-                <th className="py-3.5 px-4 text-center w-28">MUA</th>
-                <th className="py-3.5 px-4 text-center w-20">THAO TÁC</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[105px]">THỨ HẠNG</th>
+                <th className="py-3.5 px-4 min-w-[220px] whitespace-nowrap">BÀI HÁT</th>
+                <th className="py-3.5 px-4 min-w-[160px] whitespace-nowrap">CA SỸ</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[105px]">ĐỊNH DẠNG</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[140px]">LƯỢT NGHE TUẦN</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[110px]">THỜI LƯỢNG</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[100px]">MUA</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[105px]">THAO TÁC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">

@@ -14,6 +14,7 @@ import {
   Mic2,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { ProgressBar } from '../common/ProgressBar';
 
 export const DesktopPlayerBar: React.FC = () => {
   const {
@@ -197,45 +198,14 @@ export const DesktopPlayerBar: React.FC = () => {
           </button>
         </div>
 
-        {/* Progress Bar & Timestamps (Requirement 3: no thumb, Requirement 19: drag to seek) */}
-        <div className="w-full flex items-center gap-3">
-          <span className="text-xs text-white/50 tabular-nums w-10 text-right">
-            {formatTime(displayTime)}
-          </span>
-          <div className="relative flex-1 flex items-center group">
-            <input
-              type="range"
-              min={0}
-              max={duration > 0 ? duration : 210}
-              value={displayTime}
-              onPointerDown={() => setIsDragging(true)}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                setDragTime(val);
-                if (!isDragging) {
-                  handleSeekCommit(val);
-                }
-              }}
-              onPointerUp={(e) => {
-                handleSeekCommit(Number((e.target as HTMLInputElement).value));
-              }}
-              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer group-hover:h-2 transition-all no-thumb"
-            />
-            {/* Visual demo indicator mark & yellow dot at 60s if not purchased */}
-            {!isPurchased && duration > 60 && (
-              <div
-                className="absolute top-1/2 -translate-y-1/2 -ml-1.5 flex flex-col items-center pointer-events-none z-10"
-                style={{ left: `${(60 / duration) * 100}%` }}
-                title="Chấm vàng: Hết hạn nghe thử 60s"
-              >
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-[#170f23] shadow-[0_0_8px_#f59e0b]" />
-              </div>
-            )}
-          </div>
-          <span className="text-xs text-white/50 tabular-nums w-10">
-            {formatTime(duration)}
-          </span>
-        </div>
+        {/* Progress Bar & Timestamps matching Screenshot 3 with smooth animation */}
+        <ProgressBar
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={seekTo}
+          isPurchased={isPurchased}
+          className="w-full max-w-xl"
+        />
       </div>
 
       {/* Right: Microphone icon, Volume, Queue Drawer */}
