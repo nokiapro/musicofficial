@@ -14,6 +14,7 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  Shuffle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 
@@ -30,6 +31,9 @@ export const DesktopChartPage: React.FC = () => {
     currentSong,
     isPlaying,
     openDownloadModal,
+    isShuffle,
+    toggleShuffle,
+    setPlaybackSource,
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
@@ -37,6 +41,8 @@ export const DesktopChartPage: React.FC = () => {
   const PAGE_SIZE = 20;
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
+  const playMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -47,6 +53,20 @@ export const DesktopChartPage: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutsidePlayMenu = (e: MouseEvent) => {
+      if (playMenuRef.current && !playMenuRef.current.contains(e.target as Node)) {
+        setIsPlayMenuOpen(false);
+      }
+    };
+    if (isPlayMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutsidePlayMenu);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsidePlayMenu);
+    };
+  }, [isPlayMenuOpen]);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return '3:30';
@@ -65,10 +85,21 @@ export const DesktopChartPage: React.FC = () => {
   const startIndex = (validCurrentPage - 1) * PAGE_SIZE;
   const paginatedSongs = rankedSongs.slice(startIndex, startIndex + PAGE_SIZE);
 
-  const handlePlayAll = () => {
-    if (rankedSongs.length > 0) {
-      playSong(rankedSongs[0]);
-    }
+  const handlePlayInOrder = () => {
+    if (rankedSongs.length === 0) return;
+    setPlaybackSource('#xuankenchart');
+    if (isShuffle) toggleShuffle();
+    playSong(rankedSongs[0]);
+    setIsPlayMenuOpen(false);
+  };
+
+  const handlePlayRandom = () => {
+    if (rankedSongs.length === 0) return;
+    setPlaybackSource('#xuankenchart');
+    if (!isShuffle) toggleShuffle();
+    const randomIndex = Math.floor(Math.random() * rankedSongs.length);
+    playSong(rankedSongs[randomIndex]);
+    setIsPlayMenuOpen(false);
   };
 
   const top3 = rankedSongs.slice(0, 3);
@@ -83,15 +114,49 @@ export const DesktopChartPage: React.FC = () => {
               #xuankenchart
             </span>
           </h1>
-          <button
-            onClick={handlePlayAll}
-            disabled={rankedSongs.length === 0}
-            style={{ backgroundColor: 'var(--color-accent)' }}
-            className="w-10 h-10 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 disabled:opacity-40 hover:opacity-90"
-            title="Phát tất cả theo thứ hạng"
-          >
-            <Play className="w-5 h-5 fill-current ml-0.5" />
-          </button>
+
+          {/* Requirement 6: Play button with Play Order or Random popover */}
+          <div className="relative" ref={playMenuRef}>
+            <button
+              onClick={() => setIsPlayMenuOpen(!isPlayMenuOpen)}
+              disabled={rankedSongs.length === 0}
+              style={{ backgroundColor: 'var(--color-accent)' }}
+              className="w-10 h-10 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 disabled:opacity-40 hover:opacity-90"
+              title="Phát nhạc #xuankenchart (Theo thứ tự hoặc Ngẫu nhiên)"
+            >
+              <Play className="w-5 h-5 fill-current ml-0.5" />
+            </button>
+
+            {isPlayMenuOpen && (
+              <div className="absolute left-0 top-12 w-56 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-2 z-50 text-white animate-in zoom-in-95 duration-150 space-y-1">
+                <button
+                  onClick={handlePlayInOrder}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Phát theo thứ tự</p>
+                    <p className="text-[10px] text-white/50">Phát từ Top 1 BXH</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handlePlayRandom}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-[#c273ed] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Shuffle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Phát ngẫu nhiên</p>
+                    <p className="text-[10px] text-white/50">Xáo trộn ngẫu nhiên BXH</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-white/60">

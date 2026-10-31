@@ -68,6 +68,7 @@ export const MobileAppLayout: React.FC = () => {
     setPreferredAudioFormat,
     currentUser,
     setIsLoginModalOpen,
+    setPlaybackSource,
   } = useMusic();
 
   const [librarySubTab, setLibrarySubTab] = useState<'liked' | 'playlists' | 'purchased'>('liked');
@@ -185,6 +186,7 @@ export const MobileAppLayout: React.FC = () => {
                   <div
                     key={song.id}
                     onClick={() => {
+                      setPlaybackSource('Bài hát gợi ý');
                       if (isCurrent) togglePlay();
                       else playSong(song);
                     }}
@@ -500,7 +502,10 @@ export const MobileAppLayout: React.FC = () => {
                 return (
                   <div
                     key={song.id}
-                    onClick={() => playSong(song)}
+                    onClick={() => {
+                      setPlaybackSource('#xuankenchart');
+                      playSong(song);
+                    }}
                     className={`flex items-center justify-between p-2.5 rounded-2xl border transition-colors cursor-pointer ${
                       isCurrent
                         ? 'bg-[#9b4de0]/20 border-purple-500/50 shadow'
@@ -697,7 +702,10 @@ export const MobileAppLayout: React.FC = () => {
                   paginatedLikedSongs.map((song) => (
                     <div
                       key={song.id}
-                      onClick={() => playSong(song)}
+                      onClick={() => {
+                        setPlaybackSource('Thư viện cá nhân');
+                        playSong(song);
+                      }}
                       className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 active:bg-white/10 cursor-pointer"
                     >
                       <div className="truncate min-w-0 flex-1 pr-2">
@@ -848,7 +856,10 @@ export const MobileAppLayout: React.FC = () => {
                   paginatedOwnedSongs.map((song) => (
                     <div
                       key={song.id}
-                      onClick={() => playSong(song)}
+                      onClick={() => {
+                        setPlaybackSource('Thư viện cá nhân');
+                        playSong(song);
+                      }}
                       className="flex items-center justify-between p-2.5 rounded-2xl bg-white/5 border border-white/10 cursor-pointer"
                     >
                       <div className="truncate min-w-0 flex-1 pr-2">

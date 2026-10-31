@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Play,
   Pause,
@@ -14,7 +14,6 @@ import {
   Mic2,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { ProgressBar } from '../common/ProgressBar';
 
 export const DesktopPlayerBar: React.FC = () => {
   const {
@@ -39,29 +38,96 @@ export const DesktopPlayerBar: React.FC = () => {
     setIsLyricsOpen,
     isQueueDrawerOpen,
     setIsQueueDrawerOpen,
-    isSongPurchased,
   } = useMusic();
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragTime, setDragTime] = useState<number | null>(null);
+  const progressTrackRef = useRef<HTMLDivElement | null>(null);
+  const volumeTrackRef = useRef<HTMLDivElement | null>(null);
+  const [isDraggingProgress, setIsDraggingProgress] = useState(false);
+  const [dragProgressTime, setDragProgressTime] = useState<number | null>(null);
 
   const isLiked = currentSong ? likedSongIds.includes(currentSong.id) : false;
-  const isPurchased = currentSong ? isSongPurchased(currentSong.id) : false;
 
-  const displayTime = isDragging && dragTime !== null ? dragTime : currentTime;
+  const safeDuration = Math.max(1, duration || 210);
+  const displayProgressTime = isDraggingProgress && dragProgressTime !== null ? dragProgressTime : currentTime;
+  const progressPercent = Math.min(100, Math.max(0, (displayProgressTime / safeDuration) * 100));
 
   const formatTime = (rawSecs: number) => {
-    if (isNaN(rawSecs) || !isFinite(rawSecs) || rawSecs < 0) return '0:00';
+    if (isNaN(rawSecs) || !isFinite(rawSecs) || rawSecs < 0) return '00:00';
     const totalSecs = Math.floor(rawSecs);
     const m = Math.floor(totalSecs / 60);
     const s = totalSecs % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const handleSeekCommit = (targetVal: number) => {
-    seekTo(targetVal);
-    setIsDragging(false);
-    setDragTime(null);
+  // Interactive seek drag & click on progress track
+  const handleProgressPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!progressTrackRef.current) return;
+    setIsDraggingProgress(true);
+
+    const calcTime = (clientX: number) => {
+      if (!progressTrackRef.current) return 0;
+      const rect = progressTrackRef.current.getBoundingClientRect();
+      const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      return pct * safeDuration;
+    };
+
+    const targetTime = calcTime(e.clientX);
+    setDragProgressTime(targetTime);
+
+    const onMove = (moveEv: PointerEvent) => {
+      const t = calcTime(moveEv.clientX);
+      setDragProgressTime(t);
+    };
+
+    const onUp = (upEv: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      const finalT = calcTime(upEv.clientX);
+      seekTo(finalT);
+      setIsDraggingProgress(false);
+      setDragProgressTime(null);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+
+  // Interactive volume drag & click on volume track
+  const handleVolumePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!volumeTrackRef.current) return;
+
+    const calcVol = (clientX: number) => {
+      if (!volumeTrackRef.current) return 0;
+      const rect = volumeTrackRef.current.getBoundingClientRect();
+      const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      return pct;
+    };
+
+    const newV = calcVol(e.clientX);
+    setVolume(newV);
+    if (isMuted && newV > 0) toggleMute();
+
+    const onMove = (moveEv: PointerEvent) => {
+      const v = calcVol(moveEv.clientX);
+      setVolume(v);
+      if (isMuted && v > 0) toggleMute();
+    };
+
+    const onUp = (upEv: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      const finalV = calcVol(upEv.clientX);
+      setVolume(finalV);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
   };
 
   return (
@@ -69,8 +135,8 @@ export const DesktopPlayerBar: React.FC = () => {
       className="h-24 px-6 border-t text-white flex items-center justify-between select-none z-30 sticky bottom-0 transition-colors duration-200"
       style={{ backgroundColor: 'var(--bg-player)', borderColor: 'var(--border-color)' }}
     >
-      {/* Left: Song Info + Vinyl CD + Full Title */}
-      <div className="flex items-center gap-4 w-80 shrink-0">
+      {/* Left: Song Info + Vinyl CD + Full Title with Dynamic Hugging Heart (Requirement 8) */}
+      <div className="flex items-center gap-3.5 max-w-[340px] shrink-0">
         {/* Spinning Vinyl Cover */}
         <div className="relative w-14 h-14 rounded-full bg-zinc-900 border-2 border-zinc-700 p-0.5 flex items-center justify-center shrink-0 shadow-lg overflow-hidden">
           {currentSong?.coverImage ? (
@@ -90,55 +156,54 @@ export const DesktopPlayerBar: React.FC = () => {
           />
         </div>
 
-        {/* Title & Artist */}
-        <div className="flex-1 min-w-0 pr-1">
-          {currentSong ? (
-            <>
-              <p
-                className="text-sm font-bold hover:text-[#c273ed] cursor-pointer transition-colors leading-snug break-words"
-                title={currentSong.title}
-              >
-                {currentSong.title}
-              </p>
-              <p className="text-xs text-white/60 hover:text-white cursor-pointer mt-0.5 truncate">
-                {currentSong.artists}
-              </p>
-            </>
-          ) : (
-            <div>
-              <p className="text-sm font-bold text-white/40">Chưa chọn bài hát</p>
-              <p className="text-xs text-white/30 mt-0.5">Chọn bài từ danh sách để phát</p>
-            </div>
-          )}
-        </div>
+        {/* Dynamic Hugging Song Info & Heart: moves closer or farther based on title width */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0 max-w-[200px]">
+            {currentSong ? (
+              <>
+                <p
+                  className="text-sm font-bold text-white hover:text-[#c273ed] cursor-pointer transition-colors leading-snug truncate"
+                  title={currentSong.title}
+                >
+                  {currentSong.title}
+                </p>
+                <p className="text-xs text-white/60 hover:text-white cursor-pointer mt-0.5 truncate">
+                  {currentSong.artists}
+                </p>
+              </>
+            ) : (
+              <div>
+                <p className="text-sm font-bold text-white/40">Chưa chọn bài hát</p>
+                <p className="text-xs text-white/30 mt-0.5">Chọn bài để phát</p>
+              </div>
+            )}
+          </div>
 
-        {/* Action: Heart icon only */}
-        {currentSong && (
-          <div className="flex items-center shrink-0">
+          {/* Action: Heart icon hugging immediately next to song text */}
+          {currentSong && (
             <button
               onClick={() => toggleLike(currentSong.id)}
-              className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-red-400 transition-colors"
+              className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-red-400 active:scale-90 transition-all shrink-0"
               title={isLiked ? 'Bỏ thích' : 'Thêm vào yêu thích'}
             >
               <Heart
-                className={`w-5 h-5 ${isLiked ? 'text-red-500 fill-red-500' : ''}`}
+                className={`w-4 h-4 sm:w-5 sm:h-5 ${isLiked ? 'text-red-500 fill-red-500' : ''}`}
               />
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Center: Playback Controls & Scrubber */}
+      {/* Center: Playback Controls & Scrubber with glass-track and glass-fill */}
       <div className="flex-1 max-w-2xl px-6 flex flex-col items-center gap-1.5">
-        {/* Buttons Row */}
+        {/* Buttons Row - Requirement 4: Active state glows icon only, without button background box */}
         <div className="flex items-center gap-5">
-          {/* Requirement 4: Nút phát ngẫu nhiên tô màu nổi bật khi được chọn */}
           <button
             onClick={toggleShuffle}
-            className={`p-2 rounded-full transition-all ${
+            className={`p-2 transition-all active:scale-95 ${
               isShuffle
-                ? 'bg-[#9b4de0] text-white shadow-lg shadow-purple-500/40 ring-2 ring-purple-400/50 scale-105'
-                : 'text-white/60 hover:text-white hover:bg-white/10'
+                ? 'text-[#c273ed] drop-shadow-[0_0_8px_rgba(194,115,237,0.9)]'
+                : 'text-white/60 hover:text-white'
             }`}
             title={isShuffle ? 'Đang bật phát ngẫu nhiên (Bấm để tắt)' : 'Bật phát ngẫu nhiên'}
           >
@@ -174,13 +239,12 @@ export const DesktopPlayerBar: React.FC = () => {
             <SkipForward className="w-5 h-5 fill-current" />
           </button>
 
-          {/* Requirement 4: Nút lặp lại tô màu nổi bật khi được chọn */}
           <button
             onClick={toggleRepeat}
-            className={`p-2 rounded-full transition-all ${
+            className={`p-2 transition-all active:scale-95 ${
               repeatMode !== 'off'
-                ? 'bg-[#9b4de0] text-white shadow-lg shadow-purple-500/40 ring-2 ring-purple-400/50 scale-105'
-                : 'text-white/60 hover:text-white hover:bg-white/10'
+                ? 'text-[#c273ed] drop-shadow-[0_0_8px_rgba(194,115,237,0.9)]'
+                : 'text-white/60 hover:text-white'
             }`}
             title={`Lặp lại: ${
               repeatMode === 'off'
@@ -198,17 +262,34 @@ export const DesktopPlayerBar: React.FC = () => {
           </button>
         </div>
 
-        {/* Progress Bar & Timestamps matching Screenshot 3 with smooth animation */}
-        <ProgressBar
-          currentTime={currentTime}
-          duration={duration}
-          onSeek={seekTo}
-          isPurchased={isPurchased}
-          className="w-full max-w-xl"
-        />
+        {/* Requirement 4: Progress Bar & Timestamps on SAME SINGLE LINE with glass-track and glass-fill */}
+        <div className="w-full flex items-center gap-3">
+          <span className="text-xs text-white/70 font-mono tabular-nums select-none min-w-[38px] text-right">
+            {formatTime(displayProgressTime)}
+          </span>
+          <div
+            ref={progressTrackRef}
+            onPointerDown={handleProgressPointerDown}
+            className="relative flex-1 py-2 cursor-pointer group flex items-center"
+            role="slider"
+            aria-valuemin={0}
+            aria-valuemax={safeDuration}
+            aria-valuenow={displayProgressTime}
+          >
+            <div className="w-full h-1.5 group-hover:h-2.5 rounded-full glass-track overflow-hidden relative shadow-inner">
+              <div
+                className={`h-full glass-fill ${isDraggingProgress ? '' : 'transition-[width] duration-150 ease-out'} shadow-[0_0_8px_rgba(255,255,255,0.4)]`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+          <span className="text-xs text-white/70 font-mono tabular-nums select-none min-w-[38px] text-left">
+            {formatTime(safeDuration)}
+          </span>
+        </div>
       </div>
 
-      {/* Right: Microphone icon, Volume, Queue Drawer */}
+      {/* Right: Microphone icon, Volume with glass-track & glass-fill, Queue Drawer */}
       <div className="flex items-center justify-end gap-3 w-80 shrink-0">
         <button
           onClick={() => setIsLyricsOpen(true)}
@@ -218,8 +299,8 @@ export const DesktopPlayerBar: React.FC = () => {
           <Mic2 className="w-5 h-5" />
         </button>
 
-        {/* Volume - Requirement 3: Bỏ thumb tròn của âm lượng */}
-        <div className="flex items-center gap-1.5 px-2">
+        {/* Volume Scrubber with glass-track and glass-fill (Requirement 4) */}
+        <div className="flex items-center gap-2 px-2">
           <button
             onClick={toggleMute}
             className="p-1 rounded-full text-white/70 hover:text-white transition-colors"
@@ -231,17 +312,24 @@ export const DesktopPlayerBar: React.FC = () => {
               <Volume2 className="w-4 h-4 text-purple-300" />
             )}
           </button>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={isMuted ? 0 : volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            className="w-20 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer no-thumb"
+          <div
+            ref={volumeTrackRef}
+            onPointerDown={handleVolumePointerDown}
+            className="w-20 sm:w-24 py-2 cursor-pointer group flex items-center"
             title={`Âm lượng: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
-          />
-          <span className="text-[10px] font-mono font-bold text-white/60 w-7 text-right">
+            role="slider"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round((isMuted ? 0 : volume) * 100)}
+          >
+            <div className="w-full h-1.5 rounded-full glass-track overflow-hidden relative shadow-inner">
+              <div
+                className="h-full glass-fill"
+                style={{ width: `${(isMuted ? 0 : volume) * 100}%` }}
+              />
+            </div>
+          </div>
+          <span className="text-[10px] font-mono font-bold text-white/60 w-7 text-right select-none">
             {Math.round((isMuted ? 0 : volume) * 100)}%
           </span>
         </div>

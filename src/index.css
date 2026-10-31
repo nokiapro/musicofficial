@@ -444,3 +444,15 @@ input[type="range"] {
 .slide-in-from-top-2 {
   animation-name: dropdownSlideDown;
 }
+
+/* Glass Track & Fill for PC Progress Bar and Volume Scrubber (Requirement 4) */
+.glass-track {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-fill {
+  background-color: #ffffff;
+  border-radius: 9999px;
+}

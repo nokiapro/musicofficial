@@ -36,6 +36,8 @@ interface MusicContextType {
   sleepTimerMinutes: number | null;
   sleepTimerRemainingSeconds: number | null;
   searchQuery: string;
+  playbackSource: string;
+  setPlaybackSource: (source: string) => void;
   viewMode: 'auto' | 'pc' | 'mobile';
   effectiveIsMobile: boolean;
 
@@ -225,6 +227,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
   const [sleepTimerRemainingSeconds, setSleepTimerRemainingSeconds] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [playbackSource, setPlaybackSource] = useState<string>('Bài hát gợi ý');
 
   // Audio Playback Settings: Format & Crossfade
   const [preferredAudioFormat, setPreferredAudioFormatState] = useState<'MP3' | 'WAV'>('MP3');
@@ -1328,6 +1331,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const playPlaylist = (playlist: Playlist) => {
     const pSongs = songs.filter((s) => playlist.songIds.includes(s.id));
     if (pSongs.length > 0) {
+      setPlaybackSource(playlist.name);
       setQueue(pSongs.slice(1));
       playSong(pSongs[0]);
     }
@@ -1525,6 +1529,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         reportSongIssue,
         siteSettings,
         updateSiteSettings,
+        playbackSource,
+        setPlaybackSource,
       }}
     >
       {children}

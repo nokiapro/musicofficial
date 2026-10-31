@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Play,
   Flame,
@@ -11,6 +11,7 @@ import {
   Download,
   Headphones,
   RotateCcw,
+  Shuffle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
@@ -30,9 +31,14 @@ export const DesktopWeeklyTopPage: React.FC = () => {
     currentSong,
     isPlaying,
     openDownloadModal,
+    isShuffle,
+    toggleShuffle,
+    setPlaybackSource,
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
+  const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
+  const playMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Compute top 10 songs of this week
   const weeklyRankedSongs = [...songs]
@@ -43,11 +49,36 @@ export const DesktopWeeklyTopPage: React.FC = () => {
     .sort((a, b) => b.weeklyPlaysCount - a.weeklyPlaysCount)
     .slice(0, 10);
 
-  const handlePlayAllWeekly = () => {
-    if (weeklyRankedSongs.length > 0) {
-      playSong(weeklyRankedSongs[0]);
-    }
+  const handlePlayInOrder = () => {
+    if (weeklyRankedSongs.length === 0) return;
+    setPlaybackSource('Nghe nhiều nhất tuần');
+    if (isShuffle) toggleShuffle();
+    playSong(weeklyRankedSongs[0]);
+    setIsPlayMenuOpen(false);
   };
+
+  const handlePlayRandom = () => {
+    if (weeklyRankedSongs.length === 0) return;
+    setPlaybackSource('Nghe nhiều nhất tuần');
+    if (!isShuffle) toggleShuffle();
+    const randomIndex = Math.floor(Math.random() * weeklyRankedSongs.length);
+    playSong(weeklyRankedSongs[randomIndex]);
+    setIsPlayMenuOpen(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutsidePlayMenu = (e: MouseEvent) => {
+      if (playMenuRef.current && !playMenuRef.current.contains(e.target as Node)) {
+        setIsPlayMenuOpen(false);
+      }
+    };
+    if (isPlayMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutsidePlayMenu);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsidePlayMenu);
+    };
+  }, [isPlayMenuOpen]);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return '03:30';
@@ -80,15 +111,47 @@ export const DesktopWeeklyTopPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Large circular Play button to play all 10 weekly songs */}
-          <button
-            onClick={handlePlayAllWeekly}
-            disabled={weeklyRankedSongs.length === 0}
-            className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white flex items-center justify-center shadow-xl shadow-amber-600/30 transition-transform active:scale-95 disabled:opacity-40 shrink-0 ml-2"
-            title="Nghe tất cả bài hát trong tuần này"
-          >
-            <Play className="w-6 h-6 fill-current ml-0.5 text-white" />
-          </button>
+          {/* Large circular Play button with Play Order / Random Dropdown (Requirement 3) */}
+          <div className="relative" ref={playMenuRef}>
+            <button
+              onClick={() => setIsPlayMenuOpen(!isPlayMenuOpen)}
+              disabled={weeklyRankedSongs.length === 0}
+              className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white flex items-center justify-center shadow-xl shadow-amber-600/30 transition-transform active:scale-95 disabled:opacity-40 shrink-0 ml-2"
+              title="Nghe tất cả bài hát trong tuần này (Theo thứ tự hoặc Ngẫu nhiên)"
+            >
+              <Play className="w-6 h-6 fill-current ml-0.5 text-white" />
+            </button>
+
+            {isPlayMenuOpen && (
+              <div className="absolute left-0 top-14 w-56 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-2 z-50 text-white animate-in zoom-in-95 duration-150 space-y-1">
+                <button
+                  onClick={handlePlayInOrder}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Phát theo thứ tự</p>
+                    <p className="text-[10px] text-white/50">Phát từ Top 1 tuần này</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handlePlayRandom}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-[#c273ed] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Shuffle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Phát ngẫu nhiên</p>
+                    <p className="text-[10px] text-white/50">Xáo trộn ngẫu nhiên Top 10</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-white/50 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">

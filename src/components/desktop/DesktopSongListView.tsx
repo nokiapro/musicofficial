@@ -13,6 +13,7 @@ import {
   MoreVertical,
   ChevronLeft,
   ChevronRight,
+  Shuffle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
@@ -38,11 +39,18 @@ export const DesktopSongListView: React.FC = () => {
     songFormatMap,
     setSongAudioFormat,
     openDownloadModal,
+    isShuffle,
+    toggleShuffle,
+    setPlaybackSource,
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Requirement 2: Play Order or Random Dropdown state
+  const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
+  const playMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Requirement 21: 20 songs per page
   const [currentPage, setCurrentPage] = useState(1);
@@ -63,20 +71,23 @@ export const DesktopSongListView: React.FC = () => {
     setActiveMenuSongId(songId);
   };
 
+  // Close Play Menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setActiveMenuSongId(null);
-        setMenuPosition(null);
+    const handleClickOutsidePlayMenu = (e: MouseEvent) => {
+      if (playMenuRef.current && !playMenuRef.current.contains(e.target as Node)) {
+        setIsPlayMenuOpen(false);
       }
     };
-    if (activeMenuSongId) {
-      document.addEventListener('mousedown', handleClickOutside);
+    if (isPlayMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutsidePlayMenu);
     }
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutsidePlayMenu);
     };
-  }, [activeMenuSongId]);
+  }, [isPlayMenuOpen]);
+
+  // Requirement 5: Do NOT close activeMenuSongId on outside click!
+  // It only closes when the user clicks the 3 vertical dots button again or chooses an option.
 
   // Sort alphabetically A -> Z
   const sortedSongs = [...songs].sort((a, b) =>
@@ -102,6 +113,7 @@ export const DesktopSongListView: React.FC = () => {
   };
 
   const handlePlayOrPause = (song: Song) => {
+    setPlaybackSource('Danh sách bài hát');
     if (currentSong && currentSong.id === song.id) {
       togglePlay();
     } else {
@@ -109,17 +121,78 @@ export const DesktopSongListView: React.FC = () => {
     }
   };
 
+  const handlePlayInOrder = () => {
+    if (sortedSongs.length === 0) return;
+    setPlaybackSource('Danh sách bài hát');
+    if (isShuffle) toggleShuffle();
+    playSong(sortedSongs[0]);
+    setIsPlayMenuOpen(false);
+  };
+
+  const handlePlayRandom = () => {
+    if (sortedSongs.length === 0) return;
+    setPlaybackSource('Danh sách bài hát');
+    if (!isShuffle) toggleShuffle();
+    const randomIndex = Math.floor(Math.random() * sortedSongs.length);
+    playSong(sortedSongs[randomIndex]);
+    setIsPlayMenuOpen(false);
+  };
+
   return (
     <div className="space-y-6 pb-20 select-none">
       {/* Header with Title and MP3 / WAV Global Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase">
-            Danh Sách Bài Hát
-          </h1>
-          <p className="text-xs text-white/60 mt-1">
-            Tổng cộng {totalSongs} bài hát • Đã mua: <span className="text-emerald-400 font-bold">{purchasedCount} bài</span> • Chưa mua: <span className="text-amber-400 font-bold">{unpurchasedCount} bài</span>
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase">
+              Danh Sách Bài Hát
+            </h1>
+            <p className="text-xs text-white/60 mt-1">
+              Tổng cộng {totalSongs} bài hát • Đã mua: <span className="text-emerald-400 font-bold">{purchasedCount} bài</span> • Chưa mua: <span className="text-amber-400 font-bold">{unpurchasedCount} bài</span>
+            </p>
+          </div>
+
+          {/* Requirement 2: Circular Play button with Play Order / Random Dropdown */}
+          <div className="relative" ref={playMenuRef}>
+            <button
+              onClick={() => setIsPlayMenuOpen(!isPlayMenuOpen)}
+              disabled={sortedSongs.length === 0}
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white flex items-center justify-center shadow-xl shadow-amber-600/30 transition-transform active:scale-95 disabled:opacity-40 shrink-0 ml-1"
+              title="Phát nhạc (Theo thứ tự hoặc Ngẫu nhiên)"
+            >
+              <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current ml-0.5 text-white" />
+            </button>
+
+            {isPlayMenuOpen && (
+              <div className="absolute left-0 top-14 w-56 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-2 z-50 text-white animate-in zoom-in-95 duration-150 space-y-1">
+                <button
+                  onClick={handlePlayInOrder}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Phát theo thứ tự</p>
+                    <p className="text-[10px] text-white/50">Phát lần lượt từ bài đầu</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handlePlayRandom}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-[#c273ed] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Shuffle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Phát ngẫu nhiên</p>
+                    <p className="text-[10px] text-white/50">Xáo trộn bài hát ngẫu nhiên</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* MP3 & WAV Audio Format Switcher */}

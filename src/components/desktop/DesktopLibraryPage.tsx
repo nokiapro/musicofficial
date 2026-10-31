@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Play,
   Heart,
@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   ListMusic,
   FolderHeart,
+  Shuffle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Playlist, Song } from '../../types/music';
@@ -34,6 +35,9 @@ export const DesktopLibraryPage: React.FC = () => {
     rewindStats,
     currentUser,
     setIsLoginModalOpen,
+    isShuffle,
+    toggleShuffle,
+    setPlaybackSource,
   } = useMusic();
 
   // Requirement 9: Xóa mục Lịch sử đi -> chỉ còn Yêu thích, Playlists, Đã mua
@@ -41,6 +45,9 @@ export const DesktopLibraryPage: React.FC = () => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDesc, setNewPlaylistDesc] = useState('');
   const [isCreatingPl, setIsCreatingPl] = useState(false);
+
+  const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
+  const playMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Requirement 3: Thư viện cá nhân chỉ khi đăng nhập mới hiện
   if (!currentUser) {
@@ -94,10 +101,37 @@ export const DesktopLibraryPage: React.FC = () => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const handlePlayLiked = () => {
-    if (likedSongs.length > 0) {
-      playSong(likedSongs[0]);
+  useEffect(() => {
+    const handleClickOutsidePlayMenu = (e: MouseEvent) => {
+      if (playMenuRef.current && !playMenuRef.current.contains(e.target as Node)) {
+        setIsPlayMenuOpen(false);
+      }
+    };
+    if (isPlayMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutsidePlayMenu);
     }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsidePlayMenu);
+    };
+  }, [isPlayMenuOpen]);
+
+  const librarySongs = likedSongs.length > 0 ? likedSongs : purchasedSongs.length > 0 ? purchasedSongs : songs;
+
+  const handlePlayInOrder = () => {
+    if (librarySongs.length === 0) return;
+    setPlaybackSource('Thư viện cá nhân');
+    if (isShuffle) toggleShuffle();
+    playSong(librarySongs[0]);
+    setIsPlayMenuOpen(false);
+  };
+
+  const handlePlayRandom = () => {
+    if (librarySongs.length === 0) return;
+    setPlaybackSource('Thư viện cá nhân');
+    if (!isShuffle) toggleShuffle();
+    const randomIndex = Math.floor(Math.random() * librarySongs.length);
+    playSong(librarySongs[randomIndex]);
+    setIsPlayMenuOpen(false);
   };
 
   const handleCreatePlaylistSubmit = async (e: React.FormEvent) => {
@@ -145,17 +179,49 @@ export const DesktopLibraryPage: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase">
             Thư Viện Cá Nhân
           </h1>
-          {activeTab === 'liked' && (
+
+          {/* Requirement 7: Play button with Play Order or Random popover */}
+          <div className="relative" ref={playMenuRef}>
             <button
-              onClick={handlePlayLiked}
-              disabled={likedSongs.length === 0}
+              onClick={() => setIsPlayMenuOpen(!isPlayMenuOpen)}
+              disabled={librarySongs.length === 0}
               style={{ backgroundColor: 'var(--color-accent)' }}
-              className="w-9 h-9 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 disabled:opacity-40 hover:opacity-90"
-              title="Phát tất cả bài yêu thích"
+              className="w-9 h-9 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 disabled:opacity-40 hover:opacity-90 ml-1 cursor-pointer"
+              title="Phát thư viện cá nhân (Theo thứ tự hoặc Ngẫu nhiên)"
             >
               <Play className="w-4 h-4 fill-current ml-0.5" />
             </button>
-          )}
+
+            {isPlayMenuOpen && (
+              <div className="absolute left-0 top-12 w-56 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-2 z-50 text-white animate-in zoom-in-95 duration-150 space-y-1">
+                <button
+                  onClick={handlePlayInOrder}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Phát theo thứ tự</p>
+                    <p className="text-[10px] text-white/50">Phát từ đầu danh sách</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handlePlayRandom}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-[#c273ed] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Shuffle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Phát ngẫu nhiên</p>
+                    <p className="text-[10px] text-white/50">Xáo trộn ngẫu nhiên thư viện</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tabs: Requirement 9 - Xóa lịch sử, chỉ giữ Yêu thích vs Playlists vs Đã mua */}
