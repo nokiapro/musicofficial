@@ -42,6 +42,7 @@ export const DesktopSongListView: React.FC = () => {
     isShuffle,
     toggleShuffle,
     setPlaybackSource,
+    playlists,
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
@@ -459,17 +460,32 @@ export const DesktopSongListView: React.FC = () => {
                 <span>{isTargetLiked ? 'Bỏ tim bài hát' : 'Tim bài hát'}</span>
               </button>
 
-              <button
-                onClick={() => {
-                  openAddToPlaylistModal(targetSong);
-                  setActiveMenuSongId(null);
-                  setMenuPosition(null);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
-              >
-                <ListPlus className="w-4 h-4 text-[#c273ed]" />
-                <span>Thêm vào playlist</span>
-              </button>
+              {playlists.some((p) => p.songIds.includes(targetSong.id)) ? (
+                <button
+                  onClick={() => {
+                    openAddToPlaylistModal(targetSong);
+                    setActiveMenuSongId(null);
+                    setMenuPosition(null);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium text-emerald-400 transition-colors cursor-pointer"
+                  title="Bài hát đã có trong playlist"
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="text-emerald-400 font-semibold">Đã thêm vào playlist</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    openAddToPlaylistModal(targetSong);
+                    setActiveMenuSongId(null);
+                    setMenuPosition(null);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors cursor-pointer"
+                >
+                  <ListPlus className="w-4 h-4 text-[#c273ed] shrink-0" />
+                  <span>Thêm vào playlist</span>
+                </button>
+              )}
 
               <button
                 onClick={() => {

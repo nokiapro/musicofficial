@@ -8,9 +8,9 @@
 [data-theme="purple"],
 html[data-theme="purple"],
 body[data-theme="purple"] {
-  --bg-primary: #120822;
-  --bg-sidebar: #170f23;
-  --bg-header: rgba(18, 8, 34, 0.95);
+  --bg-primary: #170f23;
+  --bg-sidebar: #120822;
+  --bg-header: rgba(23, 15, 35, 0.95);
   --bg-player: #170f23;
   --bg-surface: #231b2e;
   --bg-surface-hover: #2f2739;
@@ -21,116 +21,221 @@ body[data-theme="purple"] {
   --border-color: rgba(255, 255, 255, 0.08);
 }
 
+/* 1. Zing Music Awards (ZMA) */
+[data-theme="zma"],
+html[data-theme="zma"],
+body[data-theme="zma"] {
+  --bg-primary: #100a20;
+  --bg-sidebar: #170f2b;
+  --bg-header: rgba(16, 10, 32, 0.95);
+  --bg-player: #170f2b;
+  --bg-surface: #22173d;
+  --bg-surface-hover: #2e1f52;
+  --color-accent: #e5ac25;
+  --color-accent-hover: #fbbf24;
+  --text-primary: #ffffff;
+  --text-secondary: #d4c5a9;
+  --border-color: rgba(229, 172, 37, 0.18);
+}
+
+/* 2. Tối */
+[data-theme="dark"],
+html[data-theme="dark"],
+body[data-theme="dark"] {
+  --bg-primary: #121212;
+  --bg-sidebar: #181818;
+  --bg-header: rgba(18, 18, 18, 0.95);
+  --bg-player: #181818;
+  --bg-surface: #242424;
+  --bg-surface-hover: #323232;
+  --color-accent: #8b5cf6;
+  --color-accent-hover: #a78bfa;
+  --text-primary: #ffffff;
+  --text-secondary: #a3a3a3;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 3. Xanh đậm */
+[data-theme="dark-blue"],
+html[data-theme="dark-blue"],
+body[data-theme="dark-blue"] {
+  --bg-primary: #0d192b;
+  --bg-sidebar: #112138;
+  --bg-header: rgba(13, 25, 43, 0.95);
+  --bg-player: #112138;
+  --bg-surface: #193152;
+  --bg-surface-hover: #22426d;
+  --color-accent: #2563eb;
+  --color-accent-hover: #3b82f6;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* 4. Xanh biển */
 [data-theme="blue"],
 html[data-theme="blue"],
 body[data-theme="blue"] {
-  --bg-primary: #051329;
-  --bg-sidebar: #0a1f3d;
-  --bg-header: rgba(5, 19, 41, 0.95);
-  --bg-player: #0a1f3d;
-  --bg-surface: #0f2b52;
-  --bg-surface-hover: #15386b;
+  --bg-primary: #061d33;
+  --bg-sidebar: #0a2948;
+  --bg-header: rgba(6, 29, 51, 0.95);
+  --bg-player: #0a2948;
+  --bg-surface: #0f3d6b;
+  --bg-surface-hover: #15508c;
   --color-accent: #06b6d4;
-  --color-accent-hover: #38bdf8;
+  --color-accent-hover: #22d3ee;
   --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --border-color: rgba(6, 182, 212, 0.15);
+  --text-secondary: #a5f3fc;
+  --border-color: rgba(6, 182, 212, 0.2);
 }
 
-[data-theme="sunset"],
-html[data-theme="sunset"],
-body[data-theme="sunset"] {
-  --bg-primary: #210924;
-  --bg-sidebar: #2d0e31;
-  --bg-header: rgba(33, 9, 36, 0.95);
-  --bg-player: #2d0e31;
-  --bg-surface: #3f1445;
-  --bg-surface-hover: #541b5d;
-  --color-accent: #f43f5e;
-  --color-accent-hover: #fb7185;
-  --text-primary: #ffffff;
-  --text-secondary: #fbcfe8;
-  --border-color: rgba(244, 63, 94, 0.15);
-}
-
+/* 5. Xanh lá */
+[data-theme="green"],
 [data-theme="emerald"],
+html[data-theme="green"],
+body[data-theme="green"],
 html[data-theme="emerald"],
 body[data-theme="emerald"] {
-  --bg-primary: #031c12;
-  --bg-sidebar: #062b1b;
-  --bg-header: rgba(3, 28, 18, 0.95);
-  --bg-player: #062b1b;
-  --bg-surface: #0a3d27;
-  --bg-surface-hover: #0f5235;
+  --bg-primary: #062117;
+  --bg-sidebar: #0a2e20;
+  --bg-header: rgba(6, 33, 23, 0.95);
+  --bg-player: #0a2e20;
+  --bg-surface: #0f422e;
+  --bg-surface-hover: #165c40;
   --color-accent: #10b981;
   --color-accent-hover: #34d399;
   --text-primary: #ffffff;
   --text-secondary: #a7f3d0;
-  --border-color: rgba(16, 185, 129, 0.15);
+  --border-color: rgba(16, 185, 129, 0.2);
 }
 
-[data-theme="gold"],
-html[data-theme="gold"],
-body[data-theme="gold"] {
-  --bg-primary: #1f1807;
-  --bg-sidebar: #2c220a;
-  --bg-header: rgba(31, 24, 7, 0.95);
-  --bg-player: #2c220a;
-  --bg-surface: #3e300f;
-  --bg-surface-hover: #524014;
-  --color-accent: #eab308;
-  --color-accent-hover: #facc15;
+/* 6. Nâu */
+[data-theme="brown"],
+html[data-theme="brown"],
+body[data-theme="brown"] {
+  --bg-primary: #211510;
+  --bg-sidebar: #2d1c16;
+  --bg-header: rgba(33, 21, 16, 0.95);
+  --bg-player: #2d1c16;
+  --bg-surface: #3f2820;
+  --bg-surface-hover: #54362b;
+  --color-accent: #d97706;
+  --color-accent-hover: #f59e0b;
   --text-primary: #ffffff;
-  --text-secondary: #fef08a;
-  --border-color: rgba(234, 179, 8, 0.15);
+  --text-secondary: #fde68a;
+  --border-color: rgba(217, 119, 6, 0.2);
 }
 
-[data-theme="dark"],
-html[data-theme="dark"],
-body[data-theme="dark"] {
-  --bg-primary: #000000;
-  --bg-sidebar: #0a0a0a;
-  --bg-header: rgba(0, 0, 0, 0.95);
-  --bg-player: #0a0a0a;
-  --bg-surface: #141414;
-  --bg-surface-hover: #1f1f1f;
-  --color-accent: #e2e8f0;
-  --color-accent-hover: #ffffff;
+/* 7. Hồng */
+[data-theme="pink"],
+[data-theme="sunset"],
+html[data-theme="pink"],
+body[data-theme="pink"],
+html[data-theme="sunset"],
+body[data-theme="sunset"] {
+  --bg-primary: #2b0f22;
+  --bg-sidebar: #38132c;
+  --bg-header: rgba(43, 15, 34, 0.95);
+  --bg-player: #38132c;
+  --bg-surface: #4c1a3c;
+  --bg-surface-hover: #63224e;
+  --color-accent: #ec4899;
+  --color-accent-hover: #f472b6;
   --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --border-color: rgba(255, 255, 255, 0.12);
+  --text-secondary: #fbcfe8;
+  --border-color: rgba(236, 72, 153, 0.2);
 }
 
+/* 8. Đỏ */
+[data-theme="red"],
 [data-theme="rose"],
+html[data-theme="red"],
+body[data-theme="red"],
 html[data-theme="rose"],
 body[data-theme="rose"] {
-  --bg-primary: #25091a;
-  --bg-sidebar: #330d24;
-  --bg-header: rgba(37, 9, 26, 0.95);
-  --bg-player: #330d24;
-  --bg-surface: #471333;
-  --bg-surface-hover: #5d1943;
-  --color-accent: #fb7185;
-  --color-accent-hover: #fda4af;
+  --bg-primary: #280b11;
+  --bg-sidebar: #380e17;
+  --bg-header: rgba(40, 11, 17, 0.95);
+  --bg-player: #380e17;
+  --bg-surface: #4d1320;
+  --bg-surface-hover: #66192a;
+  --color-accent: #e11d48;
+  --color-accent-hover: #f43f5e;
   --text-primary: #ffffff;
-  --text-secondary: #fce7f3;
-  --border-color: rgba(251, 113, 133, 0.15);
+  --text-secondary: #fecdd3;
+  --border-color: rgba(225, 29, 72, 0.2);
 }
 
+/* ==========================================================================
+   MÀU SÁNG (LIGHT THEMES)
+   ========================================================================== */
+
+/* 9. Sáng */
 [data-theme="light"],
 html[data-theme="light"],
 body[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-sidebar: #f4f6fa;
+  --bg-header: rgba(255, 255, 255, 0.95);
+  --bg-player: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #eef2f6;
+  --color-accent: #7c3aed;
+  --color-accent-hover: #6d28d9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* 10. Xám */
+[data-theme="gray"],
+html[data-theme="gray"],
+body[data-theme="gray"] {
   --bg-primary: #f1f5f9;
   --bg-sidebar: #e2e8f0;
   --bg-header: rgba(241, 245, 249, 0.95);
   --bg-player: #ffffff;
   --bg-surface: #ffffff;
   --bg-surface-hover: #f8fafc;
-  --color-accent: #8b5cf6;
-  --color-accent-hover: #7c3aed;
+  --color-accent: #475569;
+  --color-accent-hover: #334155;
   --text-primary: #0f172a;
-  --text-secondary: #475569;
+  --text-secondary: #64748b;
   --border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* 11. Xanh nhạt */
+[data-theme="light-blue"],
+html[data-theme="light-blue"],
+body[data-theme="light-blue"] {
+  --bg-primary: #e0f2fe;
+  --bg-sidebar: #bae6fd;
+  --bg-header: rgba(224, 242, 254, 0.95);
+  --bg-player: #ffffff;
+  --bg-surface: #f0f9ff;
+  --bg-surface-hover: #e0f2fe;
+  --color-accent: #0284c7;
+  --color-accent-hover: #0369a1;
+  --text-primary: #0c4a6e;
+  --text-secondary: #0369a1;
+  --border-color: rgba(2, 132, 199, 0.15);
+}
+
+/* 12. Hồng Cánh Sen */
+[data-theme="lotus-pink"],
+html[data-theme="lotus-pink"],
+body[data-theme="lotus-pink"] {
+  --bg-primary: #fce7f3;
+  --bg-sidebar: #fbcfe8;
+  --bg-header: rgba(252, 231, 243, 0.95);
+  --bg-player: #ffffff;
+  --bg-surface: #fff1f2;
+  --bg-surface-hover: #fce7f3;
+  --color-accent: #db2777;
+  --color-accent-hover: #be185d;
+  --text-primary: #831843;
+  --text-secondary: #9d174d;
+  --border-color: rgba(219, 39, 119, 0.15);
 }
 
 /* Base Body Setup */
@@ -146,64 +251,123 @@ body {
   min-height: 100%;
 }
 
-/* Light Mode Overrides for text readability (Item 9: Màu sắc và chữ hài hòa) */
-html[data-theme="light"] {
+/* Light Theme Overrides for text readability on PC & Mobile */
+[data-theme="light"],
+[data-theme="gray"],
+[data-theme="light-blue"],
+[data-theme="lotus-pink"] {
   color-scheme: light;
 }
 
-html[data-theme="light"] body {
+[data-theme="light"] body,
+[data-theme="gray"] body,
+[data-theme="light-blue"] body,
+[data-theme="lotus-pink"] body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
-html[data-theme="light"] .text-white {
-  color: #0f172a;
+[data-theme="light"] .text-white,
+[data-theme="gray"] .text-white,
+[data-theme="light-blue"] .text-white,
+[data-theme="lotus-pink"] .text-white {
+  color: var(--text-primary);
 }
 
-html[data-theme="light"] .text-white\/90 {
-  color: #1e293b;
+[data-theme="light"] .text-white\/90,
+[data-theme="gray"] .text-white\/90,
+[data-theme="light-blue"] .text-white\/90,
+[data-theme="lotus-pink"] .text-white\/90 {
+  color: var(--text-primary);
+  opacity: 0.92;
 }
 
-html[data-theme="light"] .text-white\/80,
-html[data-theme="light"] .text-white\/70 {
-  color: #334155;
+[data-theme="light"] .text-white\/80,
+[data-theme="light"] .text-white\/70,
+[data-theme="gray"] .text-white\/80,
+[data-theme="gray"] .text-white\/70,
+[data-theme="light-blue"] .text-white\/80,
+[data-theme="light-blue"] .text-white\/70,
+[data-theme="lotus-pink"] .text-white\/80,
+[data-theme="lotus-pink"] .text-white\/70 {
+  color: var(--text-secondary);
 }
 
-html[data-theme="light"] .text-white\/60,
-html[data-theme="light"] .text-white\/50,
-html[data-theme="light"] .text-white\/40 {
-  color: #475569;
+[data-theme="light"] .text-white\/60,
+[data-theme="light"] .text-white\/50,
+[data-theme="light"] .text-white\/40,
+[data-theme="gray"] .text-white\/60,
+[data-theme="gray"] .text-white\/50,
+[data-theme="gray"] .text-white\/40,
+[data-theme="light-blue"] .text-white\/60,
+[data-theme="light-blue"] .text-white\/50,
+[data-theme="light-blue"] .text-white\/40,
+[data-theme="lotus-pink"] .text-white\/60,
+[data-theme="lotus-pink"] .text-white\/50,
+[data-theme="lotus-pink"] .text-white\/40 {
+  color: var(--text-secondary);
+  opacity: 0.85;
 }
 
-html[data-theme="light"] .border-white\/10,
-html[data-theme="light"] .border-white\/5,
-html[data-theme="light"] .border-white\/15,
-html[data-theme="light"] .border-white\/20 {
-  border-color: rgba(0, 0, 0, 0.12);
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/15,
+[data-theme="light"] .border-white\/20,
+[data-theme="gray"] .border-white\/10,
+[data-theme="gray"] .border-white\/5,
+[data-theme="gray"] .border-white\/15,
+[data-theme="gray"] .border-white\/20,
+[data-theme="light-blue"] .border-white\/10,
+[data-theme="light-blue"] .border-white\/5,
+[data-theme="light-blue"] .border-white\/15,
+[data-theme="light-blue"] .border-white\/20,
+[data-theme="lotus-pink"] .border-white\/10,
+[data-theme="lotus-pink"] .border-white\/5,
+[data-theme="lotus-pink"] .border-white\/15,
+[data-theme="lotus-pink"] .border-white\/20 {
+  border-color: var(--border-color);
 }
 
-html[data-theme="light"] .bg-white\/5,
-html[data-theme="light"] .bg-white\/10 {
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/10,
+[data-theme="gray"] .bg-white\/5,
+[data-theme="gray"] .bg-white\/10,
+[data-theme="light-blue"] .bg-white\/5,
+[data-theme="light-blue"] .bg-white\/10,
+[data-theme="lotus-pink"] .bg-white\/5,
+[data-theme="lotus-pink"] .bg-white\/10 {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* Ensure colored badges and action buttons retain crisp white text in Light Mode */
-html[data-theme="light"] .bg-emerald-600,
-html[data-theme="light"] .bg-emerald-500,
-html[data-theme="light"] .bg-blue-600,
-html[data-theme="light"] .bg-red-500,
-html[data-theme="light"] .bg-red-600,
-html[data-theme="light"] .bg-purple-600,
-html[data-theme="light"] .bg-\[\#9b4de0\],
-html[data-theme="light"] [style*="var(--color-accent)"],
-html[data-theme="light"] .bg-emerald-600 *,
-html[data-theme="light"] .bg-emerald-500 *,
-html[data-theme="light"] .bg-blue-600 *,
-html[data-theme="light"] .bg-red-500 *,
-html[data-theme="light"] .bg-red-600 *,
-html[data-theme="light"] .bg-purple-600 *,
-html[data-theme="light"] .bg-\[\#9b4de0\] *,
-html[data-theme="light"] [style*="var(--color-accent)"] * {
+/* Ensure colored solid badges retain crisp white text */
+[data-theme="light"] .bg-emerald-600,
+[data-theme="light"] .bg-emerald-500,
+[data-theme="light"] .bg-blue-600,
+[data-theme="light"] .bg-red-500,
+[data-theme="light"] .bg-purple-600,
+[data-theme="light"] [style*="var(--color-accent)"],
+[data-theme="gray"] .bg-emerald-600,
+[data-theme="gray"] .bg-emerald-500,
+[data-theme="gray"] .bg-blue-600,
+[data-theme="gray"] .bg-red-500,
+[data-theme="gray"] .bg-purple-600,
+[data-theme="gray"] [style*="var(--color-accent)"],
+[data-theme="light-blue"] .bg-emerald-600,
+[data-theme="light-blue"] .bg-emerald-500,
+[data-theme="light-blue"] .bg-blue-600,
+[data-theme="light-blue"] .bg-red-500,
+[data-theme="light-blue"] .bg-purple-600,
+[data-theme="light-blue"] [style*="var(--color-accent)"],
+[data-theme="lotus-pink"] .bg-emerald-600,
+[data-theme="lotus-pink"] .bg-emerald-500,
+[data-theme="lotus-pink"] .bg-blue-600,
+[data-theme="lotus-pink"] .bg-red-500,
+[data-theme="lotus-pink"] .bg-purple-600,
+[data-theme="lotus-pink"] [style*="var(--color-accent)"],
+[data-theme="light"] [style*="var(--color-accent)"] *,
+[data-theme="gray"] [style*="var(--color-accent)"] *,
+[data-theme="light-blue"] [style*="var(--color-accent)"] *,
+[data-theme="lotus-pink"] [style*="var(--color-accent)"] * {
   color: #ffffff !important;
 }
 

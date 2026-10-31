@@ -75,6 +75,20 @@ export const MobileAppLayout: React.FC = () => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreatingPl, setIsCreatingPl] = useState(false);
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
+  const [menuPositionMap, setMenuPositionMap] = useState<Record<string, 'down' | 'up'>>({});
+
+  const handleToggleSongMenu = (e: React.MouseEvent, songId: string) => {
+    e.stopPropagation();
+    if (activeMenuSongId === songId) {
+      setActiveMenuSongId(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dir = spaceBelow >= 240 ? 'down' : 'up';
+    setMenuPositionMap((prev) => ({ ...prev, [songId]: dir }));
+    setActiveMenuSongId(songId);
+  };
 
   // Requirement 21: 20 songs per page
   const PAGE_SIZE = 20;
@@ -234,13 +248,13 @@ export const MobileAppLayout: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Right: 3-dots Menu Button replacing WAV badge */}
+                    {/* Right: 3-dots Menu Button */}
                     <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => setActiveMenuSongId(activeMenuSongId === song.id ? null : song.id)}
-                        className={`p-1.5 rounded-xl transition-all ${
+                        onClick={(e) => handleToggleSongMenu(e, song.id)}
+                        className={`p-1.5 rounded-xl transition-all cursor-pointer ${
                           activeMenuSongId === song.id
-                            ? 'bg-[#9b4de0] text-white'
+                            ? 'bg-[#9b4de0] text-white shadow-md'
                             : 'hover:bg-white/10 text-white/60 hover:text-white'
                         }`}
                         title="Tùy chọn bài hát"
@@ -248,10 +262,14 @@ export const MobileAppLayout: React.FC = () => {
                         <MoreVertical className="w-4 h-4" />
                       </button>
 
-                      {/* 3-dots Popup Dropdown Menu */}
+                      {/* 3-dots Popup Dropdown Menu with Smart Auto-Positioning (Requirement 5 & 8) */}
                       {activeMenuSongId === song.id && (
                         <div
-                          className="absolute right-0 top-9 w-48 bg-[#231b2e] border border-white/15 rounded-2xl shadow-2xl p-1.5 z-40 text-xs text-white space-y-0.5 animate-in fade-in zoom-in-95 duration-150"
+                          className={`absolute right-0 ${
+                            menuPositionMap[song.id] === 'up'
+                              ? 'bottom-9 origin-bottom-right'
+                              : 'top-9 origin-top-right'
+                          } w-48 bg-[#231b2e] border border-white/15 rounded-2xl shadow-2xl p-1.5 z-40 text-xs text-white space-y-0.5 animate-in fade-in zoom-in-95 duration-150`}
                         >
                           {/* 1. Yêu thích (Tim) */}
                           <button
@@ -259,7 +277,7 @@ export const MobileAppLayout: React.FC = () => {
                               toggleLike(song.id);
                               setActiveMenuSongId(null);
                             }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
                           >
                             <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white/70'}`} />
                             <span>{isLiked ? 'Đã yêu thích' : 'Yêu thích bài hát'}</span>
@@ -271,23 +289,37 @@ export const MobileAppLayout: React.FC = () => {
                               setSelectedLrcSong(song);
                               setActiveMenuSongId(null);
                             }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
                           >
                             <FileText className="w-3.5 h-3.5 text-[#c273ed]" />
                             <span>Xem lời bài hát (LRC)</span>
                           </button>
 
-                          {/* 3. Thêm vào playlist */}
-                          <button
-                            onClick={() => {
-                              openAddToPlaylistModal(song);
-                              setActiveMenuSongId(null);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
-                          >
-                            <ListPlus className="w-3.5 h-3.5 text-blue-400" />
-                            <span>Thêm vào playlist</span>
-                          </button>
+                          {/* 3. Thêm vào playlist / Đã thêm vào playlist (Requirement 6) */}
+                          {playlists.some((pl) => pl.songIds.includes(song.id)) ? (
+                            <button
+                              onClick={() => {
+                                openAddToPlaylistModal(song);
+                                setActiveMenuSongId(null);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors text-emerald-400 group cursor-pointer"
+                              title="Bài hát đã có trong danh sách phát"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span className="font-semibold text-emerald-400">Đã thêm vào playlist</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                openAddToPlaylistModal(song);
+                                setActiveMenuSongId(null);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
+                            >
+                              <ListPlus className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span>Thêm vào playlist</span>
+                            </button>
+                          )}
 
                           {/* 4. Chia sẻ link bài hát */}
                           <button
@@ -295,7 +327,7 @@ export const MobileAppLayout: React.FC = () => {
                               openShareModal(song);
                               setActiveMenuSongId(null);
                             }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
                           >
                             <Share2 className="w-3.5 h-3.5 text-cyan-400" />
                             <span>Chia sẻ link bài hát</span>
@@ -312,7 +344,7 @@ export const MobileAppLayout: React.FC = () => {
                                 setIsDemoLimitModalOpen(true);
                               }
                             }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
                           >
                             <Download className="w-3.5 h-3.5 text-emerald-400" />
                             <span>{isPurchased ? 'Tải bài hát về máy' : 'Mua & Tải bài hát'}</span>

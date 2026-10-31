@@ -12,6 +12,7 @@ import {
   Headphones,
   RotateCcw,
   Shuffle,
+  ListPlus,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
@@ -34,6 +35,8 @@ export const DesktopWeeklyTopPage: React.FC = () => {
     isShuffle,
     toggleShuffle,
     setPlaybackSource,
+    playlists,
+    openAddToPlaylistModal,
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
@@ -316,6 +319,32 @@ export const DesktopWeeklyTopPage: React.FC = () => {
                             <FileText className="w-3.5 h-3.5 text-purple-400" />
                             <span>Xem lyric</span>
                           </button>
+
+                          {playlists.some((p) => p.songIds.includes(song.id)) ? (
+                            <button
+                              onClick={() => {
+                                openAddToPlaylistModal(song);
+                                setActiveMenuSongId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium text-emerald-400"
+                              title="Bài hát đã có trong playlist"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span className="text-emerald-400 font-semibold">Đã thêm vào playlist</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                openAddToPlaylistModal(song);
+                                setActiveMenuSongId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium"
+                            >
+                              <ListPlus className="w-3.5 h-3.5 text-[#c273ed] shrink-0" />
+                              <span>Thêm vào playlist</span>
+                            </button>
+                          )}
+
                           {isPurchased && (
                             <button
                               onClick={() => {

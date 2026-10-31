@@ -42,7 +42,24 @@ export interface AppUser {
   createdAt: string;
 }
 
-export type ThemeId = 'purple' | 'blue' | 'sunset' | 'emerald' | 'gold' | 'dark' | 'rose' | 'light';
+export type ThemeId =
+  | 'zma'
+  | 'dark'
+  | 'purple'
+  | 'dark-blue'
+  | 'blue'
+  | 'green'
+  | 'brown'
+  | 'pink'
+  | 'red'
+  | 'light'
+  | 'gray'
+  | 'light-blue'
+  | 'lotus-pink'
+  | 'sunset'
+  | 'emerald'
+  | 'gold'
+  | 'rose';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 

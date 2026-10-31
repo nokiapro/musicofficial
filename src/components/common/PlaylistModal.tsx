@@ -17,8 +17,17 @@ export const PlaylistModal: React.FC = () => {
   const [newPlaylistDesc, setNewPlaylistDesc] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
 
   if (!isPlaylistModalOpen || !songForPlaylistModal) return null;
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsPlaylistModalOpen(false);
+      setIsClosing(false);
+    }, 200);
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -48,8 +57,18 @@ export const PlaylistModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="w-full max-w-md bg-[var(--bg-surface)] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-5 text-white max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+    <div 
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none transition-opacity duration-200 ${
+        isClosing ? 'animate-out fade-out duration-200' : 'animate-in fade-in duration-200'
+      }`}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-md bg-[var(--bg-surface)] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-5 text-white max-h-[90vh] flex flex-col transition-all duration-200 ${
+          isClosing ? 'animate-out zoom-out-95 fade-out duration-200' : 'animate-in zoom-in-95 duration-200'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -62,7 +81,7 @@ export const PlaylistModal: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={() => setIsPlaylistModalOpen(false)}
+            onClick={handleClose}
             className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white"
           >
             <X className="w-5 h-5" />
@@ -181,7 +200,7 @@ export const PlaylistModal: React.FC = () => {
         {/* Footer */}
         <div className="mt-4 pt-3 border-t border-white/10 flex justify-end shrink-0">
           <button
-            onClick={() => setIsPlaylistModalOpen(false)}
+            onClick={handleClose}
             className="px-5 py-2 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors"
           >
             Hoàn tất

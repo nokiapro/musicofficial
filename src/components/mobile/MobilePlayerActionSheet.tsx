@@ -11,6 +11,7 @@ import {
   Ban,
   AlertTriangle,
   Check,
+  CheckCircle,
   Send,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
@@ -34,6 +35,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
     openDownloadModal,
     openShareModal,
     openAddToPlaylistModal,
+    playlists,
     setIsThemeModalOpen,
     setIsSleepTimerModalOpen,
     sleepTimerRemainingSeconds,
@@ -52,6 +54,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportText, setReportText] = useState('');
   const [isSendingReport, setIsSendingReport] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   if (!isOpen) return null;
 
@@ -59,6 +62,15 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
   const isPurchased = isSongPurchased(song.id);
   const currentFormat = songFormatMap[song.id] || preferredAudioFormat;
   const isBlocked = isSongBlocked(song.id);
+  const isAlreadyInPlaylist = playlists.some((p) => p.songIds.includes(song.id));
+
+  const handleAnimatedClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 200);
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -79,7 +91,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
   const handleBlockSong = () => {
     blockSong(song.id);
     showToast('Đã chặn bài hát này! Bài hát sẽ tự động bỏ qua.');
-    setTimeout(() => onClose(), 800);
+    setTimeout(() => handleAnimatedClose(), 800);
   };
 
   const handleSendReport = async (e: React.FormEvent) => {
@@ -95,11 +107,15 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
 
   return (
     <div
-      className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex flex-col justify-end select-none animate-in fade-in duration-200"
-      onClick={onClose}
+      className={`fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex flex-col justify-end select-none duration-200 ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
+      onClick={handleAnimatedClose}
     >
       <div
-        className="w-full max-w-md mx-auto bg-[#1a0f2b] border-t border-white/15 rounded-t-3xl shadow-2xl p-5 text-white max-h-[85vh] flex flex-col overflow-y-auto animate-in slide-in-from-bottom duration-300"
+        className={`w-full max-w-md mx-auto bg-[#1a0f2b] border-t border-white/15 rounded-t-3xl shadow-2xl p-5 text-white max-h-[85vh] flex flex-col overflow-y-auto duration-200 ${
+          isClosing ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle */}
@@ -112,7 +128,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
             <p className="text-[11px] text-white/50 truncate mt-0.5">{song.artists}</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleAnimatedClose}
             className="p-1.5 rounded-full hover:bg-white/10 text-white/60 hover:text-white"
           >
             <X className="w-5 h-5" />
@@ -132,7 +148,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           {/* 1. Hẹn giờ */}
           <button
             onClick={() => {
-              onClose();
+              handleAnimatedClose();
               setIsSleepTimerModalOpen(true);
             }}
             className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
@@ -158,7 +174,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           {/* 2. Tùy chỉnh giao diện */}
           <button
             onClick={() => {
-              onClose();
+              handleAnimatedClose();
               setIsThemeModalOpen(true);
             }}
             className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
@@ -169,7 +185,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
               </div>
               <div className="text-left">
                 <p className="text-xs font-bold text-white">Tùy chỉnh giao diện</p>
-                <p className="text-[10px] text-white/50">Chọn 8 bộ màu sắc chủ đề</p>
+                <p className="text-[10px] text-white/50">Chọn 13 bộ màu sắc chủ đề</p>
               </div>
             </div>
           </button>
@@ -212,7 +228,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           {/* 4. Chia sẻ bài hát */}
           <button
             onClick={() => {
-              onClose();
+              handleAnimatedClose();
               openShareModal(song);
             }}
             className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
@@ -231,7 +247,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           {/* 5. Tải về */}
           <button
             onClick={() => {
-              onClose();
+              handleAnimatedClose();
               if (isPurchased) {
                 openDownloadModal(song);
               } else {
@@ -285,20 +301,33 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           {/* 7. Thêm vào playlist */}
           <button
             onClick={() => {
-              onClose();
+              handleAnimatedClose();
               openAddToPlaylistModal(song);
             }}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
+            className={`w-full flex items-center justify-between p-3 rounded-2xl transition-colors ${
+              isAlreadyInPlaylist ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-white/5 hover:bg-white/10'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                <ListPlus className="w-4 h-4" />
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                isAlreadyInPlaylist ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/20 text-indigo-400'
+              }`}>
+                {isAlreadyInPlaylist ? <CheckCircle className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-white">Thêm vào playlist</p>
-                <p className="text-[10px] text-white/50">Đưa vào danh sách phát cá nhân</p>
+                <p className={`text-xs font-bold ${isAlreadyInPlaylist ? 'text-emerald-300' : 'text-white'}`}>
+                  {isAlreadyInPlaylist ? 'Đã thêm vào playlist' : 'Thêm vào playlist'}
+                </p>
+                <p className="text-[10px] text-white/50">
+                  {isAlreadyInPlaylist ? 'Bài hát đã có trong playlist' : 'Đưa vào danh sách phát cá nhân'}
+                </p>
               </div>
             </div>
+            {isAlreadyInPlaylist && (
+              <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-400" /> Đã thêm
+              </span>
+            )}
           </button>
 
           {/* 8. Chặn bài hát */}
