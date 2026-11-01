@@ -7,6 +7,8 @@ interface ProgressBarProps {
   isPurchased?: boolean;
   className?: string;
   showDemoMarker?: boolean;
+  inline?: boolean;
+  useThemeFill?: boolean;
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
@@ -16,6 +18,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   isPurchased = true,
   className = '',
   showDemoMarker = true,
+  inline = false,
+  useThemeFill = false,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragProgressPercent, setDragProgressPercent] = useState<number | null>(null);
@@ -77,6 +81,55 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     window.addEventListener('pointercancel', onPointerUp);
   };
 
+  // Requirement 1: Inline single-row layout where start time, scrubber, and end time are on the same line
+  if (inline) {
+    return (
+      <div className={`w-full flex items-center gap-3 select-none ${className}`}>
+        <span className="text-xs sm:text-[13px] text-white/70 font-mono tabular-nums tracking-wider min-w-[38px] text-right">
+          {formatTime(displayCurrentTime)}
+        </span>
+        <div
+          ref={trackRef}
+          onPointerDown={handlePointerDown}
+          className="relative flex-1 h-4 flex items-center cursor-pointer group py-1"
+          role="slider"
+          aria-valuemin={0}
+          aria-valuemax={safeDuration}
+          aria-valuenow={displayCurrentTime}
+        >
+          {/* Background Track with constant sleek height (no hover zoom) */}
+          <div className="w-full h-1.5 rounded-full bg-white/20 dark:bg-white/15 overflow-hidden relative shadow-inner">
+            <div
+              className={`h-full rounded-full ${
+                useThemeFill ? 'glass-fill' : 'bg-white'
+              } ${
+                isDragging ? '' : 'transition-[width] duration-100 ease-linear'
+              } shadow-[0_0_8px_rgba(255,255,255,0.4)]`}
+              style={{
+                width: `${displayPercent}%`,
+                ...(useThemeFill ? { background: 'var(--color-accent)' } : {}),
+              }}
+            />
+          </div>
+
+          {/* 60-Second Demo Cutoff Marker for unpurchased tracks */}
+          {showDemoMarker && !isPurchased && safeDuration > 60 && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -ml-1 pointer-events-none z-10"
+              style={{ left: `${(60 / safeDuration) * 100}%` }}
+              title="Giới hạn nghe thử demo 60s"
+            >
+              <div className="w-2 h-2 rounded-full bg-amber-400 border border-black shadow-[0_0_6px_#f59e0b]" />
+            </div>
+          )}
+        </div>
+        <span className="text-xs sm:text-[13px] text-white/70 font-mono tabular-nums tracking-wider min-w-[38px] text-left">
+          {formatTime(safeDuration)}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className={`w-full flex flex-col gap-2 select-none ${className}`}>
       {/* Outer interactive hit area */}
@@ -89,14 +142,18 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         aria-valuemax={safeDuration}
         aria-valuenow={displayCurrentTime}
       >
-        {/* Background Track with rounded pill styling */}
-        <div className="w-full h-1.5 sm:h-2 bg-white/20 dark:bg-white/15 rounded-full overflow-hidden relative shadow-inner">
-          {/* Animated Solid White Fill Bar matching Screenshot 3 */}
+        {/* Background Track with constant sleek height (no hover zoom) */}
+        <div className="w-full h-1.5 rounded-full bg-white/20 dark:bg-white/15 overflow-hidden relative shadow-inner">
           <div
-            className={`h-full bg-white rounded-full ${
-              isDragging ? '' : 'transition-[width] duration-300 ease-out'
+            className={`h-full rounded-full ${
+              useThemeFill ? 'glass-fill' : 'bg-white'
+            } ${
+              isDragging ? '' : 'transition-[width] duration-100 ease-linear'
             } shadow-[0_0_8px_rgba(255,255,255,0.4)]`}
-            style={{ width: `${displayPercent}%` }}
+            style={{
+              width: `${displayPercent}%`,
+              ...(useThemeFill ? { background: 'var(--color-accent)' } : {}),
+            }}
           />
         </div>
 
@@ -112,7 +169,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         )}
       </div>
 
-      {/* Timestamps directly below: Left is elapsed (01:15), Right is duration (03:45) */}
+      {/* Timestamps directly below */}
       <div className="flex items-center justify-between text-xs sm:text-[13px] text-white/70 font-mono tabular-nums tracking-wider px-0.5">
         <span>{formatTime(displayCurrentTime)}</span>
         <span>{formatTime(safeDuration)}</span>

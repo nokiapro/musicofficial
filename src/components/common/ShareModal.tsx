@@ -3,7 +3,7 @@ import { X, Copy, Check, Share2, Facebook, Send, Link as LinkIcon } from 'lucide
 import { useMusic } from '../../context/MusicContext';
 
 export const ShareModal: React.FC = () => {
-  const { isShareModalOpen, setIsShareModalOpen, songToShare } = useMusic();
+  const { isShareModalOpen, setIsShareModalOpen, songToShare, theme } = useMusic();
   const [copied, setCopied] = useState(false);
 
   if (!isShareModalOpen || !songToShare) return null;
@@ -45,8 +45,18 @@ export const ShareModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="w-full max-w-md bg-[var(--bg-surface)] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-5 text-white animate-in zoom-in-95 duration-200">
+    <div
+      data-theme={theme}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none"
+    >
+      <div
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
+        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 animate-in zoom-in-95 duration-200"
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2.5">

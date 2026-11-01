@@ -20,8 +20,8 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'] &&
-         (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'password'))
+        request.auth.token.email == 'admin@xuanken.vn' ||
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
       );
     }
 

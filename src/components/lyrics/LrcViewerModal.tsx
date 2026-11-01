@@ -3,7 +3,7 @@ import { X, FileText, Copy, Check, Download, Mic2 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 
 export const LrcViewerModal: React.FC = () => {
-  const { selectedLrcSong, setSelectedLrcSong, setIsLyricsOpen } = useMusic();
+  const { selectedLrcSong, setSelectedLrcSong, setIsLyricsOpen, theme } = useMusic();
   const [copied, setCopied] = useState(false);
 
   if (!selectedLrcSong) return null;
@@ -35,12 +35,25 @@ export const LrcViewerModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 font-['Roboto_Condensed']">
-      <div className="w-full max-w-xl bg-[#231b2e] border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-6 text-white flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+    <div
+      data-theme={theme}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 font-['Roboto_Condensed'] select-none"
+    >
+      <div
+        className="w-full max-w-xl border rounded-2xl shadow-2xl overflow-hidden p-6 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200"
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#9b4de0]/20 text-[#c273ed] flex items-center justify-center">
+            <div
+              style={{ backgroundColor: 'var(--bg-surface-hover)', color: 'var(--color-accent)' }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+            >
               <FileText className="w-4 h-4" />
             </div>
             <div>

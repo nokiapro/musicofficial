@@ -1,44 +1,18 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <script>
-      (function () {
-        try {
-          var _origFetch = window.fetch;
-          if (_origFetch) {
-            var _fetchHandler = _origFetch.bind(window);
-            Object.defineProperty(window, 'fetch', {
-              get: function () {
-                return _fetchHandler;
-              },
-              set: function (val) {
-                _fetchHandler = val;
-              },
-              configurable: true,
-              enumerable: true,
-            });
-          }
-        } catch (err) {
-        }
-      })();
-    </script>
-    <title>XuanKen Music - Nghe & Mua Nhạc Bản Quyền Trực Tuyến</title>
-    <meta name="description" content="Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music" />
-    <meta property="og:title" content="XuanKen Music - Nghe & Mua Nhạc Bản Quyền Trực Tuyến" />
-    <meta property="og:description" content="Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <meta name="description" content="An application built with Google AI Studio." />
+    <meta property="og:title" content="My Google AI Studio App" />
+    <meta property="og:description" content="An application built with Google AI Studio." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="theme-color" content="#170f23" />
-    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-[#170f23] text-white antialiased select-none font-['Roboto_Condensed']">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+

@@ -16,6 +16,7 @@ export const DemoLimitModal: React.FC = () => {
     userBalance,
     setIsTopUpModalOpen,
     applyVoucher,
+    theme,
   } = useMusic();
 
   const [couponCode, setCouponCode] = useState('');
@@ -74,8 +75,18 @@ export const DemoLimitModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="w-full max-w-md bg-[#231b2e] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-6 text-white max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
+    <div
+      data-theme={theme}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none"
+    >
+      <div
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
+        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200"
+      >
         {/* Header with Close */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -193,7 +204,8 @@ export const DemoLimitModal: React.FC = () => {
           <button
             type="button"
             onClick={handleBuy}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-xs shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            style={{ backgroundColor: 'var(--color-accent)' }}
+            className="flex-1 py-2.5 px-4 rounded-xl text-white font-bold text-xs shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer hover:opacity-90"
           >
             <ShoppingCart className="w-4 h-4" />
             <span>Thanh Toán ({finalPrice.toLocaleString('vi-VN')} đ)</span>

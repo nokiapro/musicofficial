@@ -3,7 +3,7 @@ import { X, Wallet, QrCode, ShieldAlert, Copy, Check, Mail, PhoneCall } from 'lu
 import { useMusic } from '../../context/MusicContext';
 
 export const TopUpModal: React.FC = () => {
-  const { isTopUpModalOpen, setIsTopUpModalOpen, userBalance, currentUser } = useMusic();
+  const { isTopUpModalOpen, setIsTopUpModalOpen, userBalance, currentUser, theme } = useMusic();
   const [selectedAmount, setSelectedAmount] = useState<number>(100000);
   const [showContactNotice, setShowContactNotice] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -32,8 +32,18 @@ export const TopUpModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="w-full max-w-md bg-[#231b2e] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-6 text-white animate-in zoom-in-95 duration-200">
+    <div
+      data-theme={theme}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none"
+    >
+      <div
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
+        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-200"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2">
             <Wallet className="w-5 h-5 text-emerald-400" />
@@ -72,7 +82,7 @@ export const TopUpModal: React.FC = () => {
 
               <div className="flex justify-between items-center">
                 <span className="text-white/60">Email Admin:</span>
-                <span className="font-bold text-purple-300 font-mono">{currentUser?.role === 'admin' ? currentUser.email : 'admin@xuanken.com'}</span>
+                <span className="font-bold text-purple-300 font-mono">{currentUser?.role === 'admin' ? currentUser.email : 'admin@xuanken.vn'}</span>
               </div>
 
               <div className="flex justify-between items-center">
@@ -98,7 +108,7 @@ export const TopUpModal: React.FC = () => {
 
             <div className="flex gap-2">
               <a
-                href={`mailto:${currentUser?.role === 'admin' ? currentUser.email : 'admin@xuanken.com'}?subject=Yêu cầu nạp ví XuanKen Music ${selectedAmount}đ&body=Xin chào Admin,%0D%0ATôi muốn nạp ${selectedAmount}đ vào ví XuanKen Music.%0D%0ACú pháp: ${encodeURIComponent(transferSyntax)}`}
+                href={`mailto:${currentUser?.role === 'admin' ? currentUser.email : 'admin@xuanken.vn'}?subject=Yêu cầu nạp ví XuanKen Music ${selectedAmount}đ&body=Xin chào Admin,%0D%0ATôi muốn nạp ${selectedAmount}đ vào ví XuanKen Music.%0D%0ACú pháp: ${encodeURIComponent(transferSyntax)}`}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white text-center flex items-center justify-center gap-1.5 transition-colors"
               >
                 <Mail className="w-3.5 h-3.5" />

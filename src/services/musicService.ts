@@ -1,5 +1,5 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
-import { doc, setDoc, getDocs, collection } from 'firebase/firestore';
+import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { rtdb, db } from './firebase';
 import { Song, AppUser, Playlist, Voucher, SiteSettings, RewindStats } from '../types/music';
 import { SONGS_DATABASE } from '../data/songs';
@@ -45,6 +45,7 @@ export function sanitizeSong(raw: any, idFallback: string): Song {
     mp3Url: raw?.mp3Url || '',
     wavUrl: raw?.wavUrl || '',
     playCount: typeof raw?.playCount === 'number' ? raw.playCount : 0,
+    likesCount: typeof raw?.likesCount === 'number' ? raw.likesCount : (raw?.likesCount ? Number(raw.likesCount) : 0),
     releaseDate: raw?.releaseDate || '2026',
     composer: raw?.composer || raw?.artists || 'XuanKen',
     genre: raw?.genre || 'Việt Nam, V-Pop',
@@ -329,6 +330,18 @@ export const MusicService = {
       for (const m of cleanMembers) {
         if (m && m.uid) {
           await setDoc(doc(db, 'members', m.uid), m, { merge: true });
+          const isUserAdmin = m.role === 'admin' || (m.email && m.email.toLowerCase().trim() === 'admin@xuanken.vn');
+          if (isUserAdmin) {
+            try {
+              await set(ref(rtdb, `admins/${m.uid}`), { email: m.email, role: 'admin', setAt: new Date().toISOString() });
+              await setDoc(doc(db, 'admins', m.uid), { email: m.email, role: 'admin', setAt: new Date().toISOString() }, { merge: true });
+            } catch (e) {}
+          } else if (m.email && m.email.toLowerCase().trim() !== 'admin@xuanken.vn') {
+            try {
+              await set(ref(rtdb, `admins/${m.uid}`), null);
+              await deleteDoc(doc(db, 'admins', m.uid));
+            } catch (e) {}
+          }
         }
       }
       success = true;
@@ -355,6 +368,18 @@ export const MusicService = {
 
     try {
       await setDoc(doc(db, 'members', member.uid), clean, { merge: true });
+      const isUserAdmin = member.role === 'admin' || (member.email && member.email.toLowerCase().trim() === 'admin@xuanken.vn');
+      if (isUserAdmin) {
+        try {
+          await set(ref(rtdb, `admins/${member.uid}`), { email: member.email, role: 'admin', setAt: new Date().toISOString() });
+          await setDoc(doc(db, 'admins', member.uid), { email: member.email, role: 'admin', setAt: new Date().toISOString() }, { merge: true });
+        } catch (e) {}
+      } else if (member.email && member.email.toLowerCase().trim() !== 'admin@xuanken.vn') {
+        try {
+          await set(ref(rtdb, `admins/${member.uid}`), null);
+          await deleteDoc(doc(db, 'admins', member.uid));
+        } catch (e) {}
+      }
       success = true;
     } catch (err: any) {
       if (!lastError) lastError = err?.message || String(err);
@@ -367,6 +392,11 @@ export const MusicService = {
     try {
       const memberRef = ref(rtdb, `members/${uid}`);
       await set(memberRef, null);
+      await set(ref(rtdb, `admins/${uid}`), null);
+    } catch (e) {}
+    try {
+      await deleteDoc(doc(db, 'members', uid));
+      await deleteDoc(doc(db, 'admins', uid));
     } catch (e) {}
   },
 

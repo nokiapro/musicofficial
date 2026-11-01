@@ -11,6 +11,7 @@ export const PlaylistModal: React.FC = () => {
     createPlaylist,
     addSongToPlaylist,
     removeSongFromPlaylist,
+    theme,
   } = useMusic();
 
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -58,6 +59,7 @@ export const PlaylistModal: React.FC = () => {
 
   return (
     <div 
+      data-theme={theme}
       onClick={handleClose}
       className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none transition-opacity duration-200 ${
         isClosing ? 'animate-out fade-out duration-200' : 'animate-in fade-in duration-200'
@@ -65,7 +67,12 @@ export const PlaylistModal: React.FC = () => {
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-md bg-[var(--bg-surface)] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-5 text-white max-h-[90vh] flex flex-col transition-all duration-200 ${
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 max-h-[90vh] flex flex-col transition-all duration-200 ${
           isClosing ? 'animate-out zoom-out-95 fade-out duration-200' : 'animate-in zoom-in-95 duration-200'
         }`}
       >

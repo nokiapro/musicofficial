@@ -83,13 +83,25 @@ export const DesktopQueueDrawer: React.FC = () => {
                 <div className="p-2.5 rounded-xl bg-[#9b4de0]/20 border border-[#9b4de0]/30 flex items-center justify-between">
                   <div className="flex items-center gap-3 truncate">
                     <div
-                      className={`w-10 h-10 rounded-lg bg-gradient-to-tr ${currentSong.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center shrink-0 relative`}
+                      className="w-10 h-10 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow"
                     >
-                      {isPlaying ? (
-                        <Visualizer barCount={4} height={14} color="#ffffff" />
-                      ) : (
-                        <Music className="w-4 h-4 text-white" />
-                      )}
+                      {currentSong.coverImage ? (
+                        <img
+                          src={currentSong.coverImage}
+                          alt={currentSong.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : null}
+                      <div
+                        className={`w-full h-full bg-gradient-to-tr ${currentSong.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${currentSong.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+                      >
+                        {isPlaying ? (
+                          <Visualizer barCount={4} height={14} color="#ffffff" />
+                        ) : (
+                          <Music className="w-4 h-4 text-white" />
+                        )}
+                      </div>
                     </div>
                     <div className="truncate">
                       <p className="text-sm font-semibold text-white truncate">{currentSong.title}</p>
@@ -131,12 +143,24 @@ export const DesktopQueueDrawer: React.FC = () => {
                     >
                       <div className="flex items-center gap-3 truncate">
                         <div
-                          className={`w-9 h-9 rounded-lg bg-gradient-to-tr ${song.coverGradient} flex items-center justify-center shrink-0 relative`}
+                          className="w-9 h-9 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow"
                         >
-                          <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity fill-current" />
+                          {song.coverImage ? (
+                            <img
+                              src={song.coverImage}
+                              alt={song.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : null}
+                          <div
+                            className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+                          >
+                            <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity fill-current" />
+                          </div>
                         </div>
                         <div className="truncate">
-                          <p className="text-xs font-semibold text-white truncate">{song.title}</p>
+                          <p className="text-xs font-semibold text-white truncate group-hover:text-[#c273ed] transition-colors">{song.title}</p>
                           <p className="text-[11px] text-white/50 truncate">{song.artists}</p>
                         </div>
                       </div>
@@ -177,12 +201,24 @@ export const DesktopQueueDrawer: React.FC = () => {
                   >
                     <div className="flex items-center gap-3 truncate">
                       <div
-                        className={`w-9 h-9 rounded-lg bg-gradient-to-tr ${song.coverGradient} flex items-center justify-center shrink-0 relative`}
+                        className="w-9 h-9 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow"
                       >
-                        <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity fill-current" />
+                        {song.coverImage ? (
+                          <img
+                            src={song.coverImage}
+                            alt={song.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : null}
+                        <div
+                          className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+                        >
+                          <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity fill-current" />
+                        </div>
                       </div>
                       <div className="truncate">
-                        <p className="text-xs font-semibold text-white truncate">{song.title}</p>
+                        <p className="text-xs font-semibold text-white truncate group-hover:text-[#c273ed] transition-colors">{song.title}</p>
                         <p className="text-[11px] text-white/50 truncate">{song.artists}</p>
                       </div>
                     </div>

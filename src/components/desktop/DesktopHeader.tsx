@@ -118,12 +118,15 @@ export const DesktopHeader: React.FC = () => {
 
         {/* Search Dropdown Results */}
         {isSearchFocused && searchQuery.trim() && (
-          <div className="absolute top-12 left-0 right-0 max-h-96 overflow-y-auto bg-[#231b2e] border border-white/15 rounded-2xl shadow-2xl p-3 z-50">
-            <p className="text-xs font-semibold text-white/50 px-2 py-1 uppercase tracking-wider">
+          <div
+            className="absolute top-12 left-0 right-0 max-h-96 overflow-y-auto border rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150"
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
+          >
+            <p className="text-xs font-semibold text-[var(--text-secondary)] px-2 py-1 uppercase tracking-wider">
               Kết quả tìm kiếm ({searchResults.length})
             </p>
             {searchResults.length === 0 ? (
-              <div className="p-4 text-center text-sm text-white/60">
+              <div className="p-4 text-center text-sm text-[var(--text-secondary)]">
                 Không tìm thấy bài hát hoặc nghệ sĩ phù hợp
               </div>
             ) : (
@@ -139,14 +142,26 @@ export const DesktopHeader: React.FC = () => {
                       }}
                       className="flex items-center justify-between p-2 rounded-xl hover:bg-white/10 cursor-pointer group transition-colors"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 truncate">
                         <div
-                          className={`w-10 h-10 rounded-lg bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center shrink-0 relative`}
+                          className="w-10 h-10 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow"
                         >
-                          <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity fill-current" />
+                          {song.coverImage ? (
+                            <img
+                              src={song.coverImage}
+                              alt={song.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : null}
+                          <div
+                            className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+                          >
+                            <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity fill-current" />
+                          </div>
                         </div>
                         <div className="truncate">
-                          <p className="text-sm font-semibold text-white truncate">{song.title}</p>
+                          <p className="text-sm font-semibold text-white truncate group-hover:text-[#c273ed] transition-colors">{song.title}</p>
                           <p className="text-xs text-white/60 truncate">{song.artists}</p>
                         </div>
                       </div>

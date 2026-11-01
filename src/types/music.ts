@@ -20,6 +20,7 @@ export interface Song {
   provider?: string; // Đơn vị cung cấp / phát hành (e.g. VIEENT Music)
   plays?: string;
   playCount?: number; // Lượt nghe thời gian thực cho #xuankenchart
+  likesCount?: number; // Lượt tim thời gian thực
   lyrics: LyricLine[];
   lrcRaw?: string;
   lrcUrl?: string; // external .lrc link or text

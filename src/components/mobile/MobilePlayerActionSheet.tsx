@@ -48,6 +48,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
     reportSongIssue,
     setSongToBuy,
     setIsDemoLimitModalOpen,
+    theme,
   } = useMusic();
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -370,12 +371,14 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
         {/* Modal Báo Lỗi Bài Hát */}
         {showReportModal && (
           <div
+            data-theme={theme}
             className="fixed inset-0 z-[100000] bg-black/85 flex items-center justify-center p-4"
             onClick={() => setShowReportModal(false)}
           >
             <form
               onSubmit={handleSendReport}
-              className="w-full max-w-sm bg-[#231b2e] border border-white/15 rounded-3xl p-5 text-white space-y-3 shadow-2xl"
+              style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+              className="w-full max-w-sm border rounded-3xl p-5 space-y-3 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-2 border-b border-white/10">

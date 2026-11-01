@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { MobilePlayerActionSheet } from './MobilePlayerActionSheet';
+import { cleanLyricText } from '../../utils/lyricUtils';
 
 export const MobileFullPlayerModal: React.FC = () => {
   const {
@@ -58,8 +59,8 @@ export const MobileFullPlayerModal: React.FC = () => {
     theme,
   } = useMusic();
 
-  // 3 Slides: 'lyrics' (left) <-> 'disc' (center default) <-> 'info' (right, matching Screenshot 4)
-  const [activeTab, setActiveTab] = useState<'lyrics' | 'disc' | 'info'>('disc');
+  // 3 Slides: 'info' (left) <-> 'disc' (center default) <-> 'lyrics' (right)
+  const [activeTab, setActiveTab] = useState<'info' | 'disc' | 'lyrics'>('disc');
   const [showQueueSheet, setShowQueueSheet] = useState(false);
   const [isClosingQueueSheet, setIsClosingQueueSheet] = useState(false);
 
@@ -76,7 +77,7 @@ export const MobileFullPlayerModal: React.FC = () => {
 
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Swipe gesture handling between 3 slides
+  // Swipe gesture handling between 3 slides: Info (left) <-> Disc (center) <-> Lyrics (right)
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
 
@@ -94,13 +95,13 @@ export const MobileFullPlayerModal: React.FC = () => {
 
     if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY) * 0.8) {
       if (deltaX < 0) {
-        // Swiping left (move forward to next slide)
-        if (activeTab === 'lyrics') setActiveTab('disc');
-        else if (activeTab === 'disc') setActiveTab('info');
-      } else {
-        // Swiping right (move back to previous slide)
+        // Swiping left (forward to next slide): info -> disc -> lyrics
         if (activeTab === 'info') setActiveTab('disc');
         else if (activeTab === 'disc') setActiveTab('lyrics');
+      } else {
+        // Swiping right (back to previous slide): lyrics -> disc -> info
+        if (activeTab === 'lyrics') setActiveTab('disc');
+        else if (activeTab === 'disc') setActiveTab('info');
       }
     }
   };
@@ -242,31 +243,13 @@ export const MobileFullPlayerModal: React.FC = () => {
             </p>
             <p className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[200px] mx-auto">
               {activeTab === 'disc'
-                ? (playbackSource || 'Bài hát gợi ý')
-                : activeTab === 'lyrics'
-                ? 'Lời bài hát'
-                : 'Thông tin bài hát'}
+                ? (playbackSource || 'Danh sách bài hát')
+                : activeTab === 'info'
+                ? 'Thông tin bài hát'
+                : 'Lời bài hát'}
             </p>
-            {/* 3 Page indicator pills: click or swipe between Lyrics, Disc, and Song Info */}
+            {/* Requirement 4: 3 Page indicator pills in exact order: THÔNG TIN (left) - ẢNH BÌA (center) - LỜI BÀI HÁT (right) */}
             <div className="flex items-center justify-center gap-1.5 mt-1">
-              <button
-                onClick={() => setActiveTab('lyrics')}
-                style={activeTab === 'lyrics' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-                className={`h-1 rounded-full transition-all duration-300 cursor-pointer ${
-                  activeTab === 'lyrics' ? 'w-5 shadow-sm' : 'w-1.5 bg-[var(--text-secondary)]/40'
-                }`}
-                title="Lời bài hát"
-                aria-label="Lời bài hát"
-              />
-              <button
-                onClick={() => setActiveTab('disc')}
-                style={activeTab === 'disc' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-                className={`h-1 rounded-full transition-all duration-300 cursor-pointer ${
-                  activeTab === 'disc' ? 'w-5 shadow-sm' : 'w-1.5 bg-[var(--text-secondary)]/40'
-                }`}
-                title="Đĩa xoay"
-                aria-label="Đĩa xoay"
-              />
               <button
                 onClick={() => setActiveTab('info')}
                 style={activeTab === 'info' ? { backgroundColor: 'var(--color-accent)' } : undefined}
@@ -275,6 +258,24 @@ export const MobileFullPlayerModal: React.FC = () => {
                 }`}
                 title="Thông tin bài hát"
                 aria-label="Thông tin bài hát"
+              />
+              <button
+                onClick={() => setActiveTab('disc')}
+                style={activeTab === 'disc' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                className={`h-1 rounded-full transition-all duration-300 cursor-pointer ${
+                  activeTab === 'disc' ? 'w-5 shadow-sm' : 'w-1.5 bg-[var(--text-secondary)]/40'
+                }`}
+                title="Ảnh bìa"
+                aria-label="Ảnh bìa"
+              />
+              <button
+                onClick={() => setActiveTab('lyrics')}
+                style={activeTab === 'lyrics' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                className={`h-1 rounded-full transition-all duration-300 cursor-pointer ${
+                  activeTab === 'lyrics' ? 'w-5 shadow-sm' : 'w-1.5 bg-[var(--text-secondary)]/40'
+                }`}
+                title="Lời bài hát"
+                aria-label="Lời bài hát"
               />
             </div>
           </div>
@@ -291,7 +292,7 @@ export const MobileFullPlayerModal: React.FC = () => {
           </div>
         </header>
 
-        {/* Center View: 3-Slide Carousel [Lyrics <-> Disc <-> Song Info] */}
+        {/* Center View: 3-Slide Carousel in order [THÔNG TIN <-> ẢNH BÌA <-> LỜI BÀI HÁT] */}
         <main
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -301,140 +302,17 @@ export const MobileFullPlayerModal: React.FC = () => {
             className="flex w-[300%] h-full transition-transform duration-300 ease-out will-change-transform"
             style={{
               transform:
-                activeTab === 'lyrics'
+                activeTab === 'info'
                   ? 'translateX(0%)'
                   : activeTab === 'disc'
                   ? 'translateX(-33.333333%)'
                   : 'translateX(-66.666666%)',
             }}
           >
-            {/* Slide 1: LỜI BÀI HÁT (Left-aligned, Word-by-word karaoke runner like Zing MP3, no horizontal scroll) */}
-            <div className="w-1/3 h-full flex flex-col px-6 py-2 overflow-hidden">
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)] shrink-0">
-                <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                  Lời bài hát (LRC)
-                </span>
-                <button
-                  onClick={() => setActiveTab('disc')}
-                  style={{ color: 'var(--color-accent)' }}
-                  className="text-xs hover:opacity-80 font-semibold cursor-pointer"
-                >
-                  Quay lại đĩa nhạc
-                </button>
-              </div>
-
-              {/* Requirement 4: Left-aligned, breaks words normally, zero horizontal scrollbar */}
-              <div
-                ref={lyricsContainerRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-2 py-4 space-y-4 text-left select-none"
-              >
-                {lyrics.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-[var(--text-secondary)] text-xs text-center">
-                    Chưa có lời bài hát đồng bộ cho ca khúc này
-                  </div>
-                ) : (
-                  lyrics.map((line, idx) => {
-                    const isCurrentLine = idx === activeLyricIdx;
-                    const isPastLine = idx < activeLyricIdx;
-
-                    // Calculate line duration for word-by-word distribution
-                    const nextTime = idx < lyrics.length - 1 ? lyrics[idx + 1].time : safeDuration;
-                    const lineDuration = Math.max(1.2, Math.min(8, nextTime - line.time));
-                    const vocalDuration = lineDuration * 0.88;
-
-                    const words = line.text.trim().split(/\s+/).filter(Boolean);
-                    const totalChars = words.reduce((acc, w) => acc + Math.max(1, w.length), 0);
-
-                    let charAcc = 0;
-
-                    return (
-                      <div
-                        key={idx}
-                        data-idx={idx}
-                        onClick={() => seekTo(line.time)}
-                        className={`cursor-pointer transition-all duration-200 text-left w-full break-words whitespace-normal leading-relaxed overflow-x-hidden ${
-                          isCurrentLine ? 'py-1.5' : 'py-1 opacity-65 hover:opacity-100'
-                        }`}
-                      >
-                        {isCurrentLine ? (
-                          /* Requirement 5: Chữ chạy từng chữ như Zing MP3 từ file LRC */
-                          <div className="text-left w-full break-words whitespace-normal text-lg sm:text-xl font-bold leading-relaxed">
-                            {words.map((word, wIdx) => {
-                              const wordWeight = Math.max(1, word.length);
-                              const wStart = line.time + (charAcc / totalChars) * vocalDuration;
-                              const wEnd = wStart + (wordWeight / totalChars) * vocalDuration;
-                              charAcc += wordWeight;
-
-                              let fillPct = 0;
-                              if (currentTime >= wEnd) {
-                                fillPct = 100;
-                              } else if (currentTime <= wStart) {
-                                fillPct = 0;
-                              } else {
-                                fillPct = Math.min(100, Math.max(0, ((currentTime - wStart) / (wEnd - wStart)) * 100));
-                              }
-
-                              const isWordSinging = fillPct > 0 && fillPct < 100;
-
-                              return (
-                                <span
-                                  key={wIdx}
-                                  className={`inline-block mr-1.5 transition-all select-none ${
-                                    isWordSinging ? 'scale-105' : ''
-                                  }`}
-                                  style={{
-                                    backgroundImage: `linear-gradient(to right, #fbbf24 0%, #f59e0b ${fillPct}%, rgba(255, 255, 255, 0.45) ${fillPct}%, rgba(255, 255, 255, 0.45) 100%)`,
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    textShadow: fillPct > 0 ? '0 0 10px rgba(251, 191, 36, 0.5)' : 'none',
-                                  }}
-                                >
-                                  {word}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p
-                            className={`text-sm sm:text-base font-semibold text-left break-words whitespace-normal leading-relaxed ${
-                              isPastLine ? 'text-white/60' : 'text-white/40'
-                            }`}
-                          >
-                            {line.text}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Slide 2: ĐĨA NHẠC (Rotating Disc - Center Default) */}
-            <div className="w-1/3 h-full flex flex-col items-center justify-center px-4 py-2 overflow-hidden">
-              <div className="relative w-[min(80vw,305px)] h-[min(80vw,305px)] aspect-square rounded-full shadow-2xl relative border-2 border-white/10 flex items-center justify-center overflow-hidden">
-                <div
-                  style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
-                  className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slow shadow-inner relative"
-                >
-                  {currentSong.coverImage ? (
-                    <img
-                      src={currentSong.coverImage}
-                      alt={currentSong.title}
-                      className="w-full h-full object-cover rounded-full"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  ) : (
-                    <Disc3 className="w-24 h-24 text-white/70" />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Slide 3: THÔNG TIN BÀI HÁT (Matching Screenshot 4) */}
+            {/* SLIDE 1 (LEFT): THÔNG TIN BÀI HÁT (Requirement 4: Lượt tim và Lượt nghe thời gian thực) */}
             <div className="w-1/3 h-full flex flex-col justify-center px-4 py-2 overflow-y-auto no-scrollbar">
               <div className="w-full max-w-sm mx-auto p-5 rounded-3xl bg-white/[0.04] border border-white/10 shadow-2xl backdrop-blur-md space-y-4">
-                {/* Top Row: Cover + Title, Artist, Likes, Listens */}
+                {/* Top Row: Cover + Title, Artist, Real-time Likes, Real-time Listens */}
                 <div className="flex items-center gap-3.5">
                   <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/15 bg-zinc-900 shrink-0 shadow-lg">
                     {currentSong.coverImage ? (
@@ -457,16 +335,26 @@ export const MobileFullPlayerModal: React.FC = () => {
                     <p className="text-xs text-white/60 truncate mt-0.5 font-medium">
                       {currentSong.artists}
                     </p>
-                    {/* Likes and Listens Stats matching Screenshot 4 */}
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-white/70">
-                      <span className="flex items-center gap-1 font-semibold">
-                        <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400" />
-                        <span>75,4K</span>
-                      </span>
-                      <span className="flex items-center gap-1 font-semibold">
+                    {/* Requirement 4: Lượt tim và lượt nghe hiển thị đúng theo thời gian thực */}
+                    <div className="flex items-center gap-3 mt-1.5 text-xs text-white/80">
+                      <button
+                        onClick={() => toggleLike(currentSong.id)}
+                        className="flex items-center gap-1 font-semibold hover:opacity-80 active:scale-95 transition-transform cursor-pointer"
+                        title={isLiked ? 'Bỏ thích' : 'Thích bài hát'}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-red-500' : 'text-red-400'}`} />
+                        <span>
+                          {typeof currentSong.likesCount === 'number'
+                            ? currentSong.likesCount.toLocaleString('vi-VN')
+                            : (isLiked ? 1 : 0).toLocaleString('vi-VN')}
+                        </span>
+                      </button>
+                      <span className="flex items-center gap-1 font-semibold text-cyan-300">
                         <Headphones className="w-3.5 h-3.5 text-cyan-400" />
                         <span>
-                          {currentSong.playCount ? `${(currentSong.playCount / 1000).toFixed(1)}K` : '3,6M'}
+                          {typeof currentSong.playCount === 'number'
+                            ? currentSong.playCount.toLocaleString('vi-VN')
+                            : '0'} lượt nghe
                         </span>
                       </span>
                     </div>
@@ -476,18 +364,18 @@ export const MobileFullPlayerModal: React.FC = () => {
                 {/* Divider line */}
                 <div className="border-t border-white/10" />
 
-                {/* 2-column Metadata list matching Screenshot 4 */}
+                {/* 2-column Metadata list */}
                 <div className="space-y-3 text-xs">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-white/50 font-medium">Album</span>
                     <span className="text-white font-bold text-right truncate">
-                      {currentSong.album ? `${currentSong.album} (Single)` : 'Em Vá Đời Anh (Single)'}
+                      {currentSong.album ? `${currentSong.album}` : 'XuanKen Official'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-white/50 font-medium">Nhạc sĩ</span>
                     <span className="text-white font-bold text-right truncate">
-                      {currentSong.composer || currentSong.artists || 'Thiên Chí'}
+                      {currentSong.composer || currentSong.artists || 'XuanKen'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -499,16 +387,115 @@ export const MobileFullPlayerModal: React.FC = () => {
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-white/50 font-medium">Phát hành</span>
                     <span className="text-white font-bold text-right font-mono">
-                      {currentSong.releaseDate || '06/06/2026'}
+                      {currentSong.releaseDate || '2026'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-white/50 font-medium">Cung cấp</span>
                     <span className="text-white font-bold text-right truncate">
-                      {currentSong.provider || 'VIEENT Music'}
+                      {currentSong.provider || 'XuanKen Official'}
                     </span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* SLIDE 2 (CENTER): ẢNH BÌA (ĐĨA XOAY) (Requirement 4: ở giữa là ảnh bìa) */}
+            <div className="w-1/3 h-full flex flex-col items-center justify-center px-4 py-2 overflow-hidden">
+              <div className="relative w-[min(80vw,305px)] h-[min(80vw,305px)] aspect-square rounded-full shadow-2xl relative border-2 border-white/10 flex items-center justify-center overflow-hidden">
+                <div
+                  style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                  className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slow shadow-inner relative"
+                >
+                  {currentSong.coverImage ? (
+                    <img
+                      src={currentSong.coverImage}
+                      alt={currentSong.title}
+                      className="w-full h-full object-cover rounded-full"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <Disc3 className="w-24 h-24 text-white/70" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* SLIDE 3 (RIGHT): LỜI BÀI HÁT (Requirement 4 & 5: bên phải là lyric, phóng to hơn, nếu lời dài sẽ co chữ lại) */}
+            <div className="w-1/3 h-full flex flex-col px-6 py-2 overflow-hidden justify-between">
+              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)] shrink-0">
+                <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                  Lời bài hát
+                </span>
+                <button
+                  onClick={() => setActiveTab('disc')}
+                  style={{ color: 'var(--color-accent)' }}
+                  className="text-xs hover:opacity-80 font-semibold cursor-pointer"
+                >
+                  Quay lại đĩa nhạc
+                </button>
+              </div>
+
+              {/* Exactly 5 lines like Zing MP3 (2 before, 1 active in middle, 2 after) */}
+              <div
+                ref={lyricsContainerRef}
+                className="flex-1 flex flex-col justify-center items-start text-left px-1 py-4 space-y-3.5 select-none overflow-hidden"
+              >
+                {lyrics.length === 0 ? (
+                  <div className="w-full text-center text-[var(--text-secondary)] text-xs py-8">
+                    Chưa có lời bài hát đồng bộ cho ca khúc này
+                  </div>
+                ) : (
+                  (() => {
+                    const centerIdx = activeLyricIdx >= 0 ? activeLyricIdx : 0;
+                    const fiveIndices = [centerIdx - 2, centerIdx - 1, centerIdx, centerIdx + 1, centerIdx + 2];
+                    return fiveIndices.map((targetIdx, slotIdx) => {
+                      if (targetIdx < 0 || targetIdx >= lyrics.length) {
+                        return <div key={`mob-empty-${slotIdx}-${targetIdx}`} className="h-8 sm:h-10 invisible select-none" />;
+                      }
+                      const line = lyrics[targetIdx];
+                      const displayText = cleanLyricText(line.text);
+                      if (!displayText) {
+                        return <div key={`mob-empty-txt-${slotIdx}-${targetIdx}`} className="h-8 sm:h-10 invisible select-none" />;
+                      }
+                      const isCurrent = targetIdx === activeLyricIdx;
+                      const isPast = targetIdx < activeLyricIdx;
+                      const textLen = displayText.length;
+
+                      // Requirement 5: Phóng to ra hơn 1 tí nữa, nếu lời dài sẽ tự động co chữ lại
+                      const currentSizeClass =
+                        textLen > 40
+                          ? 'text-lg sm:text-xl'
+                          : textLen > 24
+                          ? 'text-xl sm:text-2xl'
+                          : 'text-2xl sm:text-3xl';
+
+                      const inactiveSizeClass =
+                        textLen > 40
+                          ? 'text-xs sm:text-sm'
+                          : textLen > 24
+                          ? 'text-sm sm:text-base'
+                          : 'text-base sm:text-lg';
+
+                      return (
+                        <div
+                          key={`mob-line-${targetIdx}-${line.time}`}
+                          onClick={() => seekTo(line.time)}
+                          className={`cursor-pointer text-left transition-all duration-300 w-full break-words whitespace-normal select-none ${
+                            isCurrent
+                              ? `text-yellow-400 font-bold ${currentSizeClass} leading-snug drop-shadow-[0_0_12px_rgba(250,204,21,0.5)]`
+                              : isPast
+                              ? `text-white/45 font-medium ${inactiveSizeClass} leading-relaxed`
+                              : `text-white/65 font-medium ${inactiveSizeClass} leading-relaxed`
+                          }`}
+                          title="Bấm để phát từ câu hát này"
+                        >
+                          {displayText}
+                        </div>
+                      );
+                    });
+                  })()
+                )}
               </div>
             </div>
           </div>
@@ -554,7 +541,7 @@ export const MobileFullPlayerModal: React.FC = () => {
           >
             <div className="w-full h-1.5 bg-[var(--text-secondary)]/25 rounded-full relative overflow-visible">
               <div
-                className="h-full rounded-full relative"
+                className={`h-full rounded-full relative ${isScrubbing ? '' : 'transition-[width] duration-100 ease-linear'}`}
                 style={{ width: `${scrubPercent}%`, backgroundColor: 'var(--color-accent)' }}
               >
                 {/* Requirement 2: Smaller Thumb Knob */}
@@ -785,11 +772,28 @@ export const MobileFullPlayerModal: React.FC = () => {
                     playSong(song);
                     handleCloseQueue();
                   }}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--bg-surface-hover)] hover:opacity-90 cursor-pointer border border-[var(--border-color)]"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--bg-surface-hover)] hover:opacity-90 cursor-pointer border border-[var(--border-color)] gap-2.5"
                 >
-                  <div className="truncate pr-2">
-                    <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{song.title}</p>
-                    <p className="text-[10px] text-[var(--text-secondary)] truncate">{song.artists}</p>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow">
+                      {song.coverImage ? (
+                        <img
+                          src={song.coverImage}
+                          alt={song.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : null}
+                      <div
+                        className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center text-[10px] font-bold text-white/60 ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+                      >
+                        XK
+                      </div>
+                    </div>
+                    <div className="truncate">
+                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{song.title}</p>
+                      <p className="text-[10px] text-[var(--text-secondary)] truncate">{song.artists}</p>
+                    </div>
                   </div>
                   <Play
                     style={{ color: 'var(--color-accent)' }}

@@ -193,7 +193,10 @@ export const DesktopLibraryPage: React.FC = () => {
             </button>
 
             {isPlayMenuOpen && (
-              <div className="absolute left-0 top-12 w-56 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-2 z-50 text-white animate-in zoom-in-95 duration-150 space-y-1">
+              <div
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                className="absolute left-0 top-12 w-56 rounded-2xl border shadow-2xl p-2 z-50 animate-in zoom-in-95 duration-150 space-y-1"
+              >
                 <button
                   onClick={handlePlayInOrder}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group cursor-pointer"

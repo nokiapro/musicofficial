@@ -87,8 +87,21 @@ export const DesktopSongListView: React.FC = () => {
     };
   }, [isPlayMenuOpen]);
 
-  // Requirement 5: Do NOT close activeMenuSongId on outside click!
-  // It only closes when the user clicks the 3 vertical dots button again or chooses an option.
+  // Requirement 3: Close 3-dots Song Menu when clicking outside
+  useEffect(() => {
+    const handleClickOutsideSongMenu = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuSongId(null);
+        setMenuPosition(null);
+      }
+    };
+    if (activeMenuSongId) {
+      document.addEventListener('mousedown', handleClickOutsideSongMenu);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideSongMenu);
+    };
+  }, [activeMenuSongId]);
 
   // Sort alphabetically A -> Z
   const sortedSongs = [...songs].sort((a, b) =>
@@ -165,7 +178,10 @@ export const DesktopSongListView: React.FC = () => {
             </button>
 
             {isPlayMenuOpen && (
-              <div className="absolute left-0 top-14 w-56 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-2 z-50 text-white animate-in zoom-in-95 duration-150 space-y-1">
+              <div
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                className="absolute left-0 top-14 w-56 rounded-2xl border shadow-2xl p-2 z-50 animate-in zoom-in-95 duration-150 space-y-1"
+              >
                 <button
                   onClick={handlePlayInOrder}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group"
@@ -443,9 +459,15 @@ export const DesktopSongListView: React.FC = () => {
           return (
             <div
               ref={menuRef}
-              style={{ top: menuPosition.top, right: menuPosition.right }}
+              style={{
+                top: menuPosition.top,
+                right: menuPosition.right,
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)',
+              }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed w-52 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-1.5 z-[999] text-xs text-white space-y-1 animate-in fade-in duration-150"
+              className="fixed w-52 rounded-2xl border shadow-2xl p-1.5 z-[999] text-xs space-y-1 animate-in fade-in duration-150"
             >
               {/* Requirement 12: Tim bài hát */}
               <button

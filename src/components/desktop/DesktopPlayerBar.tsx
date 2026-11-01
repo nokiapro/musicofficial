@@ -200,10 +200,9 @@ export const DesktopPlayerBar: React.FC = () => {
         <div className="flex items-center gap-5">
           <button
             onClick={toggleShuffle}
+            style={isShuffle ? { color: 'var(--color-accent)', filter: 'drop-shadow(0 0 8px var(--color-accent))' } : {}}
             className={`p-2 transition-all active:scale-95 ${
-              isShuffle
-                ? 'text-[#c273ed] drop-shadow-[0_0_8px_rgba(194,115,237,0.9)]'
-                : 'text-white/60 hover:text-white'
+              isShuffle ? '' : 'text-white/60 hover:text-white'
             }`}
             title={isShuffle ? 'Đang bật phát ngẫu nhiên (Bấm để tắt)' : 'Bật phát ngẫu nhiên'}
           >
@@ -212,7 +211,7 @@ export const DesktopPlayerBar: React.FC = () => {
 
           <button
             onClick={prevSong}
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
             title="Bài trước"
           >
             <SkipBack className="w-5 h-5 fill-current" />
@@ -221,7 +220,7 @@ export const DesktopPlayerBar: React.FC = () => {
           <button
             onClick={togglePlay}
             style={{ backgroundColor: 'var(--color-accent)' }}
-            className="w-11 h-11 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 hover:opacity-90"
+            className="w-11 h-11 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 hover:opacity-90 cursor-pointer"
             title={isPlaying ? 'Tạm dừng' : 'Phát'}
           >
             {isPlaying ? (
@@ -233,7 +232,7 @@ export const DesktopPlayerBar: React.FC = () => {
 
           <button
             onClick={nextSong}
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
             title="Bài tiếp theo"
           >
             <SkipForward className="w-5 h-5 fill-current" />
@@ -241,10 +240,9 @@ export const DesktopPlayerBar: React.FC = () => {
 
           <button
             onClick={toggleRepeat}
-            className={`p-2 transition-all active:scale-95 ${
-              repeatMode !== 'off'
-                ? 'text-[#c273ed] drop-shadow-[0_0_8px_rgba(194,115,237,0.9)]'
-                : 'text-white/60 hover:text-white'
+            style={repeatMode !== 'off' ? { color: 'var(--color-accent)', filter: 'drop-shadow(0 0 8px var(--color-accent))' } : {}}
+            className={`p-2 transition-all active:scale-95 cursor-pointer ${
+              repeatMode !== 'off' ? '' : 'text-white/60 hover:text-white'
             }`}
             title={`Lặp lại: ${
               repeatMode === 'off'
@@ -276,9 +274,9 @@ export const DesktopPlayerBar: React.FC = () => {
             aria-valuemax={safeDuration}
             aria-valuenow={displayProgressTime}
           >
-            <div className="w-full h-1.5 group-hover:h-2.5 rounded-full glass-track overflow-hidden relative shadow-inner">
+            <div className="w-full h-1.5 rounded-full glass-track overflow-hidden relative shadow-inner">
               <div
-                className={`h-full glass-fill ${isDraggingProgress ? '' : 'transition-[width] duration-150 ease-out'} shadow-[0_0_8px_rgba(255,255,255,0.4)]`}
+                className={`h-full glass-fill ${isDraggingProgress ? '' : 'transition-[width] duration-100 ease-linear'} shadow-[0_0_8px_rgba(255,255,255,0.4)]`}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>

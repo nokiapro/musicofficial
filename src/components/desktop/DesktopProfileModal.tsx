@@ -26,6 +26,7 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
     setIsLoginModalOpen,
     setIsTopUpModalOpen,
     logout,
+    theme,
   } = useMusic();
 
   const [displayNameInput, setDisplayNameInput] = useState(currentUser?.displayName || '');
@@ -88,12 +89,25 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="w-full max-w-lg bg-[#231b2e] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-6 text-white space-y-5 animate-in zoom-in-95 duration-200">
+    <div
+      data-theme={theme}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none"
+    >
+      <div
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
+        className="w-full max-w-lg border rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 animate-in zoom-in-95 duration-200"
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-600/30 text-[#c273ed] flex items-center justify-center">
+            <div
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-accent) 25%, transparent)', color: 'var(--color-accent)' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+            >
               <User className="w-5 h-5" />
             </div>
             <div>

@@ -2,11 +2,11 @@
   "rules": {
     "admins": {
       ".read": "auth != null",
-      ".write": "auth != null && (auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
     },
     "songs": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
       "$songId": {
         "playCount": {
           ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
@@ -14,39 +14,39 @@
       }
     },
     "members": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
       "$userId": {
-        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
-        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
       }
     },
     "purchases": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
       "$purchaseId": {
-        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
-        ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com') : (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com'))"
+        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+        ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn') : (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn'))"
       }
     },
     "playlists": {
       ".read": true,
       "$playlistId": {
-        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
       }
     },
     "vouchers": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
     },
     "site_settings": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
     },
     "weekly_plays": {
       ".read": true,
       ".write": "auth != null"
     },
     "song_reports": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
       "$reportId": {
         ".write": true
       }
@@ -61,8 +61,8 @@
     },
     "users": {
       "$userId": {
-        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
-        ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+        ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
       }
     },
     "_system_ping": {

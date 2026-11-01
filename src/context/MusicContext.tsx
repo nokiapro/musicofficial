@@ -389,17 +389,18 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const allMembers = await MusicService.fetchMembers();
         let currentMember = allMembers.find((m) => m.uid === fbUser.uid || m.email === fbUser.email);
 
-        // Secure Role Assignment: Only designated admin emails receive admin privileges.
-        // Standard user accounts receive role: 'user' to prevent privilege escalation.
-        const ADMIN_EMAILS = ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'];
+        // Admin Email: admin@xuanken.vn is the initial/primary admin.
+        // Other accounts created in Firebase Auth default to normal members ('user'),
+        // unless granted admin role via Web Admin by an existing admin.
+        const PRIMARY_ADMIN_EMAIL = 'admin@xuanken.vn';
         const userEmailClean = (fbUser.email || '').toLowerCase().trim();
-        const shouldBeAdmin = ADMIN_EMAILS.includes(userEmailClean);
+        const isPrimaryAdmin = userEmailClean === PRIMARY_ADMIN_EMAIL;
 
         if (!currentMember) {
-          const determinedRole: 'admin' | 'user' = shouldBeAdmin ? 'admin' : 'user';
+          const determinedRole: 'admin' | 'user' = isPrimaryAdmin ? 'admin' : 'user';
           currentMember = {
             uid: fbUser.uid,
-            email: fbUser.email || 'user@xuanken.com',
+            email: fbUser.email || 'user@xuanken.vn',
             displayName: fbUser.displayName || fbUser.email?.split('@')[0] || (determinedRole === 'admin' ? 'Admin XuanKen' : 'Thành viên'),
             balance: siteSettings?.defaultStartingBalance ?? 500000,
             purchasedSongIds: [],
@@ -410,7 +411,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const updated = [...allMembers, currentMember];
           setMembers(updated);
           await MusicService.saveMembers(updated);
-        } else if (shouldBeAdmin && currentMember.role !== 'admin') {
+        } else if (isPrimaryAdmin && currentMember.role !== 'admin') {
           currentMember = {
             ...currentMember,
             role: 'admin',
@@ -644,7 +645,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.upsertMember(updated);
   };
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin' || (currentUser?.email?.toLowerCase().trim() === 'admin@xuanken.vn');
 
   const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased?: boolean) => {
     if (!song) return '';
@@ -694,10 +695,16 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       timerRef.current = window.setInterval(() => {
+        const audioEngineTime = audioEngine.getCurrentTime();
         setCurrentTime((prev) => {
           const purchased = isSongPurchased(currentSong.id);
+          // High-precision smooth time
+          const nextTime = audioEngineTime > 0 && Math.abs(audioEngineTime - prev) < 5
+            ? audioEngineTime
+            : prev + 0.1;
+
           // Requirement 2: Demo 60s limitation - at yellow dot, pop up buy song modal
-          if (!purchased && prev >= 60) {
+          if (!purchased && nextTime >= 60) {
             audioEngine.pause();
             setIsPlaying(false);
             setSongToBuy(currentSong);
@@ -706,12 +713,16 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return 60;
           }
 
-          if (prev >= duration) {
+          if (duration > 0 && nextTime >= duration) {
             handleSongEnd();
             return 0;
           }
-          const nextTime = prev + 1;
-          audioEngine.updatePositionState(nextTime, duration, playbackRate);
+
+          const hasSecondChanged = Math.floor(nextTime) !== Math.floor(prev);
+
+          if (hasSecondChanged) {
+            audioEngine.updatePositionState(nextTime, duration, playbackRate);
+          }
 
           // Requirement 8: Phải nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
           const minSeconds = siteSettings?.minListenDurationSeconds ?? 5;
@@ -725,6 +736,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               MusicService.incrementPlayCount(currentSong.id, nextPlayCount);
               return prevSongs.map((s) => (s.id === currentSong.id ? { ...s, playCount: nextPlayCount } : s));
             });
+            setCurrentSong((prev) => (prev && prev.id === currentSong.id ? { ...prev, playCount: (prev.playCount || 0) + 1 } : prev));
 
             // Update XuanKen Rewind for play count & artists (Synced to Firebase across all devices)
             setRewindStats((prevStats) => {
@@ -755,27 +767,29 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             });
           }
 
+          // XuanKen Rewind: accumulate listening seconds when a full second advances
+          if (hasSecondChanged) {
+            setRewindStats((prevStats) => {
+              const newStats: RewindStats = {
+                ...prevStats,
+                totalSeconds: (prevStats.totalSeconds || 0) + 1,
+                lastUpdated: new Date().toISOString(),
+              };
+              try {
+                localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
+              } catch (e) {}
+              // Sync to Firebase periodically (every 10s) to keep all devices in sync without flood
+              if (Date.now() - lastRewindSyncRef.current >= 10000) {
+                lastRewindSyncRef.current = Date.now();
+                MusicService.saveRewindStats(newStats, currentUser?.uid);
+              }
+              return newStats;
+            });
+          }
+
           return nextTime;
         });
-
-        // XuanKen Rewind: accumulate listening seconds and sync to Firebase
-        setRewindStats((prevStats) => {
-          const newStats: RewindStats = {
-            ...prevStats,
-            totalSeconds: (prevStats.totalSeconds || 0) + 1,
-            lastUpdated: new Date().toISOString(),
-          };
-          try {
-            localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
-          } catch (e) {}
-          // Sync to Firebase periodically (every 10s) to keep all devices in sync without flood
-          if (Date.now() - lastRewindSyncRef.current >= 10000) {
-            lastRewindSyncRef.current = Date.now();
-            MusicService.saveRewindStats(newStats, currentUser?.uid);
-          }
-          return newStats;
-        });
-      }, 1000);
+      }, 100);
     } else {
       audioEngine.pause();
       if (timerRef.current !== null) {
@@ -791,7 +805,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat, songFormatMap, siteSettings, currentWeekKey]);
 
-  // Helper to pick random song from all songs (Requirement 6)
+  // Helper to pick random song from all songs (Requirement 6 & 7)
   const getRandomSong = (excludeCurrent: boolean = true): Song | null => {
     const unblockedSongs = songs.filter((s) => !blockedSongIds.includes(s.id));
     if (unblockedSongs.length === 0) return null;
@@ -803,7 +817,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const handleSongEnd = () => {
-    // Requirement 6: Nếu đang bật random và bật lặp lại 1 bài thì vẫn lặp lại 1 bài; tắt lặp đi thì sẽ phát random
+    // 1: Lặp lại 1 bài (Repeat 1) -> Tự động phát lại bài hiện tại
     if (repeatMode === 'one') {
       seekTo(0);
       if (currentSong) {
@@ -811,6 +825,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       return;
     }
+    // 2: Phát ngẫu nhiên (Shuffle)
     if (isShuffle) {
       const nextRandom = getRandomSong(true);
       if (nextRandom) {
@@ -818,7 +833,34 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
     }
-    nextSong();
+    // 3: Phát từ hàng đợi (Queue)
+    const unblockedQueue = queue.filter((s) => !blockedSongIds.includes(s.id));
+    if (unblockedQueue.length > 0) {
+      const next = unblockedQueue[0];
+      setQueue((q) => q.filter((s) => s.id !== next.id));
+      playSong(next);
+      return;
+    }
+    // 4: Phát tiếp tục bài kế tiếp trong danh sách bài hát
+    const curIdx = currentSong ? songs.findIndex((s) => s.id === currentSong.id) : -1;
+    if (curIdx !== -1 && curIdx + 1 < songs.length) {
+      const remainingSongs = songs.slice(curIdx + 1).filter((s) => !blockedSongIds.includes(s.id));
+      if (remainingSongs.length > 0) {
+        playSong(remainingSongs[0]);
+        return;
+      }
+    }
+    // 5: Hết bài trong playlist -> Nếu bật Lặp lại playlist ('all') thì quay lại bài đầu tiên
+    if (repeatMode === 'all') {
+      const firstAvailable = songs.find((s) => !blockedSongIds.includes(s.id));
+      if (firstAvailable) {
+        playSong(firstAvailable);
+        return;
+      }
+    }
+    // 6: Tắt lặp lại ('off') và đã hết bài -> Dừng phát
+    setIsPlaying(false);
+    seekTo(0);
   };
 
   const playSong = (song: Song, formatOverride?: 'MP3' | 'WAV') => {
@@ -826,7 +868,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSongFormatMap((prev) => ({ ...prev, [song.id]: formatOverride }));
     }
 
-    // Requirement 8: Reset 5s playback counter for this play session
+    // Reset 5s playback counter for this play session
     hasCountedPlayRef.current = false;
 
     if (currentSong?.id !== song.id) {
@@ -883,7 +925,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const nextSong = () => {
-    // Requirement 6: Nút tiến bài cũng tiến bài như bình thường còn đang bật random thì random luôn
+    // 1: Bật ngẫu nhiên -> Random bài tiếp theo
     if (isShuffle) {
       const nextRandom = getRandomSong(true);
       if (nextRandom) {
@@ -892,28 +934,47 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
+    // 2: Có bài trong hàng đợi
     const unblockedQueue = queue.filter((s) => !blockedSongIds.includes(s.id));
-    if (unblockedQueue.length === 0) {
-      if (repeatMode === 'all') {
-        const resetQueue = songs.filter((s) => s.id !== currentSong?.id && !blockedSongIds.includes(s.id));
-        setQueue(resetQueue);
-        if (resetQueue.length > 0) {
-          playSong(resetQueue[0]);
-        }
-      } else {
-        setIsPlaying(false);
-      }
+    if (unblockedQueue.length > 0) {
+      const next = unblockedQueue[0];
+      setQueue((q) => q.filter((s) => s.id !== next.id));
+      playSong(next);
       return;
     }
 
-    const next = unblockedQueue[0];
-    const newQueue = queue.filter((s) => s.id !== next.id && !blockedSongIds.includes(s.id));
-    setQueue(newQueue);
-    playSong(next);
+    // 3: Tiếp tục bài kế tiếp trong danh sách bài hát
+    const curIdx = currentSong ? songs.findIndex((s) => s.id === currentSong.id) : -1;
+    if (curIdx !== -1 && curIdx + 1 < songs.length) {
+      const remainingSongs = songs.slice(curIdx + 1).filter((s) => !blockedSongIds.includes(s.id));
+      if (remainingSongs.length > 0) {
+        playSong(remainingSongs[0]);
+        return;
+      }
+    }
+
+    // 4: Đã ở cuối danh sách: nếu lặp lại playlist ('all') hoặc bấm thủ công -> Quay lại bài đầu tiên
+    const firstSong = songs.find((s) => !blockedSongIds.includes(s.id));
+    if (firstSong) {
+      if (repeatMode === 'all' || repeatMode === 'one') {
+        playSong(firstSong);
+      } else {
+        // Cuối danh sách không lặp lại: dừng hoặc quay lại đầu
+        playSong(firstSong);
+      }
+    } else {
+      setIsPlaying(false);
+    }
   };
 
   const prevSong = () => {
-    // Requirement 6: Nút lùi thì sẽ lùi lại bài hát đã phát trước đó, nếu đang bật random thì cũng random luôn
+    // 1: Nếu bài hát đã chạy > 3 giây, nút lùi sẽ tua về đầu bài hát hiện tại (chuẩn audio player)
+    if (currentTime > 3) {
+      seekTo(0);
+      return;
+    }
+
+    // 2: Nếu bật Random -> Lùi bài ngẫu nhiên
     if (isShuffle) {
       const prevRandom = getRandomSong(true);
       if (prevRandom) {
@@ -922,31 +983,67 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    if (currentTime > 4) {
-      seekTo(0);
-      return;
-    }
-
+    // 3: Nếu có lịch sử nghe gần đây -> Phát lại bài vừa nghe
     const unblockedHistory = history.filter((s) => !blockedSongIds.includes(s.id));
     if (unblockedHistory.length > 0) {
       const prev = unblockedHistory[0];
       setHistory((h) => h.filter((s) => s.id !== prev.id));
       if (currentSong) setQueue((q) => [currentSong, ...q]);
       playSong(prev);
-    } else {
-      seekTo(0);
+      return;
     }
+
+    // 4: Nếu không có lịch sử -> Lùi về bài trước đó trong danh sách
+    const curIdx = currentSong ? songs.findIndex((s) => s.id === currentSong.id) : -1;
+    if (curIdx > 0) {
+      const prevList = songs.slice(0, curIdx).filter((s) => !blockedSongIds.includes(s.id));
+      if (prevList.length > 0) {
+        playSong(prevList[prevList.length - 1]);
+        return;
+      }
+    } else if (curIdx === 0 && repeatMode === 'all') {
+      const lastSong = [...songs].reverse().find((s) => !blockedSongIds.includes(s.id));
+      if (lastSong) {
+        playSong(lastSong);
+        return;
+      }
+    }
+
+    seekTo(0);
   };
 
   const toggleLike = (songId: string) => {
     setLikedSongIds((prev) => {
-      const next = prev.includes(songId) ? prev.filter((id) => id !== songId) : [...prev, songId];
+      const isCurrentlyLiked = prev.includes(songId);
+      const next = isCurrentlyLiked ? prev.filter((id) => id !== songId) : [...prev, songId];
       if (currentUser?.uid) {
         try {
           localStorage.setItem(`xuanken_liked_${currentUser.uid}`, JSON.stringify(next));
         } catch (e) {}
         MusicService.saveUserSettings(currentUser.uid, { likedSongIds: next });
       }
+
+      // Cập nhật lượt tim theo thời gian thực trên cả danh sách songs và currentSong
+      setSongs((prevSongs) =>
+        prevSongs.map((s) => {
+          if (s.id === songId) {
+            const curLikes = s.likesCount ?? 0;
+            const updatedLikes = isCurrentlyLiked ? Math.max(0, curLikes - 1) : curLikes + 1;
+            return { ...s, likesCount: updatedLikes };
+          }
+          return s;
+        })
+      );
+
+      setCurrentSong((cur) => {
+        if (cur && cur.id === songId) {
+          const curLikes = cur.likesCount ?? 0;
+          const updatedLikes = isCurrentlyLiked ? Math.max(0, curLikes - 1) : curLikes + 1;
+          return { ...cur, likesCount: updatedLikes };
+        }
+        return cur;
+      });
+
       return next;
     });
   };

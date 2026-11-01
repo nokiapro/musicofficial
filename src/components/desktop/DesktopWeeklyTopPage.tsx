@@ -40,8 +40,24 @@ export const DesktopWeeklyTopPage: React.FC = () => {
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
   const playMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close 3-dots Menu on outside click (Requirement 3)
+  useEffect(() => {
+    const handleClickOutsideMenu = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuSongId(null);
+      }
+    };
+    if (activeMenuSongId) {
+      document.addEventListener('mousedown', handleClickOutsideMenu);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideMenu);
+    };
+  }, [activeMenuSongId]);
 
   // Compute top 10 songs of this week
   const weeklyRankedSongs = [...songs]
@@ -126,7 +142,10 @@ export const DesktopWeeklyTopPage: React.FC = () => {
             </button>
 
             {isPlayMenuOpen && (
-              <div className="absolute left-0 top-14 w-56 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-2 z-50 text-white animate-in zoom-in-95 duration-150 space-y-1">
+              <div
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                className="absolute left-0 top-14 w-56 rounded-2xl border shadow-2xl p-2 z-50 animate-in zoom-in-95 duration-150 space-y-1"
+              >
                 <button
                   onClick={handlePlayInOrder}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group"
@@ -298,7 +317,11 @@ export const DesktopWeeklyTopPage: React.FC = () => {
                       </button>
 
                       {activeMenuSongId === song.id && (
-                        <div className="absolute right-4 top-8 w-44 rounded-2xl bg-[#231b2e] border border-white/15 shadow-2xl p-1.5 z-50 text-xs text-white space-y-1 animate-in fade-in duration-150">
+                        <div
+                          ref={activeMenuSongId === song.id ? menuRef : undefined}
+                          style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                          className="absolute right-4 top-8 w-44 rounded-2xl border shadow-2xl p-1.5 z-50 text-xs space-y-1 animate-in fade-in duration-150"
+                        >
                           <button
                             onClick={() => {
                               toggleLike(song.id);

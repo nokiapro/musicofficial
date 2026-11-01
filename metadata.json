@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "XuanKen Music",
+  "description": "Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV, lời bài hát chạy chữ karaoke LRC và quản trị Firebase.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

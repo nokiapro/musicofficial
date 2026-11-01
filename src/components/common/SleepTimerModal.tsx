@@ -10,6 +10,7 @@ export const SleepTimerModal: React.FC = () => {
     sleepTimerRemainingSeconds,
     setSleepTimer,
     setSleepTimerSeconds,
+    theme,
   } = useMusic();
 
   const [customHours, setCustomHours] = useState<string>('0');
@@ -56,11 +57,24 @@ export const SleepTimerModal: React.FC = () => {
       : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="w-full max-w-md bg-[#231b2e] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-6 text-white space-y-5 animate-in zoom-in-95 duration-200">
+    <div
+      data-theme={theme}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none"
+    >
+      <div
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
+        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 animate-in zoom-in-95 duration-200"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#9b4de0]/20 text-[#c273ed] flex items-center justify-center shadow">
+            <div
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center shadow"
+            >
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -120,12 +134,13 @@ export const SleepTimerModal: React.FC = () => {
                   }}
                   className={`py-3 px-2 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 active:scale-95 ${
                     isCurrent
-                      ? 'border-[#9b4de0] bg-[#9b4de0]/25 text-white shadow-lg ring-2 ring-purple-400/40'
+                      ? 'shadow-lg ring-2 ring-white/20'
                       : 'border-white/10 bg-white/5 hover:bg-white/10 text-white/80'
                   }`}
+                  style={isCurrent ? { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)', color: '#ffffff' } : {}}
                 >
                   <span className="text-sm font-bold">{preset.label}</span>
-                  <span className="text-[10px] text-white/50 font-mono font-medium">
+                  <span className="text-[10px] text-white/70 font-mono font-medium">
                     {preset.fullLabel}
                   </span>
                 </button>
@@ -142,7 +157,7 @@ export const SleepTimerModal: React.FC = () => {
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="block text-[10px] font-bold text-white/50 mb-1">Giờ</label>
-              <div className="flex items-center bg-black/40 border border-white/15 rounded-xl px-2.5 py-2 focus-within:border-[#9b4de0]">
+              <div className="flex items-center bg-black/40 border border-white/15 rounded-xl px-2.5 py-2">
                 <input
                   type="number"
                   min="0"
@@ -156,7 +171,7 @@ export const SleepTimerModal: React.FC = () => {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-white/50 mb-1">Phút</label>
-              <div className="flex items-center bg-black/40 border border-white/15 rounded-xl px-2.5 py-2 focus-within:border-[#9b4de0]">
+              <div className="flex items-center bg-black/40 border border-white/15 rounded-xl px-2.5 py-2">
                 <input
                   type="number"
                   min="0"
@@ -170,7 +185,7 @@ export const SleepTimerModal: React.FC = () => {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-white/50 mb-1">Giây</label>
-              <div className="flex items-center bg-black/40 border border-white/15 rounded-xl px-2.5 py-2 focus-within:border-[#9b4de0]">
+              <div className="flex items-center bg-black/40 border border-white/15 rounded-xl px-2.5 py-2">
                 <input
                   type="number"
                   min="0"
@@ -185,7 +200,8 @@ export const SleepTimerModal: React.FC = () => {
           </div>
           <button
             type="submit"
-            className="w-full py-2.5 bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-500/30 transition-transform active:scale-95 flex items-center justify-center gap-1.5"
+            style={{ backgroundColor: 'var(--color-accent)' }}
+            className="w-full py-2.5 hover:opacity-90 text-white text-xs font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Clock className="w-4 h-4" />
             <span>Kích hoạt hẹn giờ ({customHours.padStart(2, '0')}:{customMinutes.padStart(2, '0')}:{customSeconds.padStart(2, '0')})</span>

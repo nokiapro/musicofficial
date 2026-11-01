@@ -44,7 +44,6 @@ export const AdminPageView: React.FC = () => {
     currentUser,
     isAdmin,
     loginWithEmail,
-    registerWithEmail,
     logout,
     members,
     updateMemberBalance,
@@ -58,6 +57,7 @@ export const AdminPageView: React.FC = () => {
     seedDefaultSongs,
     siteSettings,
     updateSiteSettings,
+    theme,
   } = useMusic();
 
   const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members' | 'rules' | 'vouchers' | 'settings'>('songs');
@@ -142,12 +142,11 @@ export const AdminPageView: React.FC = () => {
   const [isAddingVoucher, setIsAddingVoucher] = useState(false);
 
   // Login form state for unauthenticated admin
-  const [loginEmail, setLoginEmail] = useState('xuankensinger123@gmail.com');
+  const [loginEmail, setLoginEmail] = useState('admin@xuanken.vn');
   const [loginPass, setLoginPass] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginSuccess, setLoginSuccess] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Song Add/Edit Modal State
   const [isSongModalOpen, setIsSongModalOpen] = useState(false);
@@ -255,27 +254,17 @@ export const AdminPageView: React.FC = () => {
     }
   };
 
-  // If not logged in, show Admin Login / Register Screen
+  // If not logged in, show Admin Login Screen (Login-only, no registration)
   if (!currentUser) {
     const handleAuthSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoginError('');
       setLoginSuccess('');
       setIsLoggingIn(true);
-      if (authMode === 'login') {
-        const res = await loginWithEmail(loginEmail, loginPass);
-        setIsLoggingIn(false);
-        if (!res.success) {
-          setLoginError(res.message);
-        }
-      } else {
-        const res = await registerWithEmail(loginEmail, loginPass);
-        setIsLoggingIn(false);
-        if (!res.success) {
-          setLoginError(res.message);
-        } else {
-          setLoginSuccess('Tạo tài khoản Admin thành công! Đang tự động đăng nhập...');
-        }
+      const res = await loginWithEmail(loginEmail, loginPass);
+      setIsLoggingIn(false);
+      if (!res.success) {
+        setLoginError(res.message);
       }
     };
 
@@ -285,35 +274,11 @@ export const AdminPageView: React.FC = () => {
           <ShieldCheck className="w-8 h-8" />
         </div>
         <h2 className="text-2xl font-black text-center tracking-tight">
-          {authMode === 'login' ? 'Đăng Nhập Trang Quản Trị' : 'Tạo Tài Khoản Admin'}
+          Đăng Nhập Trang Quản Trị
         </h2>
         <p className="text-xs text-white/60 text-center mt-2 leading-relaxed">
-          {authMode === 'login'
-            ? 'Đăng nhập tài khoản Admin trên Firebase Authentication để quản lý nhạc và đồng bộ dữ liệu.'
-            : 'Tạo tài khoản Admin mới trên Firebase Auth cho dự án newmusic-5625b.'}
+          Đăng nhập bằng tài khoản Quản trị viên <strong className="text-white">admin@xuanken.vn</strong> hoặc tài khoản được cấp quyền Admin để quản lý bài hát và thành viên.
         </p>
-
-        {/* Tab switch between Login and Register */}
-        <div className="flex p-1 bg-white/5 rounded-xl border border-white/10 mt-5">
-          <button
-            type="button"
-            onClick={() => { setAuthMode('login'); setLoginError(''); setLoginSuccess(''); }}
-            className={`flex-1 py-1.5 rounded-lg font-bold text-xs transition-all ${
-              authMode === 'login' ? 'bg-[#9b4de0] text-white shadow' : 'text-white/60 hover:text-white'
-            }`}
-          >
-            Đăng Nhập
-          </button>
-          <button
-            type="button"
-            onClick={() => { setAuthMode('register'); setLoginError(''); setLoginSuccess(''); }}
-            className={`flex-1 py-1.5 rounded-lg font-bold text-xs transition-all ${
-              authMode === 'register' ? 'bg-[#9b4de0] text-white shadow' : 'text-white/60 hover:text-white'
-            }`}
-          >
-            Tạo Tài Khoản Mới
-          </button>
-        </div>
 
         {loginError && (
           <div className="mt-4 p-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
@@ -337,7 +302,7 @@ export const AdminPageView: React.FC = () => {
               required
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              placeholder="xuankensinger123@gmail.com"
+              placeholder="admin@xuanken.vn"
               className="w-full bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
             />
           </div>
@@ -358,10 +323,10 @@ export const AdminPageView: React.FC = () => {
           <button
             type="submit"
             disabled={isLoggingIn}
-            className="w-full py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-sm shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+            className="w-full py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-sm shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 mt-2 cursor-pointer"
           >
             <LogIn className="w-4 h-4" />
-            <span>{isLoggingIn ? 'Đang xử lý...' : authMode === 'login' ? 'Đăng Nhập Quản Trị' : 'Tạo Tài Khoản Admin'}</span>
+            <span>{isLoggingIn ? 'Đang xử lý...' : 'Đăng Nhập Quản Trị'}</span>
           </button>
         </form>
       </div>
@@ -375,11 +340,11 @@ export const AdminPageView: React.FC = () => {
         <ShieldAlert className="w-14 h-14 text-red-400 mx-auto mb-3" />
         <h2 className="text-xl font-bold">Không Có Quyền Truy Cập Admin</h2>
         <p className="text-xs text-white/60 mt-2">
-          Tài khoản <strong className="text-white">{currentUser.email}</strong> không có vai trò Quản trị viên (Admin).
+          Tài khoản <strong className="text-white">{currentUser.email}</strong> hiện là thành viên thông thường. Quyền Admin được phân quyền trực tiếp bởi <strong className="text-purple-300">admin@xuanken.vn</strong> trong trang quản trị.
         </p>
         <button
           onClick={logout}
-          className="mt-6 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold"
+          className="mt-6 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold cursor-pointer"
         >
           Đăng xuất tài khoản
         </button>
@@ -1085,8 +1050,8 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'] &&
-         (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'password'))
+        request.auth.token.email == 'admin@xuanken.vn' ||
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
       );
     }
     function incoming() { return request.resource.data; }
@@ -1213,8 +1178,8 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'] &&
-         (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'password'))
+        request.auth.token.email == 'admin@xuanken.vn' ||
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
       );
     }
 
@@ -1287,11 +1252,11 @@ service cloud.firestore {
                         rules: {
                           admins: {
                             ".read": "auth != null",
-                            ".write": "auth != null && (auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
                           },
                           songs: {
                             ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
                             "$songId": {
                               "playCount": {
                                 ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
@@ -1299,39 +1264,39 @@ service cloud.firestore {
                             }
                           },
                           members: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
                             "$userId": {
-                              ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
-                              ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
+                              ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+                              ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
                             }
                           },
                           purchases: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
                             "$purchaseId": {
-                              ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
-                              ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com') : (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com'))"
+                              ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+                              ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn') : (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn'))"
                             }
                           },
                           playlists: {
                             ".read": true,
                             "$playlistId": {
-                              ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+                              ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
                             }
                           },
                           vouchers: {
                             ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
                           },
                           site_settings: {
                             ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
                           },
                           weekly_plays: {
                             ".read": true,
                             ".write": "auth != null"
                           },
                           song_reports: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
                             "$reportId": {
                               ".write": true
                             }
@@ -1361,9 +1326,13 @@ service cloud.firestore {
             <pre className="p-4 text-[11px] font-mono text-emerald-400 bg-black/60 overflow-x-auto max-h-56 leading-relaxed">
 {`{
   "rules": {
+    "admins": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+    },
     "songs": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
       "$songId": {
         "playCount": {
           ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
@@ -1371,28 +1340,28 @@ service cloud.firestore {
       }
     },
     "members": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
       "$userId": {
-        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
-        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
       }
     },
     "purchases": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
       "$purchaseId": {
-        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists())",
-        ".write": "auth != null && (!data.exists() ? newData.child('userId').val() === auth.uid : root.child('admins').child(auth.uid).exists())"
+        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+        ".write": "auth != null && (!data.exists() ? newData.child('userId').val() === auth.uid : root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
       }
     },
     "playlists": {
       ".read": true,
       "$playlistId": {
-        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists())"
+        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
       }
     },
     "vouchers": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
     }
   }
 }`}
@@ -1415,7 +1384,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isAdmin() {
       return request.auth != null && (
-        request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com']
+        request.auth.token.email == 'admin@xuanken.vn'
       );
     }
     match /{allPaths=**} {
@@ -1457,7 +1426,7 @@ service firebase.storage {
 service firebase.storage {
   match /b/{bucket}/o {
     function isAdmin() {
-      return request.auth != null && request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'];
+      return request.auth != null && request.auth.token.email == 'admin@xuanken.vn';
     }
     match /{allPaths=**} {
       allow read: if true;
@@ -1871,8 +1840,14 @@ service firebase.storage {
 
       {/* MODAL: CHỈNH SỬA THÀNH VIÊN (Tên hiển thị, vai trò, số tiền - Requirement 3) */}
       {editingMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-[#231b2e] border border-white/10 rounded-3xl shadow-2xl p-6 text-white text-xs animate-in zoom-in-95 duration-200">
+        <div
+          data-theme={theme}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+        >
+          <div
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+            className="w-full max-w-md border rounded-3xl shadow-2xl p-6 text-xs animate-in zoom-in-95 duration-200"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h2 className="text-base font-bold flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#c273ed]" />
@@ -1998,8 +1973,14 @@ service firebase.storage {
 
       {/* MODAL: THÊM / SỬA BÀI HÁT (Requirements 2 & 3) */}
       {isSongModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-[#231b2e] border border-white/10 rounded-3xl shadow-2xl p-6 text-white max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+        <div
+          data-theme={theme}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+        >
+          <div
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+            className="w-full max-w-xl border rounded-3xl shadow-2xl p-6 max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h2 className="text-lg font-bold">
                 {editingSongId ? 'Chỉnh Sửa Bài Hát' : 'Thêm Bài Hát Mới'}
