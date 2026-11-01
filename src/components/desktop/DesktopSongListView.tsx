@@ -140,7 +140,7 @@ export const DesktopSongListView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20 select-none">
+    <div className="space-y-6 pb-20 select-none font-['Roboto_Condensed']">
       {/* Header with Title and MP3 / WAV Global Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
         <div className="flex items-center gap-4">

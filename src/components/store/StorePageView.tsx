@@ -51,7 +51,7 @@ export const StorePageView: React.FC = () => {
   const paginatedSongs = sortedSongs.slice(startIndex, startIndex + PAGE_SIZE);
 
   return (
-    <div className="space-y-6 pb-20 select-none">
+    <div className="space-y-6 pb-20 select-none font-['Roboto_Condensed']">
       {/* Top Banner & Wallet Status */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-950 via-[#23143c] to-[#120822] border border-white/10 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>

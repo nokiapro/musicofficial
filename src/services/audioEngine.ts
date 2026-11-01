@@ -71,6 +71,12 @@ export class AudioEngine {
       return;
     }
 
+    const cleanUrl = url.trim();
+    if (cleanUrl.toLowerCase().startsWith('javascript:') || cleanUrl.toLowerCase().startsWith('data:text/html')) {
+      console.warn('Blocked unsafe audio URL protocol');
+      return;
+    }
+
     const audio = this.initAudioElement();
     const isDifferentTrack = this.currentUrl !== url;
     this.currentUrl = url;

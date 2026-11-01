@@ -1,8 +1,170 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Global Safety Net: Default deny everything
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Common Security Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Trusted Admin check: Verified admin emails or existing document in /admins/{uid}
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'] &&
+         (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'password'))
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. ADMINS COLLECTION
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 2. SONGS COLLECTION:
+    // - Read: Public (to show catalog, album covers, titles, lyrics and 60s demoUrl)
+    // - Create & Delete: Admin only
+    // - Update: Admin only, OR legitimate playCount increment by 1 for #xuankenchart
+    match /songs/{songId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        incoming().diff(existing()).affectedKeys().hasOnly(['playCount']) &&
+        incoming().playCount is number &&
+        incoming().playCount == existing().playCount + 1
+      );
+    }
+
+    // 3. MEMBERS (USERS, MONEY & SENSITIVE WALLET DATA):
+    // Highly Sensitive: Contains balance (tiền ví), role, purchased song IDs, PII.
+    // - Read: Restricted to document owner or Admin (protects PII and prevents wallet spying).
+    // - Create: User registration. Role must be 'user' (cannot self-assign admin) and initial balance <= 500,000.
+    // - Update:
+    //    a) Admin: Full control (top-up approval, role modification).
+    //    b) Member Owner: Can update personal profile fields, but CANNOT self-escalate role or increase balance.
+    //    c) Member Owner: Can purchase a song (balance decreases, purchasedSongIds increases).
+    match /members/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow create: if isOwner(userId) &&
+        incoming().uid == userId &&
+        incoming().role == 'user' &&
+        incoming().balance is number &&
+        incoming().balance <= 500000 &&
+        incoming().balance >= 0 &&
+        incoming().email is string &&
+        incoming().email.size() <= 120;
+
+      allow update: if isAdmin() || (
+        isOwner(userId) && (
+          // Case A: Profile & settings edit (cannot touch balance or role!)
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'avatarUrl', 'theme', 'crossfadeDuration',
+              'preferredAudioFormat', 'likedSongIds', 'blockedSongIds', 'rewindStats'
+            ]) &&
+            incoming().role == existing().role &&
+            incoming().balance == existing().balance
+          ) ||
+          // Case B: In-app purchase execution:
+          // Balance can only DECREASE (no currency minting), role must stay unchanged
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'purchasedSongIds']) &&
+            incoming().role == existing().role &&
+            incoming().balance is number &&
+            incoming().balance <= existing().balance &&
+            incoming().balance >= 0 &&
+            incoming().purchasedSongIds is list &&
+            incoming().purchasedSongIds.size() >= existing().purchasedSongIds.size()
+          )
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // 4. PURCHASES (Transaction Audit Records):
+    // - Read: Buyer or Admin
+    // - Create: Authenticated buyer for their own userId
+    // - Update & Delete: Forbidden (immutable audit log)
+    match /purchases/{purchaseId} {
+      allow read: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        incoming().price is number &&
+        incoming().price >= 0;
+      allow update, delete: if isAdmin();
+    }
+
+    // 5. PLAYLISTS:
+    // - Read: Public
+    // - Create: Authenticated user
+    // - Update & Delete: Owner or Admin
+    match /playlists/{playlistId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (
+        !('userId' in incoming()) || incoming().userId == request.auth.uid || isAdmin()
+      );
+      allow update, delete: if isSignedIn() && (
+        existing().userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // 6. VOUCHERS (Mã giảm giá):
+    // - Read: Public
+    // - Write: Admin only
+    match /vouchers/{voucherId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 7. SITE SETTINGS:
+    // - Read: Public
+    // - Write: Admin only
+    match /site_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 8. SONG REPORTS:
+    // - Create: Public bug report
+    // - Read & Manage: Admin only
+    match /song_reports/{reportId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 9. WEEKLY PLAYS / STATS
+    match /weekly_plays/{weekKey} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // 10. SYSTEM CONNECTION PING
+    match /system/{docId} {
+      allow read, write: if isSignedIn();
     }
   }
 }

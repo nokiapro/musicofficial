@@ -15,6 +15,9 @@ export interface Song {
   coverImage?: string; // Link ảnh bìa trực tuyến
   album?: string;
   releaseDate?: string;
+  composer?: string; // Nhạc sĩ sáng tác
+  genre?: string; // Thể loại nhạc (e.g. Việt Nam, V-Pop)
+  provider?: string; // Đơn vị cung cấp / phát hành (e.g. VIEENT Music)
   plays?: string;
   playCount?: number; // Lượt nghe thời gian thực cho #xuankenchart
   lyrics: LyricLine[];
@@ -110,4 +113,22 @@ export interface SiteSettings {
   defaultStartingBalance: number;
   defaultSongPrice: number;
   minListenDurationSeconds: number;
+}
+
+export interface Purchase {
+  id: string;
+  userId: string;
+  userEmail?: string;
+  songId: string;
+  songTitle: string;
+  price: number;
+  timestamp: string;
+}
+
+export interface SongReport {
+  id: string;
+  songId: string;
+  issue: string;
+  userEmail: string;
+  createdAt: string;
 }

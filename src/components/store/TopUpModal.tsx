@@ -86,7 +86,8 @@ export const TopUpModal: React.FC = () => {
                   <span className="flex-1 truncate">{transferSyntax}</span>
                   <button
                     onClick={handleCopy}
-                    className="p-1.5 rounded-md bg-purple-600/30 hover:bg-purple-600 text-white shrink-0 transition-colors flex items-center gap-1 text-[10px] font-sans font-bold"
+                    className="p-1.5 rounded-md bg-purple-600/30 hover:bg-purple-600 text-white shrink-0 transition-colors flex items-center gap-1 text-[10px] font-bold"
+                    title="Sao chép cú pháp"
                   >
                     {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copied ? 'Đã sao chép' : 'Sao chép'}</span>

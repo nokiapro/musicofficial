@@ -115,7 +115,7 @@ export const DesktopAppLayout: React.FC = () => {
 
   return (
     <div
-      className="flex h-screen w-screen overflow-hidden text-white flex-col select-none transition-colors duration-200"
+      className="flex h-screen w-screen overflow-hidden text-white flex-col select-none transition-colors duration-200 font-['Roboto_Condensed']"
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
       {/* Top Body Row (Sidebar + Main Content + Right Queue Drawer) */}

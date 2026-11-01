@@ -43,7 +43,7 @@ export const InteractionSplash: React.FC = () => {
     <div
       id="interaction-hint"
       onClick={handleStart}
-      className={`fixed inset-0 z-[10000] flex flex-col justify-center items-center cursor-pointer select-none transition-all duration-500 ${
+      className={`fixed inset-0 z-[10000] flex flex-col justify-center items-center cursor-pointer select-none transition-all duration-500 font-['Roboto_Condensed'] ${
         isHiding ? 'opacity-0 invisible pointer-events-none' : 'opacity-100 visible'
       }`}
       style={{

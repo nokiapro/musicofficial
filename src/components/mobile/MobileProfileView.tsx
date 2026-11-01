@@ -22,6 +22,8 @@ export const MobileProfileView: React.FC = () => {
     isAdmin,
     userBalance,
     purchasedSongIds,
+    songs,
+    isSongPurchased,
     theme,
     crossfadeDuration,
     setIsAudioSettingsModalOpen,
@@ -344,7 +346,7 @@ export const MobileProfileView: React.FC = () => {
                 <p className="text-xs font-bold text-white flex items-center gap-1.5">
                   <span>Chủ Đề & Giao Diện Web</span>
                   <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/30 text-purple-200 border border-purple-500/40 font-bold uppercase">
-                    8 Themes
+                    13 Themes
                   </span>
                 </p>
                 <p className="text-[10px] text-white/50">
@@ -358,7 +360,7 @@ export const MobileProfileView: React.FC = () => {
             </div>
           </div>
 
-          {/* Cửa hàng / Kho nhạc đã mua */}
+          {/* Cửa hàng / Kho nhạc đã mua (Requirement 4: hiển thị chính xác số bài trong kho nhạc) */}
           <div
             onClick={() => setActiveMobileTab('library')}
             className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
@@ -369,7 +371,9 @@ export const MobileProfileView: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-white">Kho Nhạc Đã Mua</p>
-                <p className="text-[10px] text-white/50">{purchasedSongIds.length} bài hát bản quyền Full</p>
+                <p className="text-[10px] text-white/50">
+                  {songs.filter((s) => isSongPurchased(s.id)).length} bài hát bản quyền Full
+                </p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-white/40" />

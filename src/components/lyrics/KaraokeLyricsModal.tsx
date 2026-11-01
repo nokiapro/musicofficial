@@ -41,7 +41,7 @@ export const KaraokeLyricsModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#120822] text-white overflow-hidden animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#120822] text-white overflow-hidden animate-in fade-in duration-300 font-['Roboto_Condensed']">
       {/* Dynamic blurred ambient glow behind lyrics */}
       <div className="absolute inset-0 pointer-events-none opacity-40 overflow-hidden">
         <div
@@ -136,23 +136,75 @@ export const KaraokeLyricsModal: React.FC = () => {
             const isCurrent = index === activeIndex;
             const isPast = index < activeIndex;
 
+            // Calculate word timings for current line
+            const nextLineTime = index < lyrics.length - 1 ? lyrics[index + 1].time : (duration || 210);
+            const lineDuration = Math.max(1.2, Math.min(8, nextLineTime - line.time));
+            const vocalDuration = lineDuration * 0.88;
+            const words = line.text.trim().split(/\s+/).filter(Boolean);
+            const totalChars = words.reduce((acc, w) => acc + Math.max(1, w.length), 0);
+
+            let charAcc = 0;
+
             return (
-              <p
+              <div
                 key={index}
                 data-index={index}
                 onClick={() => seekTo(line.time)}
-                className={`cursor-pointer transition-all duration-300 font-semibold px-4 py-2 rounded-xl ${
+                className={`cursor-pointer transition-all duration-300 font-semibold px-4 py-2 rounded-xl text-center select-none ${
                   isCurrent
-                    ? activeTab === 'karaoke'
-                      ? 'text-2xl md:text-3xl lg:text-4xl text-amber-300 font-bold scale-105 drop-shadow-[0_4px_16px_rgba(251,191,36,0.5)]'
-                      : 'text-2xl md:text-3xl text-purple-300 font-bold'
+                    ? 'scale-105'
                     : isPast
                     ? 'text-base md:text-xl text-white/40 hover:text-white/70'
                     : 'text-base md:text-xl text-white/60 hover:text-white/90'
                 }`}
               >
-                {line.text}
-              </p>
+                {isCurrent && activeTab === 'karaoke' ? (
+                  <span className="text-2xl md:text-3xl lg:text-4xl font-bold leading-relaxed">
+                    {words.map((word, wIdx) => {
+                      const wordWeight = Math.max(1, word.length);
+                      const wStart = line.time + (charAcc / totalChars) * vocalDuration;
+                      const wEnd = wStart + (wordWeight / totalChars) * vocalDuration;
+                      charAcc += wordWeight;
+
+                      let fillPct = 0;
+                      if (currentTime >= wEnd) {
+                        fillPct = 100;
+                      } else if (currentTime <= wStart) {
+                        fillPct = 0;
+                      } else {
+                        fillPct = Math.min(100, Math.max(0, ((currentTime - wStart) / (wEnd - wStart)) * 100));
+                      }
+
+                      return (
+                        <span
+                          key={wIdx}
+                          className="inline-block mr-2 select-none transition-all"
+                          style={{
+                            backgroundImage: `linear-gradient(to right, #fbbf24 0%, #f59e0b ${fillPct}%, rgba(255, 255, 255, 0.45) ${fillPct}%, rgba(255, 255, 255, 0.45) 100%)`,
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            textShadow: fillPct > 0 ? '0 0 16px rgba(251, 191, 36, 0.6)' : 'none',
+                          }}
+                        >
+                          {word}
+                        </span>
+                      );
+                    })}
+                  </span>
+                ) : (
+                  <span
+                    className={
+                      isCurrent
+                        ? 'text-2xl md:text-3xl text-purple-300 font-bold'
+                        : isPast
+                        ? 'text-white/40'
+                        : 'text-white/60'
+                    }
+                  >
+                    {line.text}
+                  </span>
+                )}
+              </div>
             );
           })}
         </div>

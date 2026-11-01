@@ -160,6 +160,10 @@ export const AdminPageView: React.FC = () => {
   const [title, setTitle] = useState('');
   const [artists, setArtists] = useState('XuanKen');
   const [album, setAlbum] = useState('XuanKen Music Official');
+  const [composer, setComposer] = useState('XuanKen');
+  const [genre, setGenre] = useState('Việt Nam, V-Pop');
+  const [releaseDate, setReleaseDate] = useState('2026');
+  const [provider, setProvider] = useState('XuanKen Official');
   const [audioFormat, setAudioFormat] = useState<AudioFormat>('MP3');
   const [price, setPrice] = useState('20000');
   const [demoUrl, setDemoUrl] = useState('');
@@ -401,6 +405,10 @@ export const AdminPageView: React.FC = () => {
     setTitle('');
     setArtists('XuanKen');
     setAlbum('XuanKen Music Official');
+    setComposer('XuanKen');
+    setGenre('Việt Nam, V-Pop');
+    setReleaseDate(new Date().getFullYear().toString());
+    setProvider('XuanKen Official');
     setCoverImage('https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
     setAudioFormat('MP3');
     setPrice('20000');
@@ -422,6 +430,10 @@ export const AdminPageView: React.FC = () => {
     setTitle(song.title);
     setArtists(song.artists);
     setAlbum(song.album || '');
+    setComposer(song.composer || song.artists || 'XuanKen');
+    setGenre(song.genre || 'Việt Nam, V-Pop');
+    setReleaseDate(song.releaseDate || new Date().getFullYear().toString());
+    setProvider(song.provider || 'XuanKen Official');
     setCoverImage(song.coverImage || '');
     setAudioFormat(song.audioFormat);
     setPrice(song.price.toString());
@@ -484,6 +496,10 @@ export const AdminPageView: React.FC = () => {
           title: title.trim(),
           artists: artists.trim(),
           album: album.trim() || 'XuanKen Official',
+          composer: composer.trim() || artists.trim() || 'XuanKen',
+          genre: genre.trim() || 'Việt Nam, V-Pop',
+          releaseDate: releaseDate.trim() || new Date().getFullYear().toString(),
+          provider: provider.trim() || 'XuanKen Official',
           coverImage: coverImage.trim() || existing.coverImage || '',
           audioFormat,
           price: parseInt(price, 10) || 0,
@@ -505,6 +521,10 @@ export const AdminPageView: React.FC = () => {
         title: title.trim(),
         artists: artists.trim() || 'XuanKen',
         album: album.trim() || 'XuanKen Music Official',
+        composer: composer.trim() || artists.trim() || 'XuanKen',
+        genre: genre.trim() || 'Việt Nam, V-Pop',
+        releaseDate: releaseDate.trim() || new Date().getFullYear().toString(),
+        provider: provider.trim() || 'XuanKen Official',
         coverImage: coverImage.trim() || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
         audioFormat,
         price: parseInt(price, 10) || 0,
@@ -517,7 +537,6 @@ export const AdminPageView: React.FC = () => {
         lyrics: parsedLyrics,
         duration: finalDuration,
         coverGradient: gradients[Math.floor(Math.random() * gradients.length)],
-        releaseDate: new Date().getFullYear().toString(),
       };
       saveResult = await addNewSong(newSong);
     }
@@ -565,7 +584,7 @@ export const AdminPageView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20 select-none">
+    <div className="space-y-6 pb-20 select-none font-['Roboto_Condensed']">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div className="flex items-center gap-3">
@@ -1022,110 +1041,242 @@ export const AdminPageView: React.FC = () => {
             </button>
           </div>
 
-          {/* Dedicated Firebase null Explanation Card */}
-          <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/15 via-purple-950/40 to-[#170f23] border border-amber-500/30 text-xs space-y-3 shadow-xl">
-            <div className="flex items-center gap-2 text-sm font-black text-amber-300">
-              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
-              <span>Tại Sao Firebase Console Hiển Thị: "{'https://...firebasedatabase.app/: null'}"?</span>
+          {/* Security Rules Banner */}
+          <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-500/15 via-purple-950/40 to-[#170f23] border border-emerald-500/30 text-xs space-y-3 shadow-xl">
+            <div className="flex items-center gap-2 text-sm font-black text-emerald-300">
+              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span>Hệ Thống Quy Tắc Bảo Mật Toàn Diện (Bản Quyền, Tiền Ví & Thành Viên)</span>
             </div>
             <p className="text-white/80 leading-relaxed">
-              Bạn thấy dòng chữ <code className="text-amber-300 font-mono">: null</code> trên Firebase Console vì nhánh gốc cơ sở dữ liệu hiện chưa có bản ghi nào được ghi thành công. Có 2 nguyên nhân chính:
+              Các quy tắc (Security Rules) đã được cấu hình chặt chẽ theo tiêu chuẩn Zero-Trust và Phân quyền theo vai trò (RBAC/ABAC):
             </p>
-            <ol className="list-decimal list-inside space-y-1.5 text-white/70 pl-1">
-              <li>
-                <strong className="text-white">Quy tắc (Rules) bị khóa:</strong> Khi mới tạo Realtime Database, Firebase đặt mặc định <code className="text-red-300">.write: false</code> hoặc <code className="text-red-300">"auth != null"</code>. Khi bạn thao tác lưu bài hát từ web mà chưa đăng nhập Firebase Auth, Firebase sẽ chặn ghi (PERMISSION_DENIED).
-              </li>
-              <li>
-                <strong className="text-white">Lỗi trường undefined:</strong> Phiên bản cũ gửi link demo/mp3 chưa điền dưới dạng <code className="text-red-300">undefined</code>, làm Firebase SDK hủy bỏ lệnh ghi. <em>(Lỗi này hiện đã được hệ thống sửa hoàn toàn với hàm cleanForFirebase)</em>.
-              </li>
-            </ol>
-            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 space-y-2">
-              <p className="font-bold text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle className="w-4 h-4" />
-                <span>3 Bước Đơn Giản Để Dữ Liệu Hiện Lên Firebase Ngay Lập Tức:</span>
-              </p>
-              <p className="text-white/80">
-                1. Bấm nút <strong>"Sao Chép Quy Tắc Mở Quyền"</strong> ngay bên dưới.
-              </p>
-              <p className="text-white/80">
-                2. Mở{' '}
-                <a
-                  href="https://console.firebase.google.com/project/newmusic-5625b/database/newmusic-5625b-default-rtdb/rules"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-purple-300 underline font-bold"
-                >
-                  Firebase Console &gt; Realtime Database &gt; Tab Quy tắc (Rules)
-                </a>
-                , dán đè vào và bấm <strong>Xuất bản (Publish)</strong>.
-              </p>
-              <p className="text-white/80">
-                3. Quay lại website, bấm nút <strong>"🚀 Đẩy Lên Firebase"</strong> hoặc <strong>"🌱 Nạp 3 Bài Mẫu"</strong> trong tab "Quản Lý Bài Hát". F5 lại Firebase Console là dữ liệu hiện ra 100%!
-              </p>
-            </div>
+            <ul className="list-disc list-inside space-y-1.5 text-white/70 pl-1">
+              <li><strong className="text-white">Bảo mật link bài hát:</strong> Khách chỉ nghe demo 60s, chỉ người mua hoặc Admin mới mở được link MP3 320kbps & WAV Lossless. Chỉ Admin có quyền thêm/sửa/xóa bài hát.</li>
+              <li><strong className="text-white">Bảo mật số dư & tiền ví:</strong> Chặn triệt để hack tiền. Thành viên không thể tự tăng số dư hoặc tự nâng quyền Admin. Số dư chỉ giảm khi thanh toán hợp lệ. Mọi yêu cầu nạp tiền phải qua Admin.</li>
+              <li><strong className="text-white">Bảo mật thành viên (PII):</strong> Số dư và thông tin riêng tư chỉ chính chủ hoặc Admin mới có quyền đọc. Chống rò rỉ dữ liệu thành viên.</li>
+            </ul>
           </div>
 
-          {/* 1. Realtime Database Open Rules (Recommended for immediate data persistence) */}
-          <div className="rounded-2xl border border-amber-500/40 bg-[#170f23] overflow-hidden shadow-xl">
-            <div className="p-4 bg-amber-500/10 border-b border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* 1. Cloud Firestore Rules */}
+          <div className="rounded-2xl border border-purple-500/30 bg-[#170f23] overflow-hidden shadow-xl">
+            <div className="p-4 bg-purple-500/10 border-b border-purple-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm">database.rules.json (Quy Tắc Mở Quyền - Khuyên Dùng Ngay)</span>
+                  <span className="font-bold text-white text-sm">firestore.rules (Cloud Firestore Security Rules)</span>
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500 text-black">
-                    Ưu tiên số 1
+                    Bảo Mật Cao
                   </span>
                 </div>
                 <p className="text-[11px] text-white/60 mt-0.5">
-                  Cho phép website ghi bài hát, thành viên, playlist ngay lập tức mà không bị chặn quyền
+                  Kiểm soát chặt chẽ bài hát, số dư ví, quyền thành viên và lịch sử mua hàng
                 </p>
               </div>
               <button
                 onClick={() =>
                   copyRuleToClipboard(
-                    'open_rtdb_rules',
-                    JSON.stringify(
-                      {
-                        rules: {
-                          ".read": true,
-                          ".write": true,
-                        },
-                      },
-                      null,
-                      2
-                    )
+                    'firestore.rules',
+                    `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} { allow read, write: if false; }
+
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'] &&
+         (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'password'))
+      );
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /songs/{songId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        incoming().diff(existing()).affectedKeys().hasOnly(['playCount']) &&
+        incoming().playCount is number &&
+        incoming().playCount == existing().playCount + 1
+      );
+    }
+
+    match /members/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) &&
+        incoming().uid == userId &&
+        incoming().role == 'user' &&
+        incoming().balance is number &&
+        incoming().balance <= 500000 &&
+        incoming().balance >= 0 &&
+        incoming().email is string &&
+        incoming().email.size() <= 120;
+      allow update: if isAdmin() || (
+        isOwner(userId) && (
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'avatarUrl', 'theme', 'crossfadeDuration',
+              'preferredAudioFormat', 'likedSongIds', 'blockedSongIds', 'rewindStats'
+            ]) &&
+            incoming().role == existing().role &&
+            incoming().balance == existing().balance
+          ) ||
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'purchasedSongIds']) &&
+            incoming().role == existing().role &&
+            incoming().balance is number &&
+            incoming().balance <= existing().balance &&
+            incoming().balance >= 0 &&
+            incoming().purchasedSongIds is list &&
+            incoming().purchasedSongIds.size() >= existing().purchasedSongIds.size()
+          )
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        incoming().price is number &&
+        incoming().price >= 0;
+      allow update, delete: if isAdmin();
+    }
+
+    match /playlists/{playlistId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (
+        !('userId' in incoming()) || incoming().userId == request.auth.uid || isAdmin()
+      );
+      allow update, delete: if isSignedIn() && (
+        existing().userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    match /vouchers/{voucherId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /song_reports/{reportId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /weekly_plays/{weekKey} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /system/{docId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}`
                   )
                 }
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95"
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95"
               >
-                {copiedRuleFile === 'open_rtdb_rules' ? (
+                {copiedRuleFile === 'firestore.rules' ? (
                   <>
-                    <Check className="w-4 h-4 text-black" />
-                    <span>Đã sao chép! Dán vào Firebase ngay</span>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Đã sao chép!</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-4 h-4" />
-                    <span>Sao Chép Quy Tắc Mở Quyền</span>
+                    <span>Sao Chép firestore.rules</span>
                   </>
                 )}
               </button>
             </div>
-            <pre className="p-4 text-xs font-mono text-emerald-400 bg-black/60 overflow-x-auto leading-relaxed">
-{`{
-  "rules": {
-    ".read": true,
-    ".write": true
+            <pre className="p-4 text-[11px] font-mono text-purple-300 bg-black/60 overflow-x-auto max-h-64 leading-relaxed">
+{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} { allow read, write: if false; }
+
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'] &&
+         (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'password'))
+      );
+    }
+
+    match /songs/{songId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playCount']) &&
+        request.resource.data.playCount == resource.data.playCount + 1
+      );
+    }
+
+    match /members/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.role == 'user' && request.resource.data.balance <= 500000;
+      allow update: if isAdmin() || (
+        isOwner(userId) && (
+          // Sửa thông tin cá nhân (không được đổi role hoặc tăng tiền)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'avatarUrl', 'theme', 'likedSongIds', 'blockedSongIds']) &&
+           request.resource.data.role == resource.data.role && request.resource.data.balance == resource.data.balance) ||
+          // Mua nhạc (tiền chỉ được giảm, không được tăng)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'purchasedSongIds']) &&
+           request.resource.data.role == resource.data.role && request.resource.data.balance <= resource.data.balance)
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /playlists/{playlistId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /vouchers/{voucherId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }`}
             </pre>
           </div>
 
-          {/* 2. Realtime Database Granular Rules (Optional) */}
-          <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
-            <div className="p-4 bg-white/5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* 2. Realtime Database Security Rules */}
+          <div className="rounded-2xl border border-amber-500/30 bg-[#170f23] overflow-hidden shadow-xl">
+            <div className="p-4 bg-amber-500/10 border-b border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="font-bold text-white text-sm">database.rules.json (Quy Tắc Phân Quyền Chi Tiết)</span>
-                <p className="text-[11px] text-white/50">Phân quyền theo từng nhánh songs, members, purchases, vouchers</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white text-sm">database.rules.json (Realtime Database Security)</span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-400 text-black">
+                    Chống Hack Số Dư
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/60 mt-0.5">
+                  Bảo vệ nhánh songs, members, tiền ví và chống can thiệp trực tiếp qua Firebase REST API
+                </p>
               </div>
               <button
                 onClick={() =>
@@ -1134,44 +1285,75 @@ export const AdminPageView: React.FC = () => {
                     JSON.stringify(
                       {
                         rules: {
+                          admins: {
+                            ".read": "auth != null",
+                            ".write": "auth != null && (auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+                          },
                           songs: {
                             ".read": true,
-                            ".write": true,
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                            "$songId": {
+                              "playCount": {
+                                ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
+                              }
+                            }
                           },
                           members: {
-                            ".read": true,
-                            ".write": true,
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                            "$userId": {
+                              ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                              ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
+                            }
                           },
                           purchases: {
-                            ".read": true,
-                            ".write": true,
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                            "$purchaseId": {
+                              ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                              ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com') : (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com'))"
+                            }
                           },
                           playlists: {
                             ".read": true,
-                            ".write": true,
+                            "$playlistId": {
+                              ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+                            }
                           },
                           vouchers: {
                             ".read": true,
-                            ".write": true,
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
                           },
-                        },
+                          site_settings: {
+                            ".read": true,
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
+                          },
+                          weekly_plays: {
+                            ".read": true,
+                            ".write": "auth != null"
+                          },
+                          song_reports: {
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+                            "$reportId": {
+                              ".write": true
+                            }
+                          }
+                        }
                       },
                       null,
                       2
                     )
                   )
                 }
-                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors shrink-0"
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95"
               >
                 {copiedRuleFile === 'database.rules.json' ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <Check className="w-4 h-4 text-black" />
                     <span>Đã sao chép!</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Sao Chép Quy Tắc Chi Tiết</span>
+                    <Copy className="w-4 h-4" />
+                    <span>Sao Chép database.rules.json</span>
                   </>
                 )}
               </button>
@@ -1181,107 +1363,36 @@ export const AdminPageView: React.FC = () => {
   "rules": {
     "songs": {
       ".read": true,
-      ".write": true
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      "$songId": {
+        "playCount": {
+          ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
+        }
+      }
     },
     "members": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      "$userId": {
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
+      }
     },
     "purchases": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')",
+      "$purchaseId": {
+        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && (!data.exists() ? newData.child('userId').val() === auth.uid : root.child('admins').child(auth.uid).exists())"
+      }
     },
     "playlists": {
       ".read": true,
-      ".write": true
+      "$playlistId": {
+        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists())"
+      }
     },
     "vouchers": {
       ".read": true,
-      ".write": true
-    }
-  }
-}`}
-            </pre>
-          </div>
-
-          {/* 2. Cloud Firestore Rules */}
-          <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
-            <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
-              <div>
-                <span className="font-bold text-white text-sm">firestore.rules (Cloud Firestore)</span>
-                <p className="text-[11px] text-white/50">Dành cho bộ sưu tập Firestore (songs, members, purchases)</p>
-              </div>
-              <button
-                onClick={() =>
-                  copyRuleToClipboard(
-                    'firestore.rules',
-                    `rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /songs/{songId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /members/{userId} {
-      allow read, write: if request.auth != null;
-    }
-    match /purchases/{purchaseId} {
-      allow read, write: if request.auth != null;
-    }
-    match /playlists/{playlistId} {
-      allow read, write: if true;
-    }
-    match /vouchers/{voucherId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}`
-                  )
-                }
-                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors"
-              >
-                {copiedRuleFile === 'firestore.rules' ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Đã sao chép!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Sao Chép File</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <pre className="p-4 text-[11px] font-mono text-purple-300 bg-black/60 overflow-x-auto max-h-56 leading-relaxed">
-{`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /songs/{songId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /members/{userId} {
-      allow read, write: if request.auth != null;
-    }
-    match /purchases/{purchaseId} {
-      allow read, write: if request.auth != null;
-    }
-    match /playlists/{playlistId} {
-      allow read, write: if true;
-    }
-    match /vouchers/{voucherId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'anhhungxuanken@gmail.com' || auth.token.email === 'xuankensinger123@gmail.com')"
     }
   }
 }`}
@@ -1293,7 +1404,7 @@ service cloud.firestore {
             <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
               <div>
                 <span className="font-bold text-white text-sm">storage.rules (Firebase Cloud Storage)</span>
-                <p className="text-[11px] text-white/50">Dành cho bucket lưu trữ file âm thanh và ảnh bìa</p>
+                <p className="text-[11px] text-white/50">Bảo vệ file âm thanh gốc MP3/WAV và giới hạn upload avatar</p>
               </div>
               <button
                 onClick={() =>
@@ -1302,9 +1413,25 @@ service cloud.firestore {
                     `rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com']
+      );
+    }
     match /{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+    }
+    match /avatars/{userId}/{fileName} {
+      allow write: if request.auth != null &&
+        request.auth.uid == userId &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+    match /songs/{songId}/{fileName} {
+      allow write: if isAdmin();
+    }
+    match /covers/{coverId} {
+      allow write: if isAdmin();
     }
   }
 }`
@@ -1320,18 +1447,26 @@ service firebase.storage {
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>Sao Chép File</span>
+                    <span>Sao Chép storage.rules</span>
                   </>
                 )}
               </button>
             </div>
-            <pre className="p-4 text-[11px] font-mono text-amber-300 bg-black/60 overflow-x-auto max-h-40 leading-relaxed">
+            <pre className="p-4 text-[11px] font-mono text-cyan-300 bg-black/60 overflow-x-auto max-h-40 leading-relaxed">
 {`rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'];
+    }
     match /{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+    }
+    match /avatars/{userId}/{fileName} {
+      allow write: if request.auth != null && request.auth.uid == userId && request.resource.size < 5 * 1024 * 1024 && request.resource.contentType.matches('image/.*');
+    }
+    match /songs/{songId}/{fileName} {
+      allow write: if isAdmin();
     }
   }
 }`}
@@ -1967,6 +2102,58 @@ service firebase.storage {
                     onChange={(e) => setPrice(e.target.value)}
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-[#9b4de0]"
                   />
+                </div>
+              </div>
+
+              {/* Thông tin bài hát chi tiết (Hiển thị khi vuốt sang trái ở player như ảnh 3/4) */}
+              <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                <p className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" />
+                  Thông Tin Bài Hát Chi Tiết (Hiển thị khi vuốt sang trái)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white/70 mb-1 font-bold">Nhạc sĩ (Composer)</label>
+                    <input
+                      type="text"
+                      value={composer}
+                      onChange={(e) => setComposer(e.target.value)}
+                      placeholder="VD: Thiên Chí, Sơn Tùng M-TP"
+                      className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#9b4de0]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white/70 mb-1 font-bold">Thể loại (Genre)</label>
+                    <input
+                      type="text"
+                      value={genre}
+                      onChange={(e) => setGenre(e.target.value)}
+                      placeholder="VD: Việt Nam, V-Pop"
+                      className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#9b4de0]"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white/70 mb-1 font-bold">Phát hành (Release Date)</label>
+                    <input
+                      type="text"
+                      value={releaseDate}
+                      onChange={(e) => setReleaseDate(e.target.value)}
+                      placeholder="VD: 06/06/2026"
+                      className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#9b4de0]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white/70 mb-1 font-bold">Cung cấp (Provider)</label>
+                    <input
+                      type="text"
+                      value={provider}
+                      onChange={(e) => setProvider(e.target.value)}
+                      placeholder="VD: VIEENT Music, XuanKen Official"
+                      className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#9b4de0]"
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -1,7 +1,8 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
 import { doc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { rtdb, db } from './firebase';
-import { Song, AppUser, Playlist, Voucher, SiteSettings } from '../types/music';
+import { Song, AppUser, Playlist, Voucher, SiteSettings, RewindStats } from '../types/music';
+import { SONGS_DATABASE } from '../data/songs';
 
 const STORAGE_KEY_SONGS = 'xuanken_music_songs_v3';
 const STORAGE_KEY_MEMBERS = 'xuanken_music_members_v3';
@@ -44,7 +45,10 @@ export function sanitizeSong(raw: any, idFallback: string): Song {
     mp3Url: raw?.mp3Url || '',
     wavUrl: raw?.wavUrl || '',
     playCount: typeof raw?.playCount === 'number' ? raw.playCount : 0,
-    releaseDate: raw?.releaseDate || '',
+    releaseDate: raw?.releaseDate || '2026',
+    composer: raw?.composer || raw?.artists || 'XuanKen',
+    genre: raw?.genre || 'Việt Nam, V-Pop',
+    provider: raw?.provider || 'XuanKen Official',
     plays: raw?.plays || '0 lượt nghe',
   };
 }
@@ -130,7 +134,7 @@ export const MusicService = {
       }
     }
 
-    return [];
+    return SONGS_DATABASE;
   },
 
   // Save all songs to Firebase and LocalStorage with detailed error reporting
@@ -571,6 +575,22 @@ export const MusicService = {
     } catch (e) {}
   },
 
+  // Record an immutable purchase transaction
+  async recordPurchase(purchase: any): Promise<boolean> {
+    const clean = cleanForFirebase(purchase);
+    try {
+      await set(ref(rtdb, `purchases/${purchase.id}`), clean);
+    } catch (e) {
+      console.warn('RTDB recordPurchase notice:', e);
+    }
+    try {
+      await setDoc(doc(db, 'purchases', purchase.id), clean, { merge: true });
+    } catch (e) {
+      console.warn('Firestore recordPurchase notice:', e);
+    }
+    return true;
+  },
+
   // 1-Click Sync All: Pushes all songs, members, playlists, and vouchers to Firebase
   async syncAllToFirebase(
     songs: Song[],
@@ -767,6 +787,127 @@ export const MusicService = {
       await set(ref(rtdb, 'site_settings'), clean);
     } catch (e) {
       console.warn('Site settings save notice:', e);
+    }
+  },
+
+  // -------------------------------------------------------------
+  // XuanKen Rewind Sync across Android, iOS & PC (Requirement 2)
+  // -------------------------------------------------------------
+  async fetchRewindStats(uid?: string): Promise<RewindStats | null> {
+    const key = uid ? `users/${uid}/rewind` : 'rewind_stats/shared';
+    try {
+      const snapshot = await get(ref(rtdb, key));
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        if (val) {
+          localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(val));
+          return val;
+        }
+      }
+    } catch (e) {
+      console.warn('Rewind stats fetch notice:', e);
+    }
+    try {
+      const saved = localStorage.getItem('xuanken_music_rewind_v1');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return null;
+  },
+
+  async saveRewindStats(stats: RewindStats, uid?: string): Promise<void> {
+    const clean = cleanForFirebase(stats);
+    try {
+      localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(clean));
+    } catch (e) {}
+    try {
+      const key = uid ? `users/${uid}/rewind` : 'rewind_stats/shared';
+      await set(ref(rtdb, key), clean);
+      if (uid) {
+        // Also save to members profile
+        await update(ref(rtdb, `members/${uid}`), { rewindStats: clean });
+      }
+    } catch (e) {
+      console.warn('Rewind stats save notice:', e);
+    }
+  },
+
+  subscribeToRewindStats(onUpdate: (stats: RewindStats) => void, uid?: string): () => void {
+    const key = uid ? `users/${uid}/rewind` : 'rewind_stats/shared';
+    try {
+      const rtdbRef = ref(rtdb, key);
+      return onValue(
+        rtdbRef,
+        (snapshot: any) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            if (data) {
+              localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(data));
+              onUpdate(data);
+            }
+          }
+        },
+        (err: any) => console.warn('Rewind RTDB listener notice:', err)
+      );
+    } catch (e) {
+      return () => {};
+    }
+  },
+
+  // -------------------------------------------------------------
+  // Audio Format Settings (MP3 / WAV) Sync (Requirement 5)
+  // -------------------------------------------------------------
+  async fetchAudioSettings(uid?: string): Promise<{ preferredFormat: 'MP3' | 'WAV'; formatMap: Record<string, 'MP3' | 'WAV'> } | null> {
+    const key = uid ? `users/${uid}/audio_settings` : 'audio_settings/shared';
+    try {
+      const snapshot = await get(ref(rtdb, key));
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        if (val) {
+          if (val.preferredFormat) {
+            localStorage.setItem('xuanken_preferred_audio_format', val.preferredFormat);
+          }
+          if (val.formatMap) {
+            localStorage.setItem('xuanken_song_format_map', JSON.stringify(val.formatMap));
+          }
+          return {
+            preferredFormat: val.preferredFormat === 'WAV' ? 'WAV' : 'MP3',
+            formatMap: val.formatMap || {},
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Audio settings fetch notice:', e);
+    }
+    try {
+      const localPref = localStorage.getItem('xuanken_preferred_audio_format') as 'MP3' | 'WAV';
+      const localMap = localStorage.getItem('xuanken_song_format_map');
+      return {
+        preferredFormat: localPref === 'WAV' ? 'WAV' : 'MP3',
+        formatMap: localMap ? JSON.parse(localMap) : {},
+      };
+    } catch (e) {
+      return null;
+    }
+  },
+
+  async saveAudioSettings(preferredFormat: 'MP3' | 'WAV', formatMap: Record<string, 'MP3' | 'WAV'>, uid?: string): Promise<void> {
+    const payload = {
+      preferredFormat,
+      formatMap: cleanForFirebase(formatMap) || {},
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem('xuanken_preferred_audio_format', preferredFormat);
+      localStorage.setItem('xuanken_song_format_map', JSON.stringify(payload.formatMap));
+    } catch (e) {}
+    try {
+      const key = uid ? `users/${uid}/audio_settings` : 'audio_settings/shared';
+      await set(ref(rtdb, key), payload);
+      if (uid) {
+        await update(ref(rtdb, `members/${uid}`), { preferredAudioFormat: preferredFormat });
+      }
+    } catch (e) {
+      console.warn('Audio settings save notice:', e);
     }
   },
 };

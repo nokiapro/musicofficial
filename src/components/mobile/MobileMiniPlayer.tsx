@@ -25,22 +25,22 @@ export const MobileMiniPlayer: React.FC = () => {
   return (
     <div
       onClick={() => setIsMobileFullPlayerOpen(true)}
-      className="fixed left-0 right-0 z-30 backdrop-blur-md border-t px-3 py-2 cursor-pointer select-none max-w-md mx-auto transition-colors duration-200"
+      className="fixed left-0 right-0 z-30 backdrop-blur-xl border-t px-3.5 py-2 cursor-pointer select-none max-w-md mx-auto transition-colors duration-200"
       style={{
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--border-color)',
         bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))',
       }}
     >
-      {/* Top thin progress bar with yellow 60s marker */}
-      <div className="absolute top-0 left-0 right-0 h-1 sm:h-1.5 bg-white/15 overflow-hidden">
+      {/* Bottom thin progress bar with accent color matching Screenshot 3 */}
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 sm:h-1 bg-white/10 overflow-hidden">
         <div
-          className="h-full bg-white rounded-full transition-[width] duration-300 ease-out shadow-[0_0_6px_rgba(255,255,255,0.5)]"
-          style={{ width: `${progressPercent}%` }}
+          className="h-full rounded-full transition-[width] duration-300 ease-out shadow-[0_0_6px_var(--color-accent)]"
+          style={{ width: `${progressPercent}%`, backgroundColor: 'var(--color-accent)' }}
         />
         {!isPurchased && duration > 60 && (
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] -ml-1 pointer-events-none"
+            className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] -ml-1 pointer-events-none"
             style={{ left: `${(60 / duration) * 100}%` }}
             title="Chấm vàng: Hết hạn nghe thử 60s"
           />
@@ -48,43 +48,64 @@ export const MobileMiniPlayer: React.FC = () => {
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        {/* Left: Spinning Disc + Song info */}
-        <div className="flex items-center gap-3 truncate flex-1">
-          <div className="relative w-10 h-10 rounded-full bg-zinc-950 border border-zinc-700 p-0.5 flex items-center justify-center shrink-0 shadow overflow-hidden">
-            {currentSong.coverImage ? (
-              <img
-                src={currentSong.coverImage}
-                alt={currentSong.title}
-                className={`w-full h-full object-cover rounded-full animate-spin-slow ${!isPlaying ? 'paused' : ''}`}
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
-            ) : null}
+        {/* Left: Rounded Square Cover with Sliding Vinyl Disc behind it (Matching Screenshot 3) */}
+        <div className="flex items-center gap-3 truncate flex-1 min-w-0">
+          <div className="relative flex items-center shrink-0 pr-3">
+            {/* The Vinyl Disc sliding out from behind the cover */}
             <div
-              className={`w-full h-full rounded-full bg-gradient-to-tr ${
-                currentSong.coverGradient || 'from-purple-600 to-indigo-800'
-              } flex items-center justify-center overflow-hidden animate-spin-slow ${
-                !isPlaying ? 'paused' : ''
-              } ${currentSong.coverImage ? 'absolute inset-0 -z-10' : ''}`}
-            />
+              className={`absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-950 border-2 border-zinc-700/80 shadow-md flex items-center justify-center transition-transform duration-500 ease-out z-0 overflow-hidden ${
+                isPlaying ? 'translate-x-5' : 'translate-x-1.5'
+              }`}
+            >
+              <div
+                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                className="w-full h-full rounded-full flex items-center justify-center animate-spin-slow relative"
+              >
+                <div className="absolute inset-1 rounded-full border border-zinc-800" />
+                <div className="absolute inset-2 rounded-full border border-zinc-800/60" />
+                <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-700 border border-black flex items-center justify-center">
+                  <div className="w-1 h-1 rounded-full bg-zinc-950" />
+                </div>
+              </div>
+            </div>
+
+            {/* Front Cover Image with rounded 4 corners (bo cong 4 góc) */}
+            <div className="relative z-10 w-11 h-11 rounded-xl overflow-hidden shadow-lg border border-white/15 bg-zinc-900 shrink-0">
+              {currentSong.coverImage ? (
+                <img
+                  src={currentSong.coverImage}
+                  alt={currentSong.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : null}
+              <div
+                className={`w-full h-full bg-gradient-to-tr ${
+                  currentSong.coverGradient || 'from-purple-600 to-indigo-800'
+                } flex items-center justify-center ${currentSong.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+              />
+            </div>
           </div>
 
-          <div className="truncate">
-            <p className="text-xs font-bold text-white truncate">{currentSong.title}</p>
-            <p className="text-[10px] text-white/60 truncate">{currentSong.artists}</p>
+          {/* Song title and artist */}
+          <div className="truncate min-w-0">
+            <p className="text-xs sm:text-sm font-bold text-white truncate leading-tight">{currentSong.title}</p>
+            <p className="text-[11px] text-white/60 truncate mt-0.5">{currentSong.artists}</p>
           </div>
         </div>
 
-        {/* Right Controls */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* Right Controls matching Screenshot 3: Heart, large clean Play/Pause, Next */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={(e) => {
               e.stopPropagation();
               toggleLike(currentSong.id);
             }}
-            className="p-2 text-white/60 hover:text-red-400"
+            className="p-1.5 text-white/70 hover:text-red-400 active:scale-90 transition-transform cursor-pointer"
+            aria-label="Thả tim"
           >
             <Heart
-              className={`w-4 h-4 ${isLiked ? 'text-red-500 fill-red-500' : ''}`}
+              className={`w-5 h-5 ${isLiked ? 'text-red-500 fill-red-500' : 'text-white/80'}`}
             />
           </button>
 
@@ -93,12 +114,13 @@ export const MobileMiniPlayer: React.FC = () => {
               e.stopPropagation();
               togglePlay();
             }}
-            className="w-8 h-8 rounded-full bg-[#9b4de0] text-white flex items-center justify-center shadow"
+            className="p-1.5 text-white hover:opacity-85 active:scale-90 transition-transform cursor-pointer"
+            aria-label={isPlaying ? 'Tạm dừng' : 'Phát tiếp'}
           >
             {isPlaying ? (
-              <Pause className="w-4 h-4 fill-current" />
+              <Pause className="w-6 h-6 fill-white" />
             ) : (
-              <Play className="w-4 h-4 fill-current ml-0.5" />
+              <Play className="w-6 h-6 fill-white ml-0.5" />
             )}
           </button>
 
@@ -107,9 +129,10 @@ export const MobileMiniPlayer: React.FC = () => {
               e.stopPropagation();
               nextSong();
             }}
-            className="p-2 text-white/70 hover:text-white"
+            className="p-1.5 text-white/80 hover:text-white active:scale-90 transition-transform cursor-pointer"
+            aria-label="Bài tiếp theo"
           >
-            <SkipForward className="w-4 h-4 fill-current" />
+            <SkipForward className="w-5 h-5 fill-white" />
           </button>
         </div>
       </div>

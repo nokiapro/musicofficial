@@ -49,6 +49,25 @@ export const DesktopLibraryPage: React.FC = () => {
   const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
   const playMenuRef = useRef<HTMLDivElement | null>(null);
 
+  // Requirement 21: 20 songs per page
+  const PAGE_SIZE = 20;
+  const [likedPage, setLikedPage] = useState(1);
+  const [purchasedPage, setPurchasedPage] = useState(1);
+
+  useEffect(() => {
+    const handleClickOutsidePlayMenu = (e: MouseEvent) => {
+      if (playMenuRef.current && !playMenuRef.current.contains(e.target as Node)) {
+        setIsPlayMenuOpen(false);
+      }
+    };
+    if (isPlayMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutsidePlayMenu);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsidePlayMenu);
+    };
+  }, [isPlayMenuOpen]);
+
   // Requirement 3: Thư viện cá nhân chỉ khi đăng nhập mới hiện
   if (!currentUser) {
     return (
@@ -68,7 +87,7 @@ export const DesktopLibraryPage: React.FC = () => {
         <button
           onClick={() => setIsLoginModalOpen(true)}
           style={{ backgroundColor: 'var(--color-accent)' }}
-          className="px-6 py-2.5 rounded-xl text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-95 flex items-center gap-2"
+          className="px-6 py-2.5 rounded-xl text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
         >
           <Sparkles className="w-4 h-4" />
           <span>Đăng Nhập Ngay</span>
@@ -77,13 +96,8 @@ export const DesktopLibraryPage: React.FC = () => {
     );
   }
 
-  // Requirement 3: Mỗi tài khoản là thư viện mà playlist của người đó nhé
+  // Requirement 3: Mỗi tài khoản là thư viện và playlist của người đó
   const userPlaylists = playlists.filter((p) => !p.userId || p.userId === currentUser.uid);
-
-  // Requirement 21: 20 songs per page
-  const PAGE_SIZE = 20;
-  const [likedPage, setLikedPage] = useState(1);
-  const [purchasedPage, setPurchasedPage] = useState(1);
 
   const likedSongs = songs.filter((s) => likedSongIds.includes(s.id));
   const purchasedSongs = songs.filter((s) => isSongPurchased(s.id));
@@ -100,20 +114,6 @@ export const DesktopLibraryPage: React.FC = () => {
     const secs = total % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
-
-  useEffect(() => {
-    const handleClickOutsidePlayMenu = (e: MouseEvent) => {
-      if (playMenuRef.current && !playMenuRef.current.contains(e.target as Node)) {
-        setIsPlayMenuOpen(false);
-      }
-    };
-    if (isPlayMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutsidePlayMenu);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutsidePlayMenu);
-    };
-  }, [isPlayMenuOpen]);
 
   const librarySongs = likedSongs.length > 0 ? likedSongs : purchasedSongs.length > 0 ? purchasedSongs : songs;
 
@@ -460,7 +460,7 @@ export const DesktopLibraryPage: React.FC = () => {
                       <th className="py-3 px-4 min-w-[200px] whitespace-nowrap">TÊN PLAYLIST</th>
                       <th className="py-3 px-4 min-w-[220px] whitespace-nowrap">MÔ TẢ</th>
                       <th className="py-3 px-4 text-center whitespace-nowrap min-w-[100px]">SỐ BÀI HÁT</th>
-                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[120px]">PHÁT PLAYLIST</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[200px]">PHÁT NHẠC (THỨ TỰ / RANDOM)</th>
                       <th className="py-3 px-4 text-right whitespace-nowrap min-w-[70px]">XÓA</th>
                     </tr>
                   </thead>
@@ -494,14 +494,26 @@ export const DesktopLibraryPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-3.5 px-4 text-center">
-                            <button
-                              onClick={() => playPlaylist(pl)}
-                              disabled={count === 0}
-                              className="px-3.5 py-1.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] disabled:opacity-30 disabled:pointer-events-none text-white font-bold text-xs inline-flex items-center gap-1.5 shadow transition-all active:scale-95"
-                            >
-                              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                              <span>Phát ({count})</span>
-                            </button>
+                            <div className="inline-flex items-center gap-1.5 justify-center">
+                              <button
+                                onClick={() => playPlaylist(pl, 'order')}
+                                disabled={count === 0}
+                                className="px-3 py-1.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] disabled:opacity-30 disabled:pointer-events-none text-white font-bold text-xs inline-flex items-center gap-1 shadow transition-all active:scale-95 cursor-pointer"
+                                title="Phát playlist theo thứ tự"
+                              >
+                                <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                                <span>Thứ tự</span>
+                              </button>
+                              <button
+                                onClick={() => playPlaylist(pl, 'shuffle')}
+                                disabled={count === 0}
+                                className="px-3 py-1.5 rounded-xl bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/40 text-[#c273ed] hover:text-white disabled:opacity-30 disabled:pointer-events-none font-bold text-xs inline-flex items-center gap-1 shadow transition-all active:scale-95 cursor-pointer"
+                                title="Phát ngẫu nhiên playlist"
+                              >
+                                <Shuffle className="w-3.5 h-3.5" />
+                                <span>Random</span>
+                              </button>
+                            </div>
                           </td>
                           <td className="py-3.5 px-4 text-right">
                             <button

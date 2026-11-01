@@ -2,52 +2,29 @@
   "entities": {
     "Song": {
       "title": "Song",
-      "description": "A musical track with metadata, audio links (demo 60s, MP3, WAV), and lyrics",
+      "description": "A musical track with metadata, demo 60s link, lossless MP3 and WAV masters, lyrics, and playCount",
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "artists": {
-          "type": "string"
-        },
-        "duration": {
-          "type": "number"
-        },
-        "audioFormat": {
-          "type": "string",
-          "enum": ["MP3", "WAV"]
-        },
-        "price": {
-          "type": "number"
-        },
-        "demoUrl": {
-          "type": "string"
-        },
-        "mp3Url": {
-          "type": "string"
-        },
-        "wavUrl": {
-          "type": "string"
-        },
-        "lrcRaw": {
-          "type": "string"
-        },
-        "lrcUrl": {
-          "type": "string"
-        },
-        "album": {
-          "type": "string"
-        },
-        "coverImage": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string"
-        }
+        "id": { "type": "string" },
+        "stt": { "type": "number" },
+        "title": { "type": "string" },
+        "artists": { "type": "string" },
+        "duration": { "type": "number" },
+        "audioFormat": { "type": "string", "enum": ["MP3", "WAV"] },
+        "price": { "type": "number" },
+        "demoUrl": { "type": "string" },
+        "mp3Url": { "type": "string" },
+        "wavUrl": { "type": "string" },
+        "lrcRaw": { "type": "string" },
+        "lrcUrl": { "type": "string" },
+        "album": { "type": "string" },
+        "composer": { "type": "string" },
+        "genre": { "type": "string" },
+        "provider": { "type": "string" },
+        "coverImage": { "type": "string" },
+        "coverGradient": { "type": "string" },
+        "playCount": { "type": "number" },
+        "releaseDate": { "type": "string" }
       },
       "required": ["id", "title", "artists", "price", "audioFormat"]
     },
@@ -56,56 +33,91 @@
       "description": "User profile with balance, role, and purchased song IDs",
       "type": "object",
       "properties": {
-        "uid": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string"
-        },
-        "displayName": {
-          "type": "string"
-        },
-        "balance": {
-          "type": "number"
-        },
-        "role": {
-          "type": "string",
-          "enum": ["admin", "user"]
-        },
-        "purchasedSongIds": {
-          "type": "array"
-        },
-        "createdAt": {
-          "type": "string"
-        }
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "balance": { "type": "number" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "purchasedSongIds": { "type": "array" },
+        "blockedSongIds": { "type": "array" },
+        "likedSongIds": { "type": "array" },
+        "createdAt": { "type": "string" }
       },
       "required": ["uid", "email", "role", "balance"]
     },
     "Purchase": {
       "title": "Purchase",
-      "description": "Record of a song purchased by a member",
+      "description": "Immutable record of a song purchased by a member",
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "userId": {
-          "type": "string"
-        },
-        "songId": {
-          "type": "string"
-        },
-        "songTitle": {
-          "type": "string"
-        },
-        "price": {
-          "type": "number"
-        },
-        "timestamp": {
-          "type": "string"
-        }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "songId": { "type": "string" },
+        "songTitle": { "type": "string" },
+        "price": { "type": "number" },
+        "timestamp": { "type": "string" }
       },
       "required": ["id", "userId", "songId", "price"]
+    },
+    "Playlist": {
+      "title": "Playlist",
+      "description": "User custom playlist with selected song IDs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "coverImage": { "type": "string" },
+        "songIds": { "type": "array" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "songIds"]
+    },
+    "Voucher": {
+      "title": "Voucher",
+      "description": "Discount coupon code for song purchases",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "discountType": { "type": "string", "enum": ["percent", "fixed"] },
+        "discountValue": { "type": "number" },
+        "minSpend": { "type": "number" },
+        "description": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "code", "discountType", "discountValue", "isActive"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Branding and site-wide music store settings",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string" },
+        "siteSlogan": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "faviconUrl": { "type": "string" },
+        "defaultStartingBalance": { "type": "number" },
+        "defaultSongPrice": { "type": "number" },
+        "minListenDurationSeconds": { "type": "number" }
+      },
+      "required": ["siteName"]
+    },
+    "SongReport": {
+      "title": "SongReport",
+      "description": "Report of playback or audio quality issues",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "songId": { "type": "string" },
+        "issue": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["songId", "issue"]
     }
   },
   "firestore": {
@@ -120,6 +132,22 @@
     "/purchases/{purchaseId}": {
       "schema": "Purchase",
       "description": "Purchase transaction records"
+    },
+    "/playlists/{playlistId}": {
+      "schema": "Playlist",
+      "description": "User playlist collections"
+    },
+    "/vouchers/{voucherId}": {
+      "schema": "Voucher",
+      "description": "Discount vouchers and promotional codes"
+    },
+    "/site_settings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Website configurations"
+    },
+    "/song_reports/{reportId}": {
+      "schema": "SongReport",
+      "description": "User reports on song issues"
     }
   }
 }

@@ -1,10 +1,33 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Public read for audio playback & covers
+    // Helper function for admin check
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email in ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com']
+      );
+    }
+
+    // Public read for album covers, logos and music audio playback
     match /{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+    }
+
+    // Avatars: Users can only upload their own avatar, max 5MB, must be an image
+    match /avatars/{userId}/{fileName} {
+      allow write: if request.auth != null &&
+        request.auth.uid == userId &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Songs & Masters: Only admin can upload MP3/WAV files and song covers
+    match /songs/{songId}/{fileName} {
+      allow write: if isAdmin();
+    }
+
+    match /covers/{coverId} {
+      allow write: if isAdmin();
     }
   }
 }

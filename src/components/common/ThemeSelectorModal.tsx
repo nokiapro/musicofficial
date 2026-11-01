@@ -148,44 +148,53 @@ export const ThemeSelectorModal: React.FC = () => {
   return (
     <div
       onClick={handleClose}
-      className={`fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none duration-200 ${
+      className={`fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-md select-none duration-200 font-['Roboto_Condensed'] ${
         isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
       }`}
     >
       <div
+        data-theme={theme}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden p-4 sm:p-6 text-white max-h-[90vh] flex flex-col duration-200 ${
+        className={`w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden p-4 sm:p-6 max-h-[90vh] flex flex-col duration-200 font-['Roboto_Condensed'] ${
           isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
         }`}
-        style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[var(--border-color)] shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#9b4de0]/20 text-[#c273ed] flex items-center justify-center">
+            <div
+              style={{ backgroundColor: 'var(--bg-surface-hover)', color: 'var(--color-accent)' }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm"
+            >
               <Palette className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight">Chủ Đề & Giao Diện</h2>
-              <p className="text-[11px] text-white/50">13 bộ giao diện Zing MP3 chính thức (Tối & Sáng)</p>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--text-primary)]">Chủ Đề & Giao Diện</h2>
+              <p className="text-[11px] text-[var(--text-secondary)]">13 bộ giao diện Zing MP3 chính thức (Tối & Sáng)</p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-full hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs: Màu Tối vs Màu Sáng */}
-        <div className="flex items-center gap-2 mt-4 p-1 rounded-2xl bg-black/20 border border-white/10 shrink-0">
+        <div className="flex items-center gap-2 mt-4 p-1 rounded-2xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] shrink-0">
           <button
             onClick={() => setActiveCategory('dark')}
+            style={activeCategory === 'dark' ? { backgroundColor: 'var(--color-accent)', color: '#ffffff' } : undefined}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeCategory === 'dark'
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
-                : 'text-white/60 hover:text-white'
+                ? 'shadow-md'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             <Moon className="w-3.5 h-3.5" />
@@ -194,10 +203,11 @@ export const ThemeSelectorModal: React.FC = () => {
 
           <button
             onClick={() => setActiveCategory('light')}
+            style={activeCategory === 'light' ? { backgroundColor: 'var(--color-accent)', color: '#ffffff' } : undefined}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeCategory === 'light'
-                ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md'
-                : 'text-white/60 hover:text-white'
+                ? 'shadow-md'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             <Sun className="w-3.5 h-3.5" />
@@ -215,15 +225,20 @@ export const ThemeSelectorModal: React.FC = () => {
                 onClick={() => {
                   setTheme(item.id);
                 }}
+                style={
+                  isSelected
+                    ? { borderColor: 'var(--color-accent)', boxShadow: '0 0 0 2px var(--color-accent)' }
+                    : undefined
+                }
                 className={`relative flex flex-col p-3 rounded-2xl border text-left transition-all active:scale-98 cursor-pointer ${
                   isSelected
-                    ? 'border-[#9b4de0] ring-2 ring-[#9b4de0]/50 bg-white/10 shadow-lg'
-                    : 'border-white/10 hover:border-white/30 bg-black/20 hover:bg-white/5'
+                    ? 'bg-[var(--bg-surface-hover)] shadow-lg'
+                    : 'border-[var(--border-color)] hover:border-[var(--color-accent)] bg-[var(--bg-surface-hover)]/60 hover:bg-[var(--bg-surface-hover)]'
                 }`}
               >
                 {/* Theme Card Preview */}
                 <div
-                  className={`w-full h-16 sm:h-20 rounded-xl ${item.previewBg} p-2.5 flex flex-col justify-between border border-white/15 relative overflow-hidden shadow-inner`}
+                  className={`w-full h-16 sm:h-20 rounded-xl ${item.previewBg} p-2.5 flex flex-col justify-between border border-black/10 relative overflow-hidden shadow-inner`}
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-red-500/80" />
@@ -235,8 +250,14 @@ export const ThemeSelectorModal: React.FC = () => {
                     <span className={`w-10 h-1.5 rounded-full ${item.isLight ? 'bg-black/20' : 'bg-white/20'}`} />
                   </div>
                   {isSelected && (
-                    <div className="absolute inset-0 bg-[#9b4de0]/30 flex items-center justify-center backdrop-blur-[1px]">
-                      <div className="w-7 h-7 rounded-full bg-[#9b4de0] flex items-center justify-center text-white shadow-lg ring-2 ring-white">
+                    <div
+                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.35)' }}
+                      className="absolute inset-0 flex items-center justify-center backdrop-blur-[1px]"
+                    >
+                      <div
+                        style={{ backgroundColor: 'var(--color-accent)' }}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-white shadow-lg ring-2 ring-white"
+                      >
                         <Check className="w-4 h-4 stroke-[3]" />
                       </div>
                     </div>
@@ -246,14 +267,14 @@ export const ThemeSelectorModal: React.FC = () => {
                 {/* Theme Info */}
                 <div className="mt-2.5">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs sm:text-sm font-bold truncate text-white">
+                    <span className="text-xs sm:text-sm font-bold truncate text-[var(--text-primary)]">
                       {item.name}
                     </span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/10 text-white/70 font-semibold shrink-0">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--border-color)] text-[var(--text-secondary)] font-semibold shrink-0">
                       {item.tag}
                     </span>
                   </div>
-                  <p className="text-[10px] text-white/50 line-clamp-1 mt-0.5">
+                  <p className="text-[10px] text-[var(--text-secondary)] line-clamp-1 mt-0.5">
                     {item.description}
                   </p>
                 </div>
@@ -263,9 +284,9 @@ export const ThemeSelectorModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between shrink-0">
-          <span className="text-xs text-white/50">
-            Chủ đề: <strong className="text-white capitalize">{theme}</strong>
+        <div className="mt-4 pt-3 border-t border-[var(--border-color)] flex items-center justify-between shrink-0">
+          <span className="text-xs text-[var(--text-secondary)]">
+            Chủ đề: <strong className="text-[var(--text-primary)] capitalize">{theme}</strong>
           </span>
           <button
             onClick={handleClose}

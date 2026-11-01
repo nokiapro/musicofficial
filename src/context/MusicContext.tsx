@@ -120,7 +120,7 @@ interface MusicContextType {
   deletePlaylist: (id: string) => Promise<void>;
   addSongToPlaylist: (playlistId: string, songId: string) => Promise<void>;
   removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<void>;
-  playPlaylist: (playlist: Playlist) => void;
+  playPlaylist: (playlist: Playlist, mode?: 'order' | 'shuffle') => void;
   isPlaylistModalOpen: boolean;
   setIsPlaylistModalOpen: (open: boolean) => void;
   songForPlaylistModal: Song | null;
@@ -229,9 +229,21 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [playbackSource, setPlaybackSource] = useState<string>('Bài hát gợi ý');
 
-  // Audio Playback Settings: Format & Crossfade
-  const [preferredAudioFormat, setPreferredAudioFormatState] = useState<'MP3' | 'WAV'>('MP3');
-  const [songFormatMap, setSongFormatMap] = useState<Record<string, 'MP3' | 'WAV'>>({});
+  // Audio Playback Settings: Format & Crossfade (Requirement 5)
+  const [preferredAudioFormat, setPreferredAudioFormatState] = useState<'MP3' | 'WAV'>(() => {
+    try {
+      const saved = localStorage.getItem('xuanken_preferred_audio_format');
+      if (saved === 'WAV' || saved === 'MP3') return saved;
+    } catch (e) {}
+    return 'MP3';
+  });
+  const [songFormatMap, setSongFormatMap] = useState<Record<string, 'MP3' | 'WAV'>>(() => {
+    try {
+      const saved = localStorage.getItem('xuanken_song_format_map');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {};
+  });
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
   const [songToDownload, setSongToDownload] = useState<Song | null>(null);
   const [playbackRate, setPlaybackRateState] = useState<number>(1.0);
@@ -244,7 +256,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const setSongAudioFormat = (songId: string, format: 'MP3' | 'WAV') => {
-    setSongFormatMap((prev) => ({ ...prev, [songId]: format }));
+    setSongFormatMap((prev) => {
+      const updated = { ...prev, [songId]: format };
+      MusicService.saveAudioSettings(preferredAudioFormat, updated, currentUser?.uid);
+      return updated;
+    });
   };
 
   // Playlists
@@ -287,6 +303,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const hasRandomAutoplayTriggered = useRef<boolean>(false);
   // Requirement 8: Nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
   const hasCountedPlayRef = useRef<boolean>(false);
+  const lastRewindSyncRef = useRef<number>(Date.now());
 
   const updateSiteSettings = async (partial: Partial<SiteSettings>) => {
     const updated: SiteSettings = { ...siteSettings, ...partial };
@@ -372,22 +389,28 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const allMembers = await MusicService.fetchMembers();
         let currentMember = allMembers.find((m) => m.uid === fbUser.uid || m.email === fbUser.email);
 
-        // All accounts created in Firebase Auth have full Admin permissions
+        // Secure Role Assignment: Only designated admin emails receive admin privileges.
+        // Standard user accounts receive role: 'user' to prevent privilege escalation.
+        const ADMIN_EMAILS = ['anhhungxuanken@gmail.com', 'xuankensinger123@gmail.com'];
+        const userEmailClean = (fbUser.email || '').toLowerCase().trim();
+        const shouldBeAdmin = ADMIN_EMAILS.includes(userEmailClean);
+
         if (!currentMember) {
+          const determinedRole: 'admin' | 'user' = shouldBeAdmin ? 'admin' : 'user';
           currentMember = {
             uid: fbUser.uid,
-            email: fbUser.email || 'admin@xuanken.com',
-            displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Admin',
-            balance: siteSettings?.defaultStartingBalance || 500000,
+            email: fbUser.email || 'user@xuanken.com',
+            displayName: fbUser.displayName || fbUser.email?.split('@')[0] || (determinedRole === 'admin' ? 'Admin XuanKen' : 'Thành viên'),
+            balance: siteSettings?.defaultStartingBalance ?? 500000,
             purchasedSongIds: [],
             blockedSongIds: [],
-            role: 'admin',
+            role: determinedRole,
             createdAt: new Date().toLocaleDateString('vi-VN'),
           };
           const updated = [...allMembers, currentMember];
           setMembers(updated);
           await MusicService.saveMembers(updated);
-        } else if (currentMember.role !== 'admin') {
+        } else if (shouldBeAdmin && currentMember.role !== 'admin') {
           currentMember = {
             ...currentMember,
             role: 'admin',
@@ -503,6 +526,31 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setVouchers(loadedVouchers || []);
     });
 
+    // Requirement 2: Fetch and live-sync XuanKen Rewind stats from Firebase across all devices
+    MusicService.fetchRewindStats(currentUser?.uid).then((stats) => {
+      if (stats && stats.totalSeconds !== undefined) {
+        setRewindStats(stats);
+      }
+    });
+
+    const unsubscribeRewind = MusicService.subscribeToRewindStats((stats) => {
+      if (stats && stats.totalSeconds !== undefined) {
+        setRewindStats(stats);
+      }
+    }, currentUser?.uid);
+
+    // Requirement 5: Fetch persistent MP3/WAV format settings from Firebase
+    MusicService.fetchAudioSettings(currentUser?.uid).then((settings) => {
+      if (settings) {
+        if (settings.preferredFormat) {
+          setPreferredAudioFormatState(settings.preferredFormat);
+        }
+        if (settings.formatMap && Object.keys(settings.formatMap).length > 0) {
+          setSongFormatMap(settings.formatMap);
+        }
+      }
+    });
+
     MusicService.fetchSiteSettings().then((loaded) => {
       if (loaded) {
         setSiteSettings((prev) => {
@@ -527,6 +575,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       unsubscribeRealtime();
+      unsubscribeRewind();
     };
   }, []);
   const isSongPurchased = (songId: string): boolean => {
@@ -599,17 +648,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased?: boolean) => {
     if (!song) return '';
-    // If format is WAV or the song itself is registered as WAV Lossless, always prefer lossless WAV first
+    // Security Restriction: If song is NOT purchased and user is NOT admin,
+    // ONLY the 60-second demo URL is provided. Full lossless master links are protected.
+    if (!purchased && !isAdmin) {
+      return song.demoUrl || '';
+    }
+    // Song is purchased or user is Admin: provide full audio stream
     const wantsWav = format === 'WAV' || song.audioFormat === 'WAV';
     if (wantsWav) {
       return (song.wavUrl || song.mp3Url || song.demoUrl) || '';
     }
-    // High-quality MP3 master (or WAV if MP3 is missing)
     return (song.mp3Url || song.wavUrl || song.demoUrl) || '';
   };
 
   const setPreferredAudioFormat = (fmt: 'MP3' | 'WAV') => {
     setPreferredAudioFormatState(fmt);
+    MusicService.saveAudioSettings(fmt, songFormatMap, currentUser?.uid);
     if (currentSong && isPlaying) {
       const activePurchased = isSongPurchased(currentSong.id);
       const songFormat = songFormatMap[currentSong.id] || fmt;
@@ -672,7 +726,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               return prevSongs.map((s) => (s.id === currentSong.id ? { ...s, playCount: nextPlayCount } : s));
             });
 
-            // Update XuanKen Rewind for play count & artists
+            // Update XuanKen Rewind for play count & artists (Synced to Firebase across all devices)
             setRewindStats((prevStats) => {
               const songPlays = { ...prevStats.songPlays, [currentSong.id]: (prevStats.songPlays[currentSong.id] || 0) + 1 };
               const artistPlays = { ...prevStats.artistPlays, [currentSong.artists]: (prevStats.artistPlays[currentSong.artists] || 0) + 1 };
@@ -686,6 +740,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               try {
                 localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
               } catch (e) {}
+              MusicService.saveRewindStats(newStats, currentUser?.uid);
               return newStats;
             });
 
@@ -703,7 +758,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return nextTime;
         });
 
-        // XuanKen Rewind: accumulate listening seconds
+        // XuanKen Rewind: accumulate listening seconds and sync to Firebase
         setRewindStats((prevStats) => {
           const newStats: RewindStats = {
             ...prevStats,
@@ -713,6 +768,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           try {
             localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
           } catch (e) {}
+          // Sync to Firebase periodically (every 10s) to keep all devices in sync without flood
+          if (Date.now() - lastRewindSyncRef.current >= 10000) {
+            lastRewindSyncRef.current = Date.now();
+            MusicService.saveRewindStats(newStats, currentUser?.uid);
+          }
           return newStats;
         });
       }, 1000);
@@ -731,11 +791,32 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat, songFormatMap, siteSettings, currentWeekKey]);
 
+  // Helper to pick random song from all songs (Requirement 6)
+  const getRandomSong = (excludeCurrent: boolean = true): Song | null => {
+    const unblockedSongs = songs.filter((s) => !blockedSongIds.includes(s.id));
+    if (unblockedSongs.length === 0) return null;
+    const pool = excludeCurrent && currentSong && unblockedSongs.length > 1
+      ? unblockedSongs.filter((s) => s.id !== currentSong.id)
+      : unblockedSongs;
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    return pool[randomIndex];
+  };
+
   const handleSongEnd = () => {
+    // Requirement 6: Nếu đang bật random và bật lặp lại 1 bài thì vẫn lặp lại 1 bài; tắt lặp đi thì sẽ phát random
     if (repeatMode === 'one') {
-      setCurrentTime(0);
-      setIsPlaying(true);
+      seekTo(0);
+      if (currentSong) {
+        playSong(currentSong);
+      }
       return;
+    }
+    if (isShuffle) {
+      const nextRandom = getRandomSong(true);
+      if (nextRandom) {
+        playSong(nextRandom);
+        return;
+      }
     }
     nextSong();
   };
@@ -802,6 +883,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const nextSong = () => {
+    // Requirement 6: Nút tiến bài cũng tiến bài như bình thường còn đang bật random thì random luôn
+    if (isShuffle) {
+      const nextRandom = getRandomSong(true);
+      if (nextRandom) {
+        playSong(nextRandom);
+        return;
+      }
+    }
+
     const unblockedQueue = queue.filter((s) => !blockedSongIds.includes(s.id));
     if (unblockedQueue.length === 0) {
       if (repeatMode === 'all') {
@@ -816,18 +906,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    let nextIndex = 0;
-    if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * unblockedQueue.length);
-    }
-
-    const next = unblockedQueue[nextIndex];
+    const next = unblockedQueue[0];
     const newQueue = queue.filter((s) => s.id !== next.id && !blockedSongIds.includes(s.id));
     setQueue(newQueue);
     playSong(next);
   };
 
   const prevSong = () => {
+    // Requirement 6: Nút lùi thì sẽ lùi lại bài hát đã phát trước đó, nếu đang bật random thì cũng random luôn
+    if (isShuffle) {
+      const prevRandom = getRandomSong(true);
+      if (prevRandom) {
+        playSong(prevRandom);
+        return;
+      }
+    }
+
     if (currentTime > 4) {
       seekTo(0);
       return;
@@ -895,7 +989,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return { success: true, message: 'Đã gửi báo cáo lỗi thành công!' };
   };
 
-  const toggleShuffle = () => setIsShuffle((prev) => !prev);
+  const toggleShuffle = () => {
+    setIsShuffle((prev) => {
+      const next = !prev;
+      if (next && songs.length > 0) {
+        const unblocked = songs.filter((s) => s.id !== currentSong?.id && !blockedSongIds.includes(s.id));
+        const shuffled = [...unblocked].sort(() => Math.random() - 0.5);
+        setQueue(shuffled);
+      }
+      return next;
+    });
+  };
 
   const toggleRepeat = () => {
     setRepeatMode((prev) => {
@@ -1013,6 +1117,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       setCurrentUser(updatedUser);
       MusicService.upsertMember(updatedUser);
+
+      // Record audit purchase log
+      MusicService.recordPurchase({
+        id: `pur-${Date.now()}`,
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        songId: song.id,
+        songTitle: song.title,
+        price: priceToPay,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     setIsDemoLimitModalOpen(false);
@@ -1328,12 +1443,20 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.upsertPlaylist(updated);
   };
 
-  const playPlaylist = (playlist: Playlist) => {
-    const pSongs = songs.filter((s) => playlist.songIds.includes(s.id));
+  const playPlaylist = (playlist: Playlist, mode: 'order' | 'shuffle' = 'order') => {
+    const pSongs = songs.filter((s) => playlist.songIds.includes(s.id) && !blockedSongIds.includes(s.id));
     if (pSongs.length > 0) {
       setPlaybackSource(playlist.name);
-      setQueue(pSongs.slice(1));
-      playSong(pSongs[0]);
+      if (mode === 'shuffle') {
+        setIsShuffle(true);
+        const shuffled = [...pSongs].sort(() => Math.random() - 0.5);
+        setQueue(shuffled.slice(1));
+        playSong(shuffled[0]);
+      } else {
+        setIsShuffle(false);
+        setQueue(pSongs.slice(1));
+        playSong(pSongs[0]);
+      }
     }
   };
 
@@ -1392,8 +1515,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.deleteVoucher(id);
   };
 
-  // 7. Download Song
+  // 7. Download Song (Protected: Must be purchased or Admin)
   const downloadSong = async (song: Song, format: 'MP3' | 'WAV' = 'MP3') => {
+    if (!isSongPurchased(song.id) && !isAdmin) {
+      return {
+        success: false,
+        message: 'Bạn chưa mua bản quyền bài hát này. Vui lòng thanh toán trước khi tải về!',
+      };
+    }
     return MusicService.downloadSongAudio(song, format);
   };
 
