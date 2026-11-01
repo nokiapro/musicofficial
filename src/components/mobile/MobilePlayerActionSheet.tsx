@@ -49,6 +49,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
     setSongToBuy,
     setIsDemoLimitModalOpen,
     theme,
+    setTheme,
   } = useMusic();
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -114,23 +115,29 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
       onClick={handleAnimatedClose}
     >
       <div
-        className={`w-full max-w-md mx-auto bg-[#1a0f2b] border-t border-white/15 rounded-t-3xl shadow-2xl p-5 text-white max-h-[85vh] flex flex-col overflow-y-auto duration-200 ${
+        data-theme={theme}
+        className={`w-full max-w-md mx-auto border-t rounded-t-3xl shadow-2xl p-5 max-h-[85vh] flex flex-col overflow-y-auto duration-200 ${
           isClosing ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
         }`}
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle */}
-        <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+        <div className="w-12 h-1 bg-[var(--text-secondary)]/30 rounded-full mx-auto mb-3" />
 
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)] shrink-0">
           <div className="truncate pr-2">
-            <h3 className="text-sm font-bold text-white truncate">{song.title}</h3>
-            <p className="text-[11px] text-white/50 truncate mt-0.5">{song.artists}</p>
+            <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">{song.title}</h3>
+            <p className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">{song.artists}</p>
           </div>
           <button
             onClick={handleAnimatedClose}
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/60 hover:text-white"
+            className="p-1.5 rounded-full hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -144,23 +151,23 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           </div>
         )}
 
-        {/* 9 Action items as required by user in Item 20 */}
-        <div className="space-y-1.5 mt-3 flex-1 overflow-y-auto pr-0.5">
+        {/* 9 Action items as required by user */}
+        <div className="space-y-2 mt-3 flex-1 overflow-y-auto pr-0.5">
           {/* 1. Hẹn giờ */}
           <button
             onClick={() => {
               handleAnimatedClose();
               setIsSleepTimerModalOpen(true);
             }}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-[var(--bg-surface-hover)] hover:opacity-90 transition-all border border-[var(--border-color)]"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
                 <Clock className="w-4 h-4" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-white">Hẹn giờ tắt nhạc</p>
-                <p className="text-[10px] text-white/50">Tự động tắt nhạc khi ngủ say</p>
+                <p className="text-xs font-bold text-[var(--text-primary)]">Hẹn giờ tắt nhạc</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">Tự động tắt nhạc khi ngủ say</p>
               </div>
             </div>
             {sleepTimerRemainingSeconds !== null && (
@@ -172,53 +179,103 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
             )}
           </button>
 
-          {/* 2. Tùy chỉnh giao diện */}
-          <button
-            onClick={() => {
-              handleAnimatedClose();
-              setIsThemeModalOpen(true);
-            }}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-[#c273ed] flex items-center justify-center">
-                <Palette className="w-4 h-4" />
+          {/* 2. Tùy chỉnh giao diện (Đổi màu theme trực tiếp + nút xem tất cả) */}
+          <div className="p-3 rounded-2xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  style={{ backgroundColor: 'var(--color-accent)', color: '#ffffff' }}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
+                >
+                  <Palette className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-bold text-[var(--text-primary)]">Chủ đề giao diện</p>
+                  <p className="text-[10px] text-[var(--text-secondary)]">Đang dùng: <span className="capitalize font-semibold text-[var(--color-accent)]">{theme}</span></p>
+                </div>
               </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-white">Tùy chỉnh giao diện</p>
-                <p className="text-[10px] text-white/50">Chọn 13 bộ màu sắc chủ đề</p>
-              </div>
+              <button
+                onClick={() => {
+                  onClose();
+                  setIsThemeModalOpen(true);
+                }}
+                style={{ color: 'var(--color-accent)' }}
+                className="text-[11px] font-bold hover:underline cursor-pointer"
+              >
+                Xem tất cả 17 theme
+              </button>
             </div>
-          </button>
+
+            {/* Quick theme swatches */}
+            <div className="grid grid-cols-4 sm:grid-cols-4 gap-1.5 pt-1">
+              {[
+                { id: 'purple' as const, name: 'Tím', bg: '#170f23', accent: '#9b4de0' },
+                { id: 'zma' as const, name: 'ZMA', bg: '#100a20', accent: '#e5ac25' },
+                { id: 'dark' as const, name: 'Tối', bg: '#121212', accent: '#8b5cf6' },
+                { id: 'blue' as const, name: 'Xanh Biển', bg: '#061d33', accent: '#06b6d4' },
+                { id: 'green' as const, name: 'Xanh Lá', bg: '#062117', accent: '#10b981' },
+                { id: 'red' as const, name: 'Đỏ', bg: '#280b11', accent: '#e11d48' },
+                { id: 'gold' as const, name: 'Hoàng Gia', bg: '#1f1807', accent: '#eab308' },
+                { id: 'light' as const, name: 'Sáng', bg: '#ffffff', accent: '#7c3aed' },
+              ].map((t) => {
+                const isSelected = theme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setTheme(t.id);
+                      showToast(`Đã đổi theme: ${t.name}`);
+                    }}
+                    style={
+                      isSelected
+                        ? { borderColor: t.accent, boxShadow: `0 0 0 1.5px ${t.accent}` }
+                        : undefined
+                    }
+                    className={`flex items-center gap-1.5 p-1.5 rounded-xl border text-[10px] font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--border-color)]'
+                        : 'border-[var(--border-color)] hover:border-[var(--color-accent)]'
+                    }`}
+                  >
+                    <span
+                      style={{ backgroundColor: t.accent }}
+                      className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm"
+                    />
+                    <span className="truncate text-[var(--text-primary)]">{t.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* 3. Chất lượng nhạc MP3 hay WAV */}
-          <div className="p-3 rounded-2xl bg-white/5 flex items-center justify-between">
+          <div className="p-3 rounded-2xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
                 <Waves className="w-4 h-4" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-white">Chất lượng âm thanh</p>
-                <p className="text-[10px] text-white/50">Chọn phát định dạng MP3 hay WAV</p>
+                <p className="text-xs font-bold text-[var(--text-primary)]">Chất lượng âm thanh</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">Chọn phát định dạng MP3 hay WAV</p>
               </div>
             </div>
-            <div className="flex items-center p-1 rounded-xl bg-black/40 border border-white/10 text-xs font-bold">
+            <div className="flex items-center p-1 rounded-xl bg-black/25 border border-[var(--border-color)] text-xs font-bold">
               <button
                 onClick={() => handleFormatChange('MP3')}
-                className={`px-3 py-1 rounded-lg transition-all ${
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                   currentFormat === 'MP3'
                     ? 'bg-blue-600 text-white shadow font-black'
-                    : 'text-white/50 hover:text-white'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 MP3
               </button>
               <button
                 onClick={() => handleFormatChange('WAV')}
-                className={`px-3 py-1 rounded-lg transition-all ${
+                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                   currentFormat === 'WAV'
                     ? 'bg-amber-600 text-white shadow font-black'
-                    : 'text-white/50 hover:text-white'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 WAV
@@ -232,15 +289,15 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
               handleAnimatedClose();
               openShareModal(song);
             }}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-[var(--bg-surface-hover)] hover:opacity-90 transition-all border border-[var(--border-color)] cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
                 <Share2 className="w-4 h-4" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-white">Chia sẻ bài hát</p>
-                <p className="text-[10px] text-white/50">Gửi link trực tiếp cho bạn bè</p>
+                <p className="text-xs font-bold text-[var(--text-primary)]">Chia sẻ bài hát</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">Gửi link trực tiếp cho bạn bè</p>
               </div>
             </div>
           </button>
@@ -256,15 +313,15 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
                 setIsDemoLimitModalOpen(true);
               }
             }}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-[var(--bg-surface-hover)] hover:opacity-90 transition-all border border-[var(--border-color)] cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                 <Download className="w-4 h-4" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-white">Tải về máy</p>
-                <p className="text-[10px] text-white/50">
+                <p className="text-xs font-bold text-[var(--text-primary)]">Tải về máy</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">
                   {isPurchased ? 'Tải file MP3 hoặc WAV' : 'Mua bản quyền để tải về'}
                 </p>
               </div>
@@ -279,21 +336,21 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           {/* 6. Tim bài hát */}
           <button
             onClick={handleToggleLike}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-[var(--bg-surface-hover)] hover:opacity-90 transition-all border border-[var(--border-color)] cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
                 <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-400 text-rose-400' : ''}`} />
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-white">
+                <p className="text-xs font-bold text-[var(--text-primary)]">
                   {isLiked ? 'Bỏ tim bài hát' : 'Thả tim bài hát'}
                 </p>
-                <p className="text-[10px] text-white/50">Lưu vào thư viện yêu thích</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">Lưu vào thư viện yêu thích</p>
               </div>
             </div>
             {isLiked && (
-              <span className="text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-bold text-rose-400 bg-rose-500/20 px-2 py-0.5 rounded">
                 Đã thích
               </span>
             )}
@@ -305,27 +362,29 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
               handleAnimatedClose();
               openAddToPlaylistModal(song);
             }}
-            className={`w-full flex items-center justify-between p-3 rounded-2xl transition-colors ${
-              isAlreadyInPlaylist ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-white/5 hover:bg-white/10'
+            className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border cursor-pointer ${
+              isAlreadyInPlaylist
+                ? 'bg-emerald-500/10 border-emerald-500/30'
+                : 'bg-[var(--bg-surface-hover)] hover:opacity-90 border-[var(--border-color)]'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                 isAlreadyInPlaylist ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/20 text-indigo-400'
               }`}>
                 {isAlreadyInPlaylist ? <CheckCircle className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
               </div>
               <div className="text-left">
-                <p className={`text-xs font-bold ${isAlreadyInPlaylist ? 'text-emerald-300' : 'text-white'}`}>
+                <p className={`text-xs font-bold ${isAlreadyInPlaylist ? 'text-emerald-400' : 'text-[var(--text-primary)]'}`}>
                   {isAlreadyInPlaylist ? 'Đã thêm vào playlist' : 'Thêm vào playlist'}
                 </p>
-                <p className="text-[10px] text-white/50">
+                <p className="text-[10px] text-[var(--text-secondary)]">
                   {isAlreadyInPlaylist ? 'Bài hát đã có trong playlist' : 'Đưa vào danh sách phát cá nhân'}
                 </p>
               </div>
             </div>
             {isAlreadyInPlaylist && (
-              <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded flex items-center gap-1">
                 <Check className="w-3 h-3 text-emerald-400" /> Đã thêm
               </span>
             )}
@@ -334,17 +393,17 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           {/* 8. Chặn bài hát */}
           <button
             onClick={handleBlockSong}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-red-500/10 transition-colors group"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-[var(--bg-surface-hover)] hover:bg-red-500/10 transition-all border border-[var(--border-color)] group cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0">
                 <Ban className="w-4 h-4" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-white group-hover:text-red-300">
+                <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-red-400">
                   {isBlocked ? 'Đang chặn bài này' : 'Chặn bài hát này'}
                 </p>
-                <p className="text-[10px] text-white/50">Không bao giờ tự phát bài này nữa</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">Không bao giờ tự phát bài này nữa</p>
               </div>
             </div>
           </button>
@@ -352,17 +411,17 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
           {/* 9. Báo lỗi bài hát */}
           <button
             onClick={() => setShowReportModal(true)}
-            className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-amber-500/10 transition-colors group"
+            className="w-full flex items-center justify-between p-3 rounded-2xl bg-[var(--bg-surface-hover)] hover:bg-amber-500/10 transition-all border border-[var(--border-color)] group cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-4 h-4" />
               </div>
               <div className="text-left">
-                <p className="text-xs font-bold text-white group-hover:text-amber-300">
+                <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-amber-400">
                   Báo lỗi bài hát
                 </p>
-                <p className="text-[10px] text-white/50">Âm thanh rè, link hỏng hoặc lỗi lời nhạc</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">Âm thanh rè, link hỏng hoặc lỗi lời nhạc</p>
               </div>
             </div>
           </button>
@@ -381,7 +440,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
               className="w-full max-w-sm border rounded-3xl p-5 space-y-3 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
                 <h4 className="text-sm font-bold flex items-center gap-2 text-amber-400">
                   <AlertTriangle className="w-4 h-4" />
                   <span>Báo Lỗi Bài Hát</span>
@@ -389,13 +448,13 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
                 <button
                   type="button"
                   onClick={() => setShowReportModal(false)}
-                  className="p-1 text-white/60 hover:text-white"
+                  className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-xs text-white/70">
-                Bài hát: <strong className="text-white">{song.title}</strong>
+              <p className="text-xs text-[var(--text-secondary)]">
+                Bài hát: <strong className="text-[var(--text-primary)]">{song.title}</strong>
               </p>
               <textarea
                 rows={3}
@@ -403,20 +462,20 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
                 value={reportText}
                 onChange={(e) => setReportText(e.target.value)}
                 placeholder="Mô tả lỗi bạn gặp phải (âm thanh rè, link không phát, sai lời...)"
-                className="w-full bg-black/40 border border-white/15 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#9b4de0]"
+                className="w-full bg-black/25 border border-[var(--border-color)] rounded-xl p-3 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
               />
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowReportModal(false)}
-                  className="px-3.5 py-1.5 text-xs text-white/60 hover:text-white"
+                  className="px-3.5 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isSendingReport}
-                  className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs flex items-center gap-1.5 shadow"
+                  className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs flex items-center gap-1.5 shadow cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{isSendingReport ? 'Đang gửi...' : 'Gửi Báo Lỗi'}</span>

@@ -1,18 +1,57 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-    <meta name="description" content="An application built with Google AI Studio." />
-    <meta property="og:title" content="My Google AI Studio App" />
-    <meta property="og:description" content="An application built with Google AI Studio." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <script>
+      (function () {
+        try {
+          var _origFetch = window.fetch ? window.fetch.bind(window) : null;
+          var _activeFetch = _origFetch;
+          Object.defineProperty(window, 'fetch', {
+            configurable: true,
+            enumerable: true,
+            get: function () {
+              return _activeFetch;
+            },
+            set: function (fn) {
+              _activeFetch = fn;
+            },
+          });
+        } catch (e) {
+          try {
+            var proto = Window.prototype;
+            var _protoFetch = proto.fetch;
+            Object.defineProperty(proto, 'fetch', {
+              configurable: true,
+              enumerable: true,
+              get: function () {
+                return _protoFetch;
+              },
+              set: function (fn) {
+                _protoFetch = fn;
+              },
+            });
+          } catch (err) {}
+        }
+      })();
+    </script>
+    <title>XuanKen Music - Nghe & Mua Nhạc Bản Quyền Trực Tuyến</title>
+    <meta name="description" content="Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV, lời bài hát chạy chữ karaoke LRC và quản trị Firebase." />
+    <meta property="og:title" content="XuanKen Music - Nghe & Mua Nhạc Bản Quyền Trực Tuyến" />
+    <meta property="og:description" content="Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV, lời bài hát chạy chữ karaoke LRC và quản trị Firebase." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#170f23" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
   </head>
-  <body>
+  <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased select-none font-['Roboto_Condensed'] transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

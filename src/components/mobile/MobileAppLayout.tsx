@@ -73,6 +73,7 @@ export const MobileAppLayout: React.FC = () => {
     isShuffle,
     toggleShuffle,
     searchQuery,
+    theme,
   } = useMusic();
 
   const [librarySubTab, setLibrarySubTab] = useState<'liked' | 'playlists' | 'purchased'>('liked');
@@ -178,10 +179,10 @@ export const MobileAppLayout: React.FC = () => {
             {/* Header with song count, purchase statistics & circular Play button */}
             <div className="flex items-center justify-between pb-1 gap-2">
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg font-black text-white uppercase tracking-tight truncate">
+                <h1 className="text-lg font-black text-[var(--text-primary)] uppercase tracking-tight truncate">
                   Danh Sách Bài Hát
                 </h1>
-                <p className="text-[10px] text-white/50 truncate">
+                <p className="text-[10px] text-[var(--text-secondary)] truncate">
                   Tổng cộng {totalSongs} bài hát • Đã mua: <span className="text-emerald-400 font-bold">{purchasedCount} bài</span> • Chưa mua: <span className="text-amber-400 font-bold">{unpurchasedCount} bài</span>
                 </p>
               </div>
@@ -209,27 +210,27 @@ export const MobileAppLayout: React.FC = () => {
                     >
                       <button
                         onClick={handlePlayInOrder}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-surface-hover)] text-left transition-colors cursor-pointer"
                       >
                         <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                           <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-white">Phát theo thứ tự</p>
-                          <p className="text-[9px] text-white/50">Phát lần lượt từ bài đầu</p>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Phát theo thứ tự</p>
+                          <p className="text-[9px] text-[var(--text-secondary)]">Phát lần lượt từ bài đầu</p>
                         </div>
                       </button>
 
                       <button
                         onClick={handlePlayRandom}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-surface-hover)] text-left transition-colors cursor-pointer"
                       >
                         <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-[#c273ed] flex items-center justify-center shrink-0">
                           <Shuffle className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-white">Phát ngẫu nhiên</p>
-                          <p className="text-[9px] text-white/50">Xáo trộn bài hát ngẫu nhiên</p>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Phát ngẫu nhiên</p>
+                          <p className="text-[9px] text-[var(--text-secondary)]">Xáo trộn bài hát ngẫu nhiên</p>
                         </div>
                       </button>
                     </div>
@@ -237,6 +238,7 @@ export const MobileAppLayout: React.FC = () => {
                 )}
               </div>
             </div>
+
 
             {/* MP3 & WAV Audio Format Switcher - 50/50 Grid with crisp visible text */}
             <div className="w-full">
@@ -1116,12 +1118,13 @@ export const MobileAppLayout: React.FC = () => {
 
   return (
     <div
-      className="h-[100dvh] w-full text-white flex flex-col items-center justify-start sm:py-4 transition-colors duration-300 overflow-hidden font-['Roboto_Condensed']"
+      data-theme={theme}
+      className="h-[100dvh] w-full text-[var(--text-primary)] flex flex-col items-center justify-start sm:py-4 transition-colors duration-300 overflow-hidden font-['Roboto_Condensed']"
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
       {/* Top Banner on Desktop when viewing Mobile App mode */}
       <div
-        className="hidden sm:flex items-center justify-between w-full max-w-[420px] px-4 py-2 mb-2 rounded-xl border text-xs text-white shrink-0"
+        className="hidden sm:flex items-center justify-between w-full max-w-[420px] px-4 py-2 mb-2 rounded-xl border text-xs text-[var(--text-primary)] shrink-0"
         style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
       >
         <div className="flex items-center gap-2">
@@ -1140,8 +1143,9 @@ export const MobileAppLayout: React.FC = () => {
 
       {/* Phone Frame on Desktop or Edge-to-Edge on Mobile Phone */}
       <div
+        data-theme={theme}
         className="w-full h-full sm:max-w-[420px] sm:h-[860px] sm:max-h-[92vh] sm:rounded-[44px] sm:border-[8px] sm:border-zinc-800 sm:ring-1 sm:ring-white/20 sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col relative overflow-hidden transition-colors duration-200"
-        style={{ backgroundColor: 'var(--bg-primary)' }}
+        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       >
         {/* Dynamic Island / Notch on Desktop Mockup */}
         <div className="hidden sm:flex justify-center pt-2 pb-1 bg-[var(--bg-header)]">

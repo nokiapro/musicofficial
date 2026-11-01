@@ -133,12 +133,37 @@ export const MobileFullPlayerModal: React.FC = () => {
     }, 200);
   };
 
-  const lyrics = currentSong?.lyrics || [];
-  const activeLyricIdx = lyrics.findIndex(
-    (line, index) =>
-      currentTime >= line.time &&
-      (index === lyrics.length - 1 || currentTime < lyrics[index + 1].time)
-  );
+  // Parse raw lyrics from song.lyrics or fallback parse from song.lrcRaw
+  const rawLyrics =
+    currentSong?.lyrics && currentSong.lyrics.length > 0
+      ? currentSong.lyrics
+      : currentSong?.lrcRaw
+      ? currentSong.lrcRaw.split('\n').map((line, idx) => {
+          const timeMatch = line.match(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/);
+          let time = idx * 5;
+          if (timeMatch) {
+            time = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+          }
+          return { time, text: line };
+        })
+      : [];
+
+  // Filter out empty lines or metadata header lines ([ti:], [ar:], [al:], etc.)
+  const lyrics = rawLyrics.filter((line) => {
+    const text = cleanLyricText(line.text);
+    const isMetadata = /^\s*\[(ti|ar|al|by|offset|length|re|ve):/i.test(line.text);
+    return text.length > 0 && !isMetadata;
+  });
+
+  // Calculate current active line based on playback time; default to 0 if before first line
+  let rawActiveLyricIdx = -1;
+  for (let i = lyrics.length - 1; i >= 0; i--) {
+    if (currentTime >= lyrics[i].time) {
+      rawActiveLyricIdx = i;
+      break;
+    }
+  }
+  const activeLyricIdx = rawActiveLyricIdx >= 0 ? rawActiveLyricIdx : 0;
 
   // Auto-scroll active lyric line into center (Called unconditionally before any early return)
   useEffect(() => {
@@ -311,10 +336,10 @@ export const MobileFullPlayerModal: React.FC = () => {
           >
             {/* SLIDE 1 (LEFT): THÔNG TIN BÀI HÁT (Requirement 4: Lượt tim và Lượt nghe thời gian thực) */}
             <div className="w-1/3 h-full flex flex-col justify-center px-4 py-2 overflow-y-auto no-scrollbar">
-              <div className="w-full max-w-sm mx-auto p-5 rounded-3xl bg-white/[0.04] border border-white/10 shadow-2xl backdrop-blur-md space-y-4">
+              <div className="w-full max-w-sm mx-auto p-5 rounded-3xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] shadow-2xl backdrop-blur-md space-y-4">
                 {/* Top Row: Cover + Title, Artist, Real-time Likes, Real-time Listens */}
                 <div className="flex items-center gap-3.5">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/15 bg-zinc-900 shrink-0 shadow-lg">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-zinc-900 shrink-0 shadow-lg">
                     {currentSong.coverImage ? (
                       <img
                         src={currentSong.coverImage}
@@ -329,14 +354,14 @@ export const MobileFullPlayerModal: React.FC = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-black text-white truncate leading-snug">
+                    <h3 className="text-base font-black text-[var(--text-primary)] truncate leading-snug">
                       {currentSong.title}
                     </h3>
-                    <p className="text-xs text-white/60 truncate mt-0.5 font-medium">
+                    <p className="text-xs text-[var(--text-secondary)] truncate mt-0.5 font-medium">
                       {currentSong.artists}
                     </p>
                     {/* Requirement 4: Lượt tim và lượt nghe hiển thị đúng theo thời gian thực */}
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-white/80">
+                    <div className="flex items-center gap-3 mt-1.5 text-xs text-[var(--text-secondary)]">
                       <button
                         onClick={() => toggleLike(currentSong.id)}
                         className="flex items-center gap-1 font-semibold hover:opacity-80 active:scale-95 transition-transform cursor-pointer"
@@ -349,7 +374,7 @@ export const MobileFullPlayerModal: React.FC = () => {
                             : (isLiked ? 1 : 0).toLocaleString('vi-VN')}
                         </span>
                       </button>
-                      <span className="flex items-center gap-1 font-semibold text-cyan-300">
+                      <span className="flex items-center gap-1 font-semibold text-cyan-400">
                         <Headphones className="w-3.5 h-3.5 text-cyan-400" />
                         <span>
                           {typeof currentSong.playCount === 'number'
@@ -362,37 +387,37 @@ export const MobileFullPlayerModal: React.FC = () => {
                 </div>
 
                 {/* Divider line */}
-                <div className="border-t border-white/10" />
+                <div className="border-t border-[var(--border-color)]" />
 
                 {/* 2-column Metadata list */}
                 <div className="space-y-3 text-xs">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-white/50 font-medium">Album</span>
-                    <span className="text-white font-bold text-right truncate">
+                    <span className="text-[var(--text-secondary)] font-medium">Album</span>
+                    <span className="text-[var(--text-primary)] font-bold text-right truncate">
                       {currentSong.album ? `${currentSong.album}` : 'XuanKen Official'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-white/50 font-medium">Nhạc sĩ</span>
-                    <span className="text-white font-bold text-right truncate">
+                    <span className="text-[var(--text-secondary)] font-medium">Nhạc sĩ</span>
+                    <span className="text-[var(--text-primary)] font-bold text-right truncate">
                       {currentSong.composer || currentSong.artists || 'XuanKen'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-white/50 font-medium">Thể loại</span>
-                    <span className="text-white font-bold text-right truncate">
+                    <span className="text-[var(--text-secondary)] font-medium">Thể loại</span>
+                    <span className="text-[var(--text-primary)] font-bold text-right truncate">
                       {currentSong.genre || 'Việt Nam, V-Pop'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-white/50 font-medium">Phát hành</span>
-                    <span className="text-white font-bold text-right font-mono">
+                    <span className="text-[var(--text-secondary)] font-medium">Phát hành</span>
+                    <span className="text-[var(--text-primary)] font-bold text-right font-mono">
                       {currentSong.releaseDate || '2026'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-white/50 font-medium">Cung cấp</span>
-                    <span className="text-white font-bold text-right truncate">
+                    <span className="text-[var(--text-secondary)] font-medium">Cung cấp</span>
+                    <span className="text-[var(--text-primary)] font-bold text-right truncate">
                       {currentSong.provider || 'XuanKen Official'}
                     </span>
                   </div>
@@ -436,65 +461,60 @@ export const MobileFullPlayerModal: React.FC = () => {
                 </button>
               </div>
 
-              {/* Exactly 5 lines like Zing MP3 (2 before, 1 active in middle, 2 after) */}
-              <div
-                ref={lyricsContainerRef}
-                className="flex-1 flex flex-col justify-center items-start text-left px-1 py-4 space-y-3.5 select-none overflow-hidden"
-              >
+              {/* Exactly 5 lines with Kinetic Scrolling Animation (2 above, 1 middle active, 2 below) */}
+              <div className="flex-1 flex items-center justify-center my-auto w-full min-h-0 overflow-hidden">
                 {lyrics.length === 0 ? (
                   <div className="w-full text-center text-[var(--text-secondary)] text-xs py-8">
                     Chưa có lời bài hát đồng bộ cho ca khúc này
                   </div>
                 ) : (
-                  (() => {
-                    const centerIdx = activeLyricIdx >= 0 ? activeLyricIdx : 0;
-                    const fiveIndices = [centerIdx - 2, centerIdx - 1, centerIdx, centerIdx + 1, centerIdx + 2];
-                    return fiveIndices.map((targetIdx, slotIdx) => {
-                      if (targetIdx < 0 || targetIdx >= lyrics.length) {
-                        return <div key={`mob-empty-${slotIdx}-${targetIdx}`} className="h-8 sm:h-10 invisible select-none" />;
-                      }
-                      const line = lyrics[targetIdx];
-                      const displayText = cleanLyricText(line.text);
-                      if (!displayText) {
-                        return <div key={`mob-empty-txt-${slotIdx}-${targetIdx}`} className="h-8 sm:h-10 invisible select-none" />;
-                      }
-                      const isCurrent = targetIdx === activeLyricIdx;
-                      const isPast = targetIdx < activeLyricIdx;
-                      const textLen = displayText.length;
+                  <div
+                    ref={lyricsContainerRef}
+                    className="w-full overflow-hidden relative mode-kinetic select-none"
+                    style={{
+                      height: '240px',
+                      maxHeight: '240px',
+                      minHeight: '240px',
+                      maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+                      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+                    }}
+                  >
+                    <div
+                      className="w-full will-change-transform"
+                      style={{
+                        transform: `translateY(-${activeLyricIdx * 48}px)`,
+                        transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+                        paddingTop: '96px',
+                        paddingBottom: '96px',
+                      }}
+                    >
+                      {lyrics.map((line, idx) => {
+                        const displayText = cleanLyricText(line.text);
+                        if (!displayText) return null;
 
-                      // Requirement 5: Phóng to ra hơn 1 tí nữa, nếu lời dài sẽ tự động co chữ lại
-                      const currentSizeClass =
-                        textLen > 40
-                          ? 'text-lg sm:text-xl'
-                          : textLen > 24
-                          ? 'text-xl sm:text-2xl'
-                          : 'text-2xl sm:text-3xl';
+                        const isCurrent = idx === activeLyricIdx;
+                        const dist = Math.abs(idx - activeLyricIdx);
 
-                      const inactiveSizeClass =
-                        textLen > 40
-                          ? 'text-xs sm:text-sm'
-                          : textLen > 24
-                          ? 'text-sm sm:text-base'
-                          : 'text-base sm:text-lg';
-
-                      return (
-                        <div
-                          key={`mob-line-${targetIdx}-${line.time}`}
-                          onClick={() => seekTo(line.time)}
-                          className={`cursor-pointer text-left transition-all duration-300 w-full break-words whitespace-normal select-none ${
-                            isCurrent
-                              ? `text-yellow-400 font-bold ${currentSizeClass} leading-snug drop-shadow-[0_0_12px_rgba(250,204,21,0.5)]`
-                              : isPast
-                              ? `text-white/45 font-medium ${inactiveSizeClass} leading-relaxed`
-                              : `text-white/65 font-medium ${inactiveSizeClass} leading-relaxed`
-                          }`}
-                          title="Bấm để phát từ câu hát này"
-                        >
-                          {displayText}
-                        </div>
-                      );
-                    });
-                  })()
+                        return (
+                          <div
+                            key={`mob-line-${idx}-${line.time}`}
+                            onClick={() => seekTo(line.time)}
+                            style={{ height: '48px' }}
+                            className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-base sm:text-lg leading-snug truncate ${
+                              isCurrent
+                                ? 'active font-bold'
+                                : dist === 1
+                                ? 'adjacent font-semibold text-white/80'
+                                : 'font-semibold text-white/40'
+                            }`}
+                            title="Bấm để phát từ câu hát này"
+                          >
+                            <span className="truncate w-full">{displayText}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -746,61 +766,99 @@ export const MobileFullPlayerModal: React.FC = () => {
           </div>
         )}
 
-        {/* Bottom Queue Sheet for Mobile (Requirement 7: Open/close animation) */}
+        {/* Bottom Queue Sheet for Mobile */}
         {showQueueSheet && (
           <div
-            className={`absolute inset-x-0 bottom-0 top-36 z-50 bg-[var(--bg-surface)] rounded-t-3xl border-t border-[var(--border-color)] p-4 flex flex-col shadow-2xl duration-200 ${
-              isClosingQueueSheet ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
+            className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex flex-col justify-end duration-200 ${
+              isClosingQueueSheet ? 'animate-out fade-out' : 'animate-in fade-in'
             }`}
+            onClick={handleCloseQueue}
           >
-            <div className="w-10 h-1 bg-[var(--text-secondary)]/30 rounded-full mx-auto mb-3" />
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)] shrink-0">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Danh sách phát ({queue.length})</h3>
-              <button
-                onClick={handleCloseQueue}
-                style={{ color: 'var(--color-accent)' }}
-                className="text-xs font-semibold cursor-pointer hover:opacity-80"
-              >
-                Đóng
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto mt-2 space-y-2">
-              {queue.map((song) => (
-                <div
-                  key={song.id}
-                  onClick={() => {
-                    playSong(song);
-                    handleCloseQueue();
-                  }}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--bg-surface-hover)] hover:opacity-90 cursor-pointer border border-[var(--border-color)] gap-2.5"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow">
-                      {song.coverImage ? (
-                        <img
-                          src={song.coverImage}
-                          alt={song.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      ) : null}
-                      <div
-                        className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center text-[10px] font-bold text-white/60 ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}
-                      >
-                        XK
-                      </div>
-                    </div>
-                    <div className="truncate">
-                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{song.title}</p>
-                      <p className="text-[10px] text-[var(--text-secondary)] truncate">{song.artists}</p>
-                    </div>
-                  </div>
-                  <Play
-                    style={{ color: 'var(--color-accent)' }}
-                    className="w-3.5 h-3.5 fill-current shrink-0"
-                  />
+            <div
+              data-theme={theme}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)',
+              }}
+              className={`w-full max-w-md mx-auto rounded-t-3xl border-t p-4 flex flex-col shadow-2xl duration-200 max-h-[82vh] h-[540px] select-none ${
+                isClosingQueueSheet ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
+              }`}
+            >
+              <div className="w-10 h-1 bg-[var(--text-secondary)]/30 rounded-full mx-auto mb-3 shrink-0" />
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)] shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <ListMusic style={{ color: 'var(--color-accent)' }} className="w-4 h-4 shrink-0" />
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">
+                    Danh sách phát ({queue.length})
+                  </h3>
                 </div>
-              ))}
+                <button
+                  onClick={handleCloseQueue}
+                  style={{ color: 'var(--color-accent)' }}
+                  className="text-xs font-bold cursor-pointer hover:opacity-80 px-2.5 py-1 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto mt-2 space-y-2 pr-0.5 no-scrollbar">
+                {queue.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-[var(--text-secondary)]">
+                    Danh sách phát đang trống
+                  </div>
+                ) : (
+                  queue.map((song, qIdx) => {
+                    const isCurrent = currentSong?.id === song.id;
+                    return (
+                      <div
+                        key={`${song.id}-${qIdx}`}
+                        onClick={() => {
+                          playSong(song);
+                          handleCloseQueue();
+                        }}
+                        style={{
+                          backgroundColor: isCurrent ? 'rgba(255, 255, 255, 0.12)' : 'var(--bg-surface-hover)',
+                          borderColor: isCurrent ? 'var(--color-accent)' : 'var(--border-color)',
+                        }}
+                        className="flex items-center justify-between p-2.5 rounded-xl hover:opacity-90 cursor-pointer border gap-2.5 transition-all"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow relative">
+                            {song.coverImage ? (
+                              <img
+                                src={song.coverImage}
+                                alt={song.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : null}
+                            <div
+                              className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center text-[10px] font-bold text-white/60 ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+                            >
+                              XK
+                            </div>
+                          </div>
+                          <div className="truncate">
+                            <p
+                              style={isCurrent ? { color: 'var(--color-accent)' } : { color: 'var(--text-primary)' }}
+                              className="text-xs font-semibold truncate"
+                            >
+                              {song.title}
+                            </p>
+                            <p className="text-[10px] text-[var(--text-secondary)] truncate mt-0.5">{song.artists}</p>
+                          </div>
+                        </div>
+                        <Play
+                          style={{ color: 'var(--color-accent)' }}
+                          className={`w-3.5 h-3.5 fill-current shrink-0 ${isCurrent ? 'opacity-100 scale-110' : 'opacity-70'}`}
+                        />
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         )}

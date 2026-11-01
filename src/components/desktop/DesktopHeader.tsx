@@ -66,15 +66,15 @@ export const DesktopHeader: React.FC = () => {
       )
     : [];
 
-  const themeList: { id: ThemeId; name: string; color: string }[] = [
-    { id: 'purple', name: 'Tím Zing', color: 'bg-[#9b4de0]' },
-    { id: 'blue', name: 'Xanh Biển', color: 'bg-[#06b6d4]' },
-    { id: 'sunset', name: 'Hoàng Hôn', color: 'bg-[#f43f5e]' },
-    { id: 'emerald', name: 'Lá Quang', color: 'bg-[#10b981]' },
-    { id: 'gold', name: 'Hoàng Gia', color: 'bg-[#eab308]' },
-    { id: 'dark', name: 'AMOLED Đen', color: 'bg-[#475569]' },
-    { id: 'rose', name: 'Hồng Ruby', color: 'bg-[#fb7185]' },
-    { id: 'light', name: 'Bạch Kim', color: 'bg-[#8b5cf6]' },
+  const themeList: { id: ThemeId; name: string; hex: string }[] = [
+    { id: 'purple', name: 'Tím Zing', hex: '#9b4de0' },
+    { id: 'blue', name: 'Xanh Biển', hex: '#06b6d4' },
+    { id: 'sunset', name: 'Hoàng Hôn', hex: '#f43f5e' },
+    { id: 'emerald', name: 'Lá Quang', hex: '#10b981' },
+    { id: 'gold', name: 'Hoàng Gia', hex: '#eab308' },
+    { id: 'dark', name: 'AMOLED Đen', hex: '#475569' },
+    { id: 'rose', name: 'Hồng Ruby', hex: '#fb7185' },
+    { id: 'light', name: 'Bạch Kim', hex: '#8b5cf6' },
   ];
 
   const formatRemaining = (seconds: number) => {
@@ -320,14 +320,22 @@ export const DesktopHeader: React.FC = () => {
                       <button
                         key={t.id}
                         onClick={() => setTheme(t.id)}
-                        className={`p-1.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
+                        style={
                           isSelected
-                            ? 'border-[#9b4de0] bg-[#9b4de0]/25 shadow-sm'
+                            ? { borderColor: t.hex, backgroundColor: `${t.hex}33` }
+                            : undefined
+                        }
+                        className={`p-1.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                          isSelected
+                            ? 'shadow-sm'
                             : 'border-white/10 bg-white/5 hover:bg-white/10'
                         }`}
                         title={t.name}
                       >
-                        <span className={`w-3.5 h-3.5 rounded-full ${t.color} shadow-sm`} />
+                        <span
+                          style={{ backgroundColor: t.hex }}
+                          className="w-3.5 h-3.5 rounded-full shadow-sm"
+                        />
                         <span className="text-[9px] font-bold truncate max-w-full text-white/80">
                           {t.name}
                         </span>

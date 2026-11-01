@@ -36,28 +36,30 @@ export const MobileTopBar: React.FC = () => {
     };
   }, [isSettingsOpen]);
 
-  const themeList: { id: ThemeId; name: string; color: string }[] = [
-    { id: 'purple', name: 'Tím Zing', color: 'bg-[#9b4de0]' },
-    { id: 'blue', name: 'Xanh Biển', color: 'bg-[#06b6d4]' },
-    { id: 'sunset', name: 'Hoàng Hôn', color: 'bg-[#f43f5e]' },
-    { id: 'emerald', name: 'Lá Quang', color: 'bg-[#10b981]' },
-    { id: 'gold', name: 'Hoàng Gia', color: 'bg-[#eab308]' },
-    { id: 'dark', name: 'AMOLED Đen', color: 'bg-[#475569]' },
-    { id: 'rose', name: 'Hồng Ruby', color: 'bg-[#fb7185]' },
-    { id: 'light', name: 'Bạch Kim', color: 'bg-[#8b5cf6]' },
+  const themeList: { id: ThemeId; name: string; hex: string }[] = [
+    { id: 'purple', name: 'Tím Zing', hex: '#9b4de0' },
+    { id: 'blue', name: 'Xanh Biển', hex: '#06b6d4' },
+    { id: 'sunset', name: 'Hoàng Hôn', hex: '#f43f5e' },
+    { id: 'emerald', name: 'Lá Quang', hex: '#10b981' },
+    { id: 'gold', name: 'Hoàng Gia', hex: '#eab308' },
+    { id: 'dark', name: 'AMOLED Đen', hex: '#475569' },
+    { id: 'rose', name: 'Hồng Ruby', hex: '#fb7185' },
+    { id: 'light', name: 'Bạch Kim', hex: '#8b5cf6' },
   ];
 
   return (
     <div
-      className="sticky top-0 z-30 backdrop-blur-md border-b text-white select-none transition-colors duration-200"
-      style={{ backgroundColor: 'var(--bg-header)', borderColor: 'var(--border-color)' }}
+      data-theme={theme}
+      className="sticky top-0 z-30 backdrop-blur-md border-b text-[var(--text-primary)] select-none transition-colors duration-200"
+      style={{ backgroundColor: 'var(--bg-header)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
     >
       {/* Top Search & Actions Row */}
       <div className="px-3.5 py-2.5 flex items-center justify-between gap-2.5">
         {/* User avatar - Click to go to Profile */}
         <button
           onClick={() => setActiveMobileTab('profile')}
-          className="relative w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-purple-500 to-pink-500 ring-2 ring-[#9b4de0] flex items-center justify-center text-xs font-black shrink-0 active:scale-95 transition-transform"
+          style={{ borderColor: 'var(--color-accent)' }}
+          className="relative w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-purple-500 to-pink-500 ring-2 ring-[var(--color-accent)] flex items-center justify-center text-xs font-black text-white shrink-0 active:scale-95 transition-transform cursor-pointer"
           title="Xem trang Cá nhân"
         >
           {currentUser?.avatarUrl ? (
@@ -75,19 +77,19 @@ export const MobileTopBar: React.FC = () => {
         </button>
 
         {/* Search Bar Input with Clear button */}
-        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs focus-within:border-[#9b4de0] focus-within:bg-[#231b2e] transition-all">
-          <Search className="w-3.5 h-3.5 text-white/50 shrink-0" />
+        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-surface-hover)] border border-[var(--border-color)] text-xs focus-within:border-[var(--color-accent)] transition-all">
+          <Search className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm bài hát, ca sỹ, file LRC..."
-            className="w-full bg-transparent text-white placeholder-white/40 focus:outline-none text-xs"
+            className="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-secondary)]/60 focus:outline-none text-xs"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="text-white/40 hover:text-white"
+              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -119,20 +121,24 @@ export const MobileTopBar: React.FC = () => {
           {/* Settings Dropdown Popover */}
           {isSettingsOpen && (
             <div
-              className="absolute right-0 top-10 w-72 border rounded-2xl shadow-2xl p-4 z-50 text-white space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200"
-              style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
+              data-theme={theme}
+              className="absolute right-0 top-10 w-72 border rounded-2xl shadow-2xl p-4 z-50 text-[var(--text-primary)] space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200"
+              style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-[#9b4de0]/20 text-[#c273ed] flex items-center justify-center">
+                  <div
+                    style={{ backgroundColor: 'var(--bg-surface-hover)', color: 'var(--color-accent)' }}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center"
+                  >
                     <Settings className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-xs font-bold">Cài Đặt Hệ Thống</h3>
+                  <h3 className="text-xs font-bold text-[var(--text-primary)]">Cài Đặt Hệ Thống</h3>
                 </div>
                 <button
                   onClick={() => setIsSettingsOpen(false)}
-                  className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white"
+                  className="p-1 rounded-full hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -140,9 +146,9 @@ export const MobileTopBar: React.FC = () => {
 
               {/* 1. Giao diện & Chủ đề (Theme) */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold text-white/70">
+                <div className="flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)]">
                   <span className="flex items-center gap-1.5">
-                    <Palette className="w-3.5 h-3.5 text-[#c273ed]" />
+                    <Palette className="w-3.5 h-3.5 text-[var(--color-accent)]" />
                     <span>Chủ đề giao diện</span>
                   </span>
                   <button
@@ -150,9 +156,10 @@ export const MobileTopBar: React.FC = () => {
                       setIsSettingsOpen(false);
                       setIsThemeModalOpen(true);
                     }}
-                    className="text-[10px] text-[#c273ed] hover:underline"
+                    style={{ color: 'var(--color-accent)' }}
+                    className="text-[10px] font-bold hover:underline cursor-pointer"
                   >
-                    Xem tất cả
+                    Xem tất cả 17 theme
                   </button>
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
@@ -160,13 +167,21 @@ export const MobileTopBar: React.FC = () => {
                     <button
                       key={t.id}
                       onClick={() => setTheme(t.id)}
-                      className={`flex flex-col items-center gap-1 p-1 rounded-xl border text-[9px] font-semibold transition-all ${
+                      style={
                         theme === t.id
-                          ? 'border-[#9b4de0] bg-[#9b4de0]/20 text-white shadow'
+                          ? { borderColor: t.hex, backgroundColor: `${t.hex}33` }
+                          : undefined
+                      }
+                      className={`flex flex-col items-center gap-1 p-1 rounded-xl border text-[9px] font-semibold transition-all cursor-pointer ${
+                        theme === t.id
+                          ? 'text-white shadow'
                           : 'border-white/5 bg-white/5 text-white/60 hover:text-white'
                       }`}
                     >
-                      <div className={`w-3.5 h-3.5 rounded-full ${t.color}`} />
+                      <div
+                        style={{ backgroundColor: t.hex }}
+                        className="w-3.5 h-3.5 rounded-full shadow-xs"
+                      />
                       <span className="truncate w-full text-center">{t.name.split(' ')[0]}</span>
                     </button>
                   ))}

@@ -89,8 +89,8 @@ export const MobileMiniPlayer: React.FC = () => {
 
           {/* Song title and artist */}
           <div className="truncate min-w-0">
-            <p className="text-xs sm:text-sm font-bold text-white truncate leading-tight">{currentSong.title}</p>
-            <p className="text-[11px] text-white/60 truncate mt-0.5">{currentSong.artists}</p>
+            <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate leading-tight">{currentSong.title}</p>
+            <p className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">{currentSong.artists}</p>
           </div>
         </div>
 

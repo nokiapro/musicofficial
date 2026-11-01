@@ -1,7 +1,17 @@
-import React, { useRef, useCallback } from 'react';
-import { X, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Mic2, Music, BarChart2 } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import {
+  X,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Shuffle,
+  Repeat,
+  Repeat1,
+  Mic2,
+  Music,
+} from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { ProgressBar } from '../common/ProgressBar';
 import { cleanLyricText } from '../../utils/lyricUtils';
 
 export const KaraokeLyricsModal: React.FC = () => {
@@ -14,40 +24,60 @@ export const KaraokeLyricsModal: React.FC = () => {
     nextSong,
     prevSong,
     seekTo,
-    volume,
-    setVolume,
-    isMuted,
-    toggleMute,
+    isShuffle,
+    toggleShuffle,
+    repeatMode,
+    toggleRepeat,
     isLyricsOpen,
     setIsLyricsOpen,
     theme,
   } = useMusic();
 
-  const volumeTrackRef = useRef<HTMLDivElement | null>(null);
+  // Scrubber dragging state matching Screenshot 1
+  const scrubTrackRef = useRef<HTMLDivElement | null>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubTime, setScrubTime] = useState<number | null>(null);
 
-  const calculateVolumeFromEvent = useCallback((clientX: number): number => {
-    if (!volumeTrackRef.current) return 1;
-    const rect = volumeTrackRef.current.getBoundingClientRect();
-    const clickX = clientX - rect.left;
-    const pct = Math.min(1, Math.max(0, clickX / rect.width));
-    return pct;
-  }, []);
+  const safeDuration = Math.max(1, duration || 210);
+  const displayTime = isScrubbing && scrubTime !== null ? scrubTime : currentTime;
+  const progressPercent = Math.min(100, Math.max(0, (displayTime / safeDuration) * 100));
 
-  const handleVolumePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  // Format mm:ss with leading zeros (e.g. 00:52, 04:33 matching Screenshot 1)
+  const formatTime = (secs: number) => {
+    if (!secs || isNaN(secs) || secs < 0) return '00:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  // Scrubber pointer down & drag handler
+  const handleScrubPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (isMuted) toggleMute();
-    const newVol = calculateVolumeFromEvent(e.clientX);
-    setVolume(newVol);
+    if (!scrubTrackRef.current) return;
+    setIsScrubbing(true);
 
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const movedVol = calculateVolumeFromEvent(moveEvent.clientX);
-      setVolume(movedVol);
+    const calcTime = (clientX: number) => {
+      if (!scrubTrackRef.current) return 0;
+      const rect = scrubTrackRef.current.getBoundingClientRect();
+      const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      return pct * safeDuration;
     };
 
-    const onPointerUp = () => {
+    const initialT = calcTime(e.clientX);
+    setScrubTime(initialT);
+
+    const onPointerMove = (moveEv: PointerEvent) => {
+      setScrubTime(calcTime(moveEv.clientX));
+    };
+
+    const onPointerUp = (upEv: PointerEvent) => {
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
+      const finalT = calcTime(upEv.clientX);
+      seekTo(finalT);
+      setIsScrubbing(false);
+      setScrubTime(null);
     };
 
     window.addEventListener('pointermove', onPointerMove);
@@ -55,18 +85,51 @@ export const KaraokeLyricsModal: React.FC = () => {
     window.addEventListener('pointercancel', onPointerUp);
   };
 
+  // Parse lyrics from song.lyrics or fallback parse from song.lrcRaw
+  const rawLyrics =
+    currentSong?.lyrics && currentSong.lyrics.length > 0
+      ? currentSong.lyrics
+      : currentSong?.lrcRaw
+      ? currentSong.lrcRaw.split('\n').map((line, idx) => {
+          const timeMatch = line.match(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/);
+          let time = idx * 5;
+          if (timeMatch) {
+            time = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+          }
+          return { time, text: line };
+        })
+      : [];
+
+  // Filter out empty lines or metadata header lines ([ti:], [ar:], [al:], etc.)
+  const lyrics = rawLyrics.filter((line) => {
+    const text = cleanLyricText(line.text);
+    const isMetadata = /^\s*\[(ti|ar|al|by|offset|length|re|ve):/i.test(line.text);
+    return text.length > 0 && !isMetadata;
+  });
+
+  let rawActiveIdx = -1;
+  for (let i = lyrics.length - 1; i >= 0; i--) {
+    if (currentTime >= lyrics[i].time) {
+      rawActiveIdx = i;
+      break;
+    }
+  }
+  // Exact 5 lines configuration: LINE_HEIGHT is 64px, exactly 5 lines = 320px
+  const LINE_HEIGHT = 64;
+  const centerIdx = rawActiveIdx >= 0 ? rawActiveIdx : 0;
+
+  // Handle ESC key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isLyricsOpen) {
+        setIsLyricsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLyricsOpen, setIsLyricsOpen]);
+
   if (!isLyricsOpen || !currentSong) return null;
-
-  const lyrics = currentSong.lyrics || [];
-  const activeIndex = lyrics.findIndex(
-    (line, index) =>
-      currentTime >= line.time &&
-      (index === lyrics.length - 1 || currentTime < lyrics[index + 1].time)
-  );
-
-  // 5 lines of lyrics like Zing MP3 (2 before, current active in middle, 2 after)
-  const centerIdx = activeIndex >= 0 ? activeIndex : 0;
-  const fiveLineIndices = [centerIdx - 2, centerIdx - 1, centerIdx, centerIdx + 1, centerIdx + 2];
 
   return (
     <div
@@ -74,52 +137,36 @@ export const KaraokeLyricsModal: React.FC = () => {
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       className="fixed inset-0 z-50 flex flex-col overflow-hidden animate-in fade-in duration-300 font-['Roboto_Condensed'] select-none transition-colors"
     >
-      {/* Dynamic blurred ambient glow behind lyrics */}
-      <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
-        <div
-          style={{ backgroundColor: 'var(--color-accent)' }}
-          className="absolute -top-32 -left-32 w-96 h-96 rounded-full blur-[140px]"
-        />
-        <div
-          style={{ backgroundColor: 'var(--color-accent)' }}
-          className="absolute -bottom-32 -right-32 w-[30rem] h-[30rem] rounded-full blur-[160px]"
-        />
-      </div>
-
-      {/* Top Header */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)] backdrop-blur-md bg-black/25">
-        <div className="flex items-center gap-3">
+      {/* Top Header - Badge 'Lời bài hát' removed as requested in earlier item */}
+      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)] backdrop-blur-md bg-black/25 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
           <div
             style={{ backgroundColor: 'var(--color-accent)' }}
-            className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg text-white"
+            className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg text-white shrink-0"
           >
             <Mic2 className="w-5 h-5" />
           </div>
-          <div>
-            <h1 className="text-base font-bold truncate max-w-xs md:max-w-md text-[var(--text-primary)]">{currentSong.title}</h1>
+          <div className="min-w-0 truncate">
+            <h1 className="text-base font-bold truncate max-w-xs md:max-w-md text-[var(--text-primary)]">
+              {currentSong.title}
+            </h1>
             <p className="text-xs text-[var(--text-secondary)] truncate">{currentSong.artists}</p>
           </div>
-        </div>
-
-        {/* Clean Lời bài hát header tag */}
-        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white/10 rounded-full border border-white/15 shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-          <span className="text-xs font-bold text-white tracking-wide uppercase">Lời bài hát</span>
         </div>
 
         {/* Close button */}
         <button
           onClick={() => setIsLyricsOpen(false)}
-          className="p-2 rounded-full hover:bg-white/15 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-          title="Đóng lời bài hát"
+          className="p-2 rounded-full hover:bg-white/15 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
+          title="Đóng lời bài hát (ESC)"
         >
           <X className="w-6 h-6" />
         </button>
       </header>
 
-      {/* Main Content Area matching Screenshot 1 (Zing MP3 layout) */}
-      <main className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center p-6 gap-8 md:gap-14 overflow-hidden">
-        {/* Left Side (Desktop): Big Square Rounded Album Cover (Requirement 1: ảnh bìa to) */}
+      {/* Main Content Area */}
+      <main className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center p-4 md:p-6 gap-6 md:gap-14 overflow-hidden min-h-0">
+        {/* Left Side (Desktop): Big Square Rounded Album Cover */}
         <div className="hidden lg:flex flex-col items-center justify-center shrink-0">
           <div className="relative w-72 h-72 md:w-80 md:h-80 lg:w-[320px] lg:h-[320px] rounded-2xl shadow-2xl overflow-hidden border border-white/10 bg-zinc-900 group">
             {currentSong.coverImage ? (
@@ -127,7 +174,9 @@ export const KaraokeLyricsModal: React.FC = () => {
                 src={currentSong.coverImage}
                 alt={currentSong.title}
                 className="w-full h-full object-cover"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
               />
             ) : null}
             <div
@@ -138,152 +187,189 @@ export const KaraokeLyricsModal: React.FC = () => {
               <Music className="w-20 h-20 text-white/50" />
             </div>
 
-            {/* Small subtle equalizer icon in bottom-left corner like Screenshot 1 */}
-            <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1.5 text-white/80">
-              <BarChart2 className="w-4 h-4 text-white animate-pulse" />
+            {/* White animated jumping audio wave, NO background box, NO text */}
+            <div className="absolute bottom-3 left-3 flex items-end gap-1 h-4 pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              <span
+                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                className="w-1 rounded-full bg-white animate-soundwave-1"
+              />
+              <span
+                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                className="w-1 rounded-full bg-white animate-soundwave-2"
+              />
+              <span
+                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                className="w-1 rounded-full bg-white animate-soundwave-3"
+              />
+              <span
+                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                className="w-1 rounded-full bg-white animate-soundwave-4"
+              />
             </div>
           </div>
         </div>
 
-        {/* Right Side: 5 Lines of Zing MP3 Lyrics (Requirement 1: to, lời dài không bị xuống dòng trên PC, xuống dòng chỉ ở mobile) */}
-        <div className="flex-1 w-full max-w-3xl flex flex-col justify-center items-start text-left px-4 sm:px-8 py-6 select-none overflow-hidden">
+        {/* Right Side: Exactly 5 Lines of Zing MP3 Lyrics (2 above, middle running line, 2 below - Smooth sliding, no zoom) */}
+        <div className="flex-1 min-w-0 w-full max-w-3xl flex flex-col justify-center items-start text-left px-4 sm:px-8 select-none">
           {lyrics.length === 0 ? (
-            <div className="w-full py-12 text-center text-[var(--text-secondary)] text-base">
+            <div className="w-full py-24 text-center text-white/50 text-base">
               Chưa có lời bài hát đồng bộ cho ca khúc này
             </div>
           ) : (
-            <div className="w-full flex flex-col gap-3 sm:gap-4 text-left transition-all duration-300">
-              {fiveLineIndices.map((targetIdx, slotIdx) => {
-                if (targetIdx < 0 || targetIdx >= lyrics.length) {
+            <div
+              className="w-full h-[320px] overflow-hidden relative mode-kinetic"
+              style={{
+                maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+              }}
+            >
+              {/* Vertical sliding track - shifts by exactly 1 line (64px) with smooth 0.8s cubic-bezier(0.16, 1, 0.3, 1) transition */}
+              <div
+                className="w-full will-change-transform"
+                style={{
+                  transform: `translateY(-${centerIdx * LINE_HEIGHT}px)`,
+                  transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+                  paddingTop: `${LINE_HEIGHT * 2}px`,
+                  paddingBottom: `${LINE_HEIGHT * 2}px`,
+                }}
+              >
+                {lyrics.map((line, idx) => {
+                  const displayText = cleanLyricText(line.text);
+                  if (!displayText) return null;
+
+                  const isCurrent = idx === centerIdx;
+                  const dist = Math.abs(idx - centerIdx);
+
                   return (
                     <div
-                      key={`empty-slot-${slotIdx}-${targetIdx}`}
-                      className="h-10 sm:h-14 invisible select-none"
-                    />
+                      key={`line-${idx}-${line.time}`}
+                      onClick={() => seekTo(line.time)}
+                      style={{ height: `${LINE_HEIGHT}px` }}
+                      className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-xl sm:text-2xl md:text-3xl leading-snug truncate ${
+                        isCurrent
+                          ? 'active font-bold'
+                          : dist === 1
+                          ? 'adjacent font-semibold text-white/80 hover:text-white'
+                          : 'font-semibold text-white/40 hover:text-white/80'
+                      }`}
+                      title="Bấm để phát từ câu hát này"
+                    >
+                      <span className="truncate w-full">{displayText}</span>
+                    </div>
                   );
-                }
-
-                const line = lyrics[targetIdx];
-                const displayText = cleanLyricText(line.text);
-                if (!displayText) {
-                  return (
-                    <div
-                      key={`empty-text-${slotIdx}-${targetIdx}`}
-                      className="h-10 sm:h-14 invisible select-none"
-                    />
-                  );
-                }
-
-                const isCurrent = targetIdx === activeIndex;
-                const isPast = targetIdx < activeIndex;
-
-                return (
-                  <div
-                    key={`line-${targetIdx}-${line.time}`}
-                    onClick={() => seekTo(line.time)}
-                    className={`cursor-pointer text-left transition-all duration-300 py-1.5 rounded-lg w-full ${
-                      /* Requirement 1: whitespace-nowrap on desktop (md:) so long lyrics never wrap, whitespace-normal on mobile */
-                      'whitespace-normal md:whitespace-nowrap overflow-hidden text-ellipsis'
-                    } ${
-                      isCurrent
-                        ? 'text-yellow-400 font-bold text-2xl sm:text-3xl md:text-4xl leading-tight drop-shadow-[0_0_14px_rgba(250,204,21,0.45)]'
-                        : isPast
-                        ? 'text-white/45 hover:text-white/80 font-medium text-lg sm:text-xl md:text-2xl leading-snug'
-                        : 'text-white/60 hover:text-white/95 font-medium text-lg sm:text-xl md:text-2xl leading-snug'
-                    }`}
-                    title="Bấm để phát từ câu hát này"
-                  >
-                    {displayText}
-                  </div>
-                );
-              })}
+                })}
+              </div>
             </div>
           )}
         </div>
       </main>
 
-      {/* Bottom Floating Scrubber & Controls (Requirement 2: Progress bar & Volume color according to active theme) */}
-      <footer className="relative z-10 px-6 py-4 border-t border-[var(--border-color)] bg-black/40 backdrop-blur-md flex flex-col gap-2">
-        {/* Scrubber Bar: start time, progress bar, end time on same row with active theme color */}
-        <div className="max-w-3xl mx-auto w-full">
-          <ProgressBar
-            currentTime={currentTime}
-            duration={duration}
-            onSeek={seekTo}
-            showDemoMarker={false}
-            inline={true}
-            useThemeFill={true}
-          />
-        </div>
-
-        {/* Buttons Row */}
-        <div className="flex items-center justify-between max-w-3xl mx-auto w-full">
-          {/* Requirement 2: Volume control matching outside player bar & following active theme */}
-          <div className="flex items-center gap-2 px-1">
+      {/* Player controls and Scrubber matching Screenshot 1 (image_3ee1aba5.png) */}
+      <footer className="relative z-10 px-6 py-4 border-t border-[var(--border-color)] bg-black/55 backdrop-blur-md flex flex-col items-center justify-center gap-3 shrink-0">
+        <div className="max-w-2xl mx-auto w-full flex flex-col items-center gap-3.5">
+          {/* Top Row: Shuffle - Prev - Play/Pause (Vibrant Circle) - Next - Repeat */}
+          <div className="flex items-center justify-center gap-6 sm:gap-8">
+            {/* 1. Shuffle */}
             <button
-              onClick={toggleMute}
-              className="p-1.5 rounded-full text-white/70 hover:text-white transition-colors cursor-pointer"
-              title={isMuted ? 'Bật âm thanh' : 'Tắt tiếng'}
+              onClick={toggleShuffle}
+              style={isShuffle ? { color: 'var(--color-accent, #10b981)' } : undefined}
+              className={`p-2 transition-all cursor-pointer ${
+                !isShuffle
+                  ? 'text-white/70 hover:text-white'
+                  : 'drop-shadow-[0_0_8px_var(--color-accent,#10b981)]'
+              }`}
+              title="Phát ngẫu nhiên"
             >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="w-5 h-5 text-red-400" />
+              <Shuffle className="w-5 h-5" />
+            </button>
+
+            {/* 2. Prev */}
+            <button
+              onClick={prevSong}
+              className="p-2 text-white hover:text-white/80 active:scale-95 transition-transform cursor-pointer"
+              title="Bài trước"
+            >
+              <SkipBack className="w-6 h-6 fill-white text-white" />
+            </button>
+
+            {/* 3. Play / Pause Button in solid circle matching image 1 */}
+            <button
+              onClick={togglePlay}
+              style={{ backgroundColor: 'var(--color-accent, #10b981)' }}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-xl transition-transform active:scale-95 cursor-pointer hover:opacity-95"
+              title={isPlaying ? 'Tạm dừng' : 'Phát'}
+            >
+              {isPlaying ? (
+                <Pause className="w-6 h-6 fill-white text-white" />
               ) : (
-                <Volume2 className="w-5 h-5 text-white/80" />
+                <Play className="w-6 h-6 fill-white text-white ml-0.5" />
               )}
             </button>
-            <div
-              ref={volumeTrackRef}
-              onPointerDown={handleVolumePointerDown}
-              className="w-20 sm:w-28 py-2 cursor-pointer group flex items-center"
-              title={`Âm lượng: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
-              role="slider"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round((isMuted ? 0 : volume) * 100)}
+
+            {/* 4. Next */}
+            <button
+              onClick={nextSong}
+              className="p-2 text-white hover:text-white/80 active:scale-95 transition-transform cursor-pointer"
+              title="Bài tiếp theo"
             >
-              <div className="w-full h-1.5 rounded-full bg-white/20 overflow-hidden relative shadow-inner">
+              <SkipForward className="w-6 h-6 fill-white text-white" />
+            </button>
+
+            {/* 5. Repeat */}
+            <button
+              onClick={toggleRepeat}
+              style={repeatMode !== 'off' ? { color: 'var(--color-accent, #10b981)' } : undefined}
+              className={`p-2 transition-all cursor-pointer ${
+                repeatMode === 'off'
+                  ? 'text-white/70 hover:text-white'
+                  : 'drop-shadow-[0_0_8px_var(--color-accent,#10b981)]'
+              }`}
+              title="Lặp lại"
+            >
+              {repeatMode === 'one' ? (
+                <Repeat1 className="w-5 h-5" />
+              ) : (
+                <Repeat className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+
+          {/* Bottom Row: 00:52 [ Scrubber Bar ] 04:33 matching Screenshot 1 */}
+          <div className="w-full flex items-center gap-3.5">
+            <span className="text-xs font-mono font-bold text-white/80 tabular-nums shrink-0 select-none">
+              {formatTime(displayTime)}
+            </span>
+
+            {/* Scrubber track with gradient from emerald green to pink matching Screenshot 1 */}
+            <div
+              ref={scrubTrackRef}
+              onPointerDown={handleScrubPointerDown}
+              className="flex-1 py-2 flex items-center cursor-pointer group relative"
+            >
+              <div className="w-full h-1.5 rounded-full bg-white/20 relative overflow-hidden shadow-inner">
                 <div
-                  className="h-full rounded-full transition-[width] duration-75"
+                  className={`h-full rounded-full relative ${
+                    isScrubbing ? '' : 'transition-[width] duration-100 ease-linear'
+                  }`}
                   style={{
-                    width: `${(isMuted ? 0 : volume) * 100}%`,
-                    backgroundColor: 'var(--color-accent)',
+                    width: `${progressPercent}%`,
+                    background: 'linear-gradient(to right, #10b981 0%, #14b8a6 45%, #ec4899 100%)',
                   }}
                 />
               </div>
+
+              {/* Slider thumb knob on hover / drag */}
+              <div
+                className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-emerald-400 pointer-events-none transition-opacity ${
+                  isScrubbing ? 'opacity-100 scale-110' : 'opacity-0 group-hover:opacity-100'
+                }`}
+                style={{ left: `calc(${progressPercent}% - 7px)` }}
+              />
             </div>
-            <span className="text-[11px] font-mono font-bold text-white/60 w-8 text-right select-none hidden sm:inline-block">
-              {Math.round((isMuted ? 0 : volume) * 100)}%
+
+            <span className="text-xs font-mono font-bold text-white/80 tabular-nums shrink-0 select-none">
+              {formatTime(safeDuration)}
             </span>
-          </div>
-
-          {/* Playback Controls */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={prevSong}
-              className="p-2 rounded-full hover:bg-white/15 text-white/80 hover:text-white transition-colors cursor-pointer active:scale-95"
-              title="Bài trước"
-            >
-              <SkipBack className="w-6 h-6 fill-current" />
-            </button>
-            <button
-              onClick={togglePlay}
-              style={{ backgroundColor: 'var(--color-accent)' }}
-              className="w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer hover:opacity-90"
-              title={isPlaying ? 'Tạm dừng' : 'Phát'}
-            >
-              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-0.5" />}
-            </button>
-            <button
-              onClick={nextSong}
-              className="p-2 rounded-full hover:bg-white/15 text-white/80 hover:text-white transition-colors cursor-pointer active:scale-95"
-              title="Bài tiếp theo"
-            >
-              <SkipForward className="w-6 h-6 fill-current" />
-            </button>
-          </div>
-
-          <div className="text-xs text-[var(--text-secondary)] hidden sm:block">
-            Nhấn ESC hoặc [x] để thoát
           </div>
         </div>
       </footer>

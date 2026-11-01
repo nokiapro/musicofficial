@@ -6,8 +6,8 @@ import { ThemeId } from '../../types/music';
 interface ThemeOption {
   id: ThemeId;
   name: string;
-  previewBg: string;
-  previewAccent: string;
+  bgColor: string;
+  accentColor: string;
   tag: string;
   description: string;
   isLight?: boolean;
@@ -17,74 +17,106 @@ const DARK_THEMES: ThemeOption[] = [
   {
     id: 'zma',
     name: 'Zing Music Awards',
-    previewBg: 'bg-[#100a20]',
-    previewAccent: 'bg-[#e5ac25]',
+    bgColor: '#100a20',
+    accentColor: '#e5ac25',
     tag: 'Đặc biệt',
     description: 'Phong cách ZMA huyền ảo, ánh vàng vinh danh',
   },
   {
     id: 'dark',
     name: 'Tối',
-    previewBg: 'bg-[#121212]',
-    previewAccent: 'bg-[#8b5cf6]',
+    bgColor: '#121212',
+    accentColor: '#8b5cf6',
     tag: 'Tối giản',
     description: 'Đen than charcoal thanh lịch, tiết kiệm pin',
   },
   {
     id: 'purple',
     name: 'Tím',
-    previewBg: 'bg-[#170f23]',
-    previewAccent: 'bg-[#9b4de0]',
+    bgColor: '#170f23',
+    accentColor: '#9b4de0',
     tag: 'Mặc định',
     description: 'Tím Zing MP3 thương hiệu sâu lắng và huyền bí',
   },
   {
     id: 'dark-blue',
     name: 'Xanh Đậm',
-    previewBg: 'bg-[#0d192b]',
-    previewAccent: 'bg-[#2563eb]',
+    bgColor: '#0d192b',
+    accentColor: '#2563eb',
     tag: 'Trầm tĩnh',
     description: 'Xanh navy thẫm đại dương sâu lắng',
   },
   {
     id: 'blue',
     name: 'Xanh Biển',
-    previewBg: 'bg-[#061d33]',
-    previewAccent: 'bg-[#06b6d4]',
+    bgColor: '#061d33',
+    accentColor: '#06b6d4',
     tag: 'Tươi mát',
     description: 'Sắc xanh biển sâu neon cyan phóng khoáng',
   },
   {
     id: 'green',
     name: 'Xanh Lá',
-    previewBg: 'bg-[#062117]',
-    previewAccent: 'bg-[#10b981]',
+    bgColor: '#062117',
+    accentColor: '#10b981',
     tag: 'Thư giãn',
     description: 'Xanh ngọc lục bảo rừng nhiệt đới mát rượi',
   },
   {
     id: 'brown',
     name: 'Nâu',
-    previewBg: 'bg-[#211510]',
-    previewAccent: 'bg-[#d97706]',
+    bgColor: '#211510',
+    accentColor: '#d97706',
     tag: 'Ấm áp',
     description: 'Sắc nâu cà phê ấm cúng phong vị acoustic',
   },
   {
     id: 'pink',
     name: 'Hồng',
-    previewBg: 'bg-[#2b0f22]',
-    previewAccent: 'bg-[#ec4899]',
+    bgColor: '#2b0f22',
+    accentColor: '#ec4899',
     tag: 'Lãng mạn',
     description: 'Tím hồng dâu tây ngọt ngào, mộng mơ',
   },
   {
     id: 'red',
     name: 'Đỏ',
-    previewBg: 'bg-[#280b11]',
-    previewAccent: 'bg-[#e11d48]',
+    bgColor: '#280b11',
+    accentColor: '#e11d48',
     tag: 'Cuồng nhiệt',
     description: 'Sắc đỏ rượu vang quý phái, bùng cháy đam mê',
+  },
+  {
+    id: 'sunset',
+    name: 'Hoàng Hôn',
+    bgColor: '#250f1e',
+    accentColor: '#f43f5e',
+    tag: 'Rực rỡ',
+    description: 'Ánh hoàng hôn lãng mạn chiều tà',
+  },
+  {
+    id: 'emerald',
+    name: 'Lục Bảo',
+    bgColor: '#042018',
+    accentColor: '#10b981',
+    tag: 'Ngọc bích',
+    description: 'Xanh ngọc emerald quý phái sang trọng',
+  },
+  {
+    id: 'gold',
+    name: 'Hoàng Gia',
+    bgColor: '#1f1807',
+    accentColor: '#eab308',
+    tag: 'Quyền quý',
+    description: 'Vàng kim hoàng gia quý tộc',
+  },
+  {
+    id: 'rose',
+    name: 'Hồng Ruby',
+    bgColor: '#290d18',
+    accentColor: '#fb7185',
+    tag: 'Nổi bật',
+    description: 'Hồng ruby kiêu sa, quyến rũ',
   },
 ];
 
@@ -92,8 +124,8 @@ const LIGHT_THEMES: ThemeOption[] = [
   {
     id: 'light',
     name: 'Sáng',
-    previewBg: 'bg-[#ffffff]',
-    previewAccent: 'bg-[#7c3aed]',
+    bgColor: '#ffffff',
+    accentColor: '#7c3aed',
     tag: 'Trang nhã',
     description: 'Tone trắng tinh khôi hiện đại, rõ nét',
     isLight: true,
@@ -101,8 +133,8 @@ const LIGHT_THEMES: ThemeOption[] = [
   {
     id: 'gray',
     name: 'Xám',
-    previewBg: 'bg-[#f1f5f9]',
-    previewAccent: 'bg-[#475569]',
+    bgColor: '#f1f5f9',
+    accentColor: '#475569',
     tag: 'Tinh tế',
     description: 'Xám khói thanh lịch dịu mắt cho ban ngày',
     isLight: true,
@@ -110,8 +142,8 @@ const LIGHT_THEMES: ThemeOption[] = [
   {
     id: 'light-blue',
     name: 'Xanh Nhạt',
-    previewBg: 'bg-[#e0f2fe]',
-    previewAccent: 'bg-[#0284c7]',
+    bgColor: '#e0f2fe',
+    accentColor: '#0284c7',
     tag: 'Bầu trời',
     description: 'Xanh mây trời pastel trong trẻo, êm dịu',
     isLight: true,
@@ -119,8 +151,8 @@ const LIGHT_THEMES: ThemeOption[] = [
   {
     id: 'lotus-pink',
     name: 'Hồng Cánh Sen',
-    previewBg: 'bg-[#fce7f3]',
-    previewAccent: 'bg-[#db2777]',
+    bgColor: '#fce7f3',
+    accentColor: '#db2777',
     tag: 'Dịu dàng',
     description: 'Sắc hồng cánh sen phấn ngọt ngào',
     isLight: true,
@@ -148,7 +180,7 @@ export const ThemeSelectorModal: React.FC = () => {
   return (
     <div
       onClick={handleClose}
-      className={`fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-md select-none duration-200 font-['Roboto_Condensed'] ${
+      className={`fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none duration-200 font-['Roboto_Condensed'] ${
         isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
       }`}
     >
@@ -236,9 +268,10 @@ export const ThemeSelectorModal: React.FC = () => {
                     : 'border-[var(--border-color)] hover:border-[var(--color-accent)] bg-[var(--bg-surface-hover)]/60 hover:bg-[var(--bg-surface-hover)]'
                 }`}
               >
-                {/* Theme Card Preview */}
+                {/* Theme Card Preview with explicit inline hex background */}
                 <div
-                  className={`w-full h-16 sm:h-20 rounded-xl ${item.previewBg} p-2.5 flex flex-col justify-between border border-black/10 relative overflow-hidden shadow-inner`}
+                  style={{ backgroundColor: item.bgColor }}
+                  className="w-full h-16 sm:h-20 rounded-xl p-2.5 flex flex-col justify-between border border-black/10 relative overflow-hidden shadow-inner"
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-red-500/80" />
@@ -246,16 +279,20 @@ export const ThemeSelectorModal: React.FC = () => {
                     <span className="w-2 h-2 rounded-full bg-green-500/80" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className={`w-8 sm:w-10 h-2.5 rounded-full ${item.previewAccent} shadow-sm`} />
+                    <span
+                      style={{ backgroundColor: item.accentColor }}
+                      className="w-8 sm:w-10 h-2.5 rounded-full shadow-sm"
+                    />
                     <span className={`w-10 h-1.5 rounded-full ${item.isLight ? 'bg-black/20' : 'bg-white/20'}`} />
                   </div>
+
                   {isSelected && (
                     <div
                       style={{ backgroundColor: 'rgba(0, 0, 0, 0.35)' }}
                       className="absolute inset-0 flex items-center justify-center backdrop-blur-[1px]"
                     >
                       <div
-                        style={{ backgroundColor: 'var(--color-accent)' }}
+                        style={{ backgroundColor: item.accentColor }}
                         className="w-7 h-7 rounded-full flex items-center justify-center text-white shadow-lg ring-2 ring-white"
                       >
                         <Check className="w-4 h-4 stroke-[3]" />

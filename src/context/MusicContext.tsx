@@ -1126,6 +1126,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       document.documentElement.setAttribute('data-theme', t);
       document.body.setAttribute('data-theme', t);
+      const rootEl = document.getElementById('root');
+      if (rootEl) rootEl.setAttribute('data-theme', t);
       localStorage.setItem('xuanken_theme', t);
     } catch (e) {}
     if (currentUser?.uid) {
@@ -1137,6 +1139,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       document.documentElement.setAttribute('data-theme', theme);
       document.body.setAttribute('data-theme', theme);
+      const rootEl = document.getElementById('root');
+      if (rootEl) rootEl.setAttribute('data-theme', theme);
       localStorage.setItem('xuanken_theme', theme);
     } catch (e) {}
   }, [theme]);
