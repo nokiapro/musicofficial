@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Waves, Smartphone, Check } from 'lucide-react';
+import { X, Waves, Smartphone } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 
 export const AudioSettingsModal: React.FC = () => {

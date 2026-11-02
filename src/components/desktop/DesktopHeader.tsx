@@ -8,9 +8,7 @@ import {
   Palette,
   Clock,
   Waves,
-  Check,
   BellOff,
-  Sparkles,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ThemeId } from '../../types/music';
@@ -23,7 +21,6 @@ export const DesktopHeader: React.FC = () => {
     theme,
     setTheme,
     setIsThemeModalOpen,
-    sleepTimerMinutes,
     sleepTimerRemainingSeconds,
     setSleepTimer,
     crossfadeDuration,
@@ -32,14 +29,12 @@ export const DesktopHeader: React.FC = () => {
     likedSongIds,
     toggleLike,
     currentUser,
-    logout,
     setIsLoginModalOpen,
     setIsProfileModalOpen,
   } = useMusic();
 
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [customTimerInput, setCustomTimerInput] = useState('20');
   const settingsRef = useRef<HTMLDivElement | null>(null);
 
   // Close settings dropdown when clicking outside

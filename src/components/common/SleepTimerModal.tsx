@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { X, Clock, Check, BellOff } from 'lucide-react';
+import { X, Clock, BellOff } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 
 export const SleepTimerModal: React.FC = () => {
   const {
     isSleepTimerModalOpen,
     setIsSleepTimerModalOpen,
-    sleepTimerMinutes,
     sleepTimerRemainingSeconds,
     setSleepTimer,
     setSleepTimerSeconds,

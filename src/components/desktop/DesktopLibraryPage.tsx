@@ -2,8 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Play,
   Heart,
-  Music,
-  Plus,
   FolderPlus,
   Trash2,
   Download,
@@ -16,7 +14,6 @@ import {
   Shuffle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { Playlist, Song } from '../../types/music';
 
 export const DesktopLibraryPage: React.FC = () => {
   const {
@@ -108,12 +105,7 @@ export const DesktopLibraryPage: React.FC = () => {
   const totalPurchasedPages = Math.max(1, Math.ceil(purchasedSongs.length / PAGE_SIZE));
   const paginatedPurchasedSongs = purchasedSongs.slice((purchasedPage - 1) * PAGE_SIZE, purchasedPage * PAGE_SIZE);
 
-  const formatDuration = (seconds: number) => {
-    const total = Math.max(0, Math.floor(seconds || 0));
-    const mins = Math.floor(total / 60);
-    const secs = total % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
+
 
   const librarySongs = likedSongs.length > 0 ? likedSongs : purchasedSongs.length > 0 ? purchasedSongs : songs;
 

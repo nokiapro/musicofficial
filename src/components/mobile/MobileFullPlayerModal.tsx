@@ -446,20 +446,8 @@ export const MobileFullPlayerModal: React.FC = () => {
               </div>
             </div>
 
-            {/* SLIDE 3 (RIGHT): LỜI BÀI HÁT (Requirement 4 & 5: bên phải là lyric, phóng to hơn, nếu lời dài sẽ co chữ lại) */}
-            <div className="w-1/3 h-full flex flex-col px-6 py-2 overflow-hidden justify-between">
-              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)] shrink-0">
-                <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                  Lời bài hát
-                </span>
-                <button
-                  onClick={() => setActiveTab('disc')}
-                  style={{ color: 'var(--color-accent)' }}
-                  className="text-xs hover:opacity-80 font-semibold cursor-pointer"
-                >
-                  Quay lại đĩa nhạc
-                </button>
-              </div>
+            {/* SLIDE 3 (RIGHT): LỜI BÀI HÁT */}
+            <div className="w-1/3 h-full flex flex-col px-6 py-2 overflow-hidden justify-center">
 
               {/* Exactly 5 lines with Kinetic Scrolling Animation (2 above, 1 middle active, 2 below) */}
               <div className="flex-1 flex items-center justify-center my-auto w-full min-h-0 overflow-hidden">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lock, ShoppingCart, Tag, Check, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Lock, ShoppingCart, Tag } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Voucher } from '../../types/music';
 

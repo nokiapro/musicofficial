@@ -1,9 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React from 'react';
 import { MusicProvider, useMusic } from './context/MusicContext';
 import { DesktopAppLayout } from './components/desktop/DesktopAppLayout';
 import { MobileAppLayout } from './components/mobile/MobileAppLayout';
@@ -23,20 +17,14 @@ import { DemoLimitModal } from './components/store/DemoLimitModal';
 
 function MainMusicApp() {
   const { effectiveIsMobile, theme } = useMusic();
-
   return (
     <div
       data-theme={theme}
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       className="min-h-screen select-none transition-colors duration-200 font-['Roboto_Condensed']"
     >
-      {/* Interaction Splash Entry */}
       <InteractionSplash />
-
-      {/* Responsive View: Desktop vs Mobile App Layout */}
       {effectiveIsMobile ? <MobileAppLayout /> : <DesktopAppLayout />}
-
-      {/* Global Application Modals */}
       <LoginModal />
       <ThemeSelectorModal />
       <SleepTimerModal />

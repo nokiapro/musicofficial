@@ -81,6 +81,8 @@ interface MusicContextType {
   setSelectedLrcSong: (s: Song | null) => void;
   setActiveDesktopTab: (tab: ActiveDesktopTab) => void;
   setActiveMobileTab: (tab: ActiveMobileTab) => void;
+  playbackRate: number;
+  setPlaybackRate: (rate: number) => void;
 
   // Auth methods
   loginWithEmail: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
@@ -194,6 +196,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [history, setHistory] = useState<Song[]>([]);
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
   const [purchasedSongIds, setPurchasedSongIds] = useState<string[]>([]);
+  const [blockedSongIds, setBlockedSongIds] = useState<string[]>(() => {
+    try {
+      const local = localStorage.getItem('xuanken_blocked_songs');
+      return local ? JSON.parse(local) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [userBalance, setUserBalance] = useState<number>(0);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
     try {
@@ -298,12 +308,32 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [members, setMembers] = useState<AppUser[]>([]);
 
+  const [activePlaylistSongs, setActivePlaylistSongs] = useState<Song[]>([]);
+
   const timerRef = useRef<number | null>(null);
-  const sleepTimerIntervalRef = useRef<number | null>(null);
-  const hasRandomAutoplayTriggered = useRef<boolean>(false);
   // Requirement 8: Nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
   const hasCountedPlayRef = useRef<boolean>(false);
   const lastRewindSyncRef = useRef<number>(Date.now());
+  const lastEndedTimestampRef = useRef<number>(0);
+
+  // Synchronized refs to eliminate stale closure bugs during continuous audio playback
+  const repeatModeRef = useRef<RepeatMode>(repeatMode);
+  const isShuffleRef = useRef<boolean>(isShuffle);
+  const currentSongRef = useRef<Song | null>(currentSong);
+  const songsRef = useRef<Song[]>(songs);
+  const queueRef = useRef<Song[]>(queue);
+  const historyRef = useRef<Song[]>(history);
+  const blockedSongIdsRef = useRef<string[]>(blockedSongIds);
+  const activePlaylistSongsRef = useRef<Song[]>(activePlaylistSongs);
+
+  useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
+  useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
+  useEffect(() => { currentSongRef.current = currentSong; }, [currentSong]);
+  useEffect(() => { songsRef.current = songs; }, [songs]);
+  useEffect(() => { queueRef.current = queue; }, [queue]);
+  useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { blockedSongIdsRef.current = blockedSongIds; }, [blockedSongIds]);
+  useEffect(() => { activePlaylistSongsRef.current = activePlaylistSongs; }, [activePlaylistSongs]);
 
   const updateSiteSettings = async (partial: Partial<SiteSettings>) => {
     const updated: SiteSettings = { ...siteSettings, ...partial };
@@ -361,15 +391,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return {};
   });
 
-  // Blocked songs list (Requirement 20)
-  const [blockedSongIds, setBlockedSongIds] = useState<string[]>(() => {
-    try {
-      const local = localStorage.getItem('xuanken_blocked_songs');
-      return local ? JSON.parse(local) : [];
-    } catch (e) {
-      return [];
-    }
-  });
 
   // Fetch weekly plays from Firebase
   useEffect(() => {
@@ -512,9 +533,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
     });
 
-    MusicService.fetchMembers().then((loadedMembers) => {
-      setMembers(loadedMembers || []);
-    });
+    if (currentUser?.role === 'admin') {
+      MusicService.fetchMembers().then((loadedMembers) => {
+        setMembers(loadedMembers || []);
+      });
+    }
 
     MusicService.fetchPlaylists().then((loadedPlaylists) => {
       if (currentUser?.uid) {
@@ -527,30 +550,31 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setVouchers(loadedVouchers || []);
     });
 
-    // Requirement 2: Fetch and live-sync XuanKen Rewind stats from Firebase across all devices
-    MusicService.fetchRewindStats(currentUser?.uid).then((stats) => {
-      if (stats && stats.totalSeconds !== undefined) {
-        setRewindStats(stats);
-      }
-    });
-
-    const unsubscribeRewind = MusicService.subscribeToRewindStats((stats) => {
-      if (stats && stats.totalSeconds !== undefined) {
-        setRewindStats(stats);
-      }
-    }, currentUser?.uid);
-
-    // Requirement 5: Fetch persistent MP3/WAV format settings from Firebase
-    MusicService.fetchAudioSettings(currentUser?.uid).then((settings) => {
-      if (settings) {
-        if (settings.preferredFormat) {
-          setPreferredAudioFormatState(settings.preferredFormat);
+    let unsubscribeRewind = () => {};
+    if (currentUser?.uid) {
+      MusicService.fetchRewindStats(currentUser.uid).then((stats) => {
+        if (stats && stats.totalSeconds !== undefined) {
+          setRewindStats(stats);
         }
-        if (settings.formatMap && Object.keys(settings.formatMap).length > 0) {
-          setSongFormatMap(settings.formatMap);
+      });
+
+      unsubscribeRewind = MusicService.subscribeToRewindStats((stats) => {
+        if (stats && stats.totalSeconds !== undefined) {
+          setRewindStats(stats);
         }
-      }
-    });
+      }, currentUser.uid);
+
+      MusicService.fetchAudioSettings(currentUser.uid).then((settings) => {
+        if (settings) {
+          if (settings.preferredFormat) {
+            setPreferredAudioFormatState(settings.preferredFormat);
+          }
+          if (settings.formatMap && Object.keys(settings.formatMap).length > 0) {
+            setSongFormatMap(settings.formatMap);
+          }
+        }
+      });
+    }
 
     MusicService.fetchSiteSettings().then((loaded) => {
       if (loaded) {
@@ -805,81 +829,120 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat, songFormatMap, siteSettings, currentWeekKey]);
 
-  // Helper to pick random song from all songs (Requirement 6 & 7)
+  // Register AudioEngine ended listener to seamlessly play next/repeat track
+  useEffect(() => {
+    audioEngine.setOnEnded(() => {
+      handleSongEnd();
+    });
+    return () => {
+      audioEngine.setOnEnded(null);
+    };
+  }, []);
+
+  // Helper to pick random song from active pool (supports playlist and main library)
   const getRandomSong = (excludeCurrent: boolean = true): Song | null => {
-    const unblockedSongs = songs.filter((s) => !blockedSongIds.includes(s.id));
-    if (unblockedSongs.length === 0) return null;
-    const pool = excludeCurrent && currentSong && unblockedSongs.length > 1
-      ? unblockedSongs.filter((s) => s.id !== currentSong.id)
-      : unblockedSongs;
+    const blocked = blockedSongIdsRef.current;
+    const poolSource = activePlaylistSongsRef.current.length > 0 ? activePlaylistSongsRef.current : songsRef.current;
+    const activePool = poolSource.filter((s) => !blocked.includes(s.id));
+    if (activePool.length === 0) return null;
+
+    const current = currentSongRef.current;
+    const pool = excludeCurrent && current && activePool.length > 1
+      ? activePool.filter((s) => s.id !== current.id)
+      : activePool;
     const randomIndex = Math.floor(Math.random() * pool.length);
     return pool[randomIndex];
   };
 
   const handleSongEnd = () => {
-    // 1: Lặp lại 1 bài (Repeat 1) -> Tự động phát lại bài hiện tại
-    if (repeatMode === 'one') {
+    const now = Date.now();
+    // Guard against duplicate triggers within 600ms
+    if (now - lastEndedTimestampRef.current < 600) return;
+    lastEndedTimestampRef.current = now;
+
+    const currentRepMode = repeatModeRef.current;
+    const currentSongItem = currentSongRef.current;
+    const isShuffleActive = isShuffleRef.current;
+    const blocked = blockedSongIdsRef.current;
+
+    // 1: Lặp lại 1 bài (Repeat 1) -> Tự động phát lại chính bài này từ đầu (0:00)
+    // Sửa lỗi: không bao giờ chạy bài khác và không bao giờ đứng yên
+    if (currentRepMode === 'one' && currentSongItem) {
+      setCurrentTime(0);
       seekTo(0);
-      if (currentSong) {
-        playSong(currentSong);
-      }
+      playSong(currentSongItem, undefined, true);
       return;
     }
-    // 2: Phát ngẫu nhiên (Shuffle)
-    if (isShuffle) {
+
+    const poolSource = activePlaylistSongsRef.current.length > 0 ? activePlaylistSongsRef.current : songsRef.current;
+    const activePool = poolSource.filter((s) => !blocked.includes(s.id));
+
+    if (activePool.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
+
+    // 2: Phát ngẫu nhiên (Shuffle) -> Chọn ngẫu nhiên bài tiếp theo trong pool hiện tại (không dừng sau 1 bài)
+    if (isShuffleActive) {
       const nextRandom = getRandomSong(true);
       if (nextRandom) {
         playSong(nextRandom);
         return;
       }
     }
-    // 3: Phát từ hàng đợi (Queue)
-    const unblockedQueue = queue.filter((s) => !blockedSongIds.includes(s.id));
+
+    // 3: Phát từ hàng đợi (Queue) nếu có
+    const unblockedQueue = queueRef.current.filter((s) => !blocked.includes(s.id));
     if (unblockedQueue.length > 0) {
       const next = unblockedQueue[0];
       setQueue((q) => q.filter((s) => s.id !== next.id));
       playSong(next);
       return;
     }
-    // 4: Phát tiếp tục bài kế tiếp trong danh sách bài hát
-    const curIdx = currentSong ? songs.findIndex((s) => s.id === currentSong.id) : -1;
-    if (curIdx !== -1 && curIdx + 1 < songs.length) {
-      const remainingSongs = songs.slice(curIdx + 1).filter((s) => !blockedSongIds.includes(s.id));
-      if (remainingSongs.length > 0) {
-        playSong(remainingSongs[0]);
-        return;
-      }
+
+    // 4: Phát tiếp tục bài kế tiếp trong active pool
+    const curIdx = currentSongItem ? activePool.findIndex((s) => s.id === currentSongItem.id) : -1;
+    if (curIdx !== -1 && curIdx + 1 < activePool.length) {
+      playSong(activePool[curIdx + 1]);
+      return;
     }
-    // 5: Hết bài trong playlist -> Nếu bật Lặp lại playlist ('all') thì quay lại bài đầu tiên
-    if (repeatMode === 'all') {
-      const firstAvailable = songs.find((s) => !blockedSongIds.includes(s.id));
-      if (firstAvailable) {
-        playSong(firstAvailable);
-        return;
-      }
+
+    // 5: Hết bài trong playlist/danh sách -> Nếu bật Lặp lại tất cả ('all') thì quay lại đầu
+    if (currentRepMode === 'all') {
+      playSong(activePool[0]);
+      return;
     }
+
     // 6: Tắt lặp lại ('off') và đã hết bài -> Dừng phát
     setIsPlaying(false);
     seekTo(0);
   };
 
-  const playSong = (song: Song, formatOverride?: 'MP3' | 'WAV') => {
+  const playSong = (song: Song, formatOverride?: 'MP3' | 'WAV', forceRestart: boolean = false) => {
     if (formatOverride) {
       setSongFormatMap((prev) => ({ ...prev, [song.id]: formatOverride }));
+    }
+
+    // If song is not in currently active playlist, reset active playlist to allow free library playback
+    if (activePlaylistSongsRef.current.length > 0 && !activePlaylistSongsRef.current.some((s) => s.id === song.id)) {
+      setActivePlaylistSongs([]);
+      activePlaylistSongsRef.current = [];
     }
 
     // Reset 5s playback counter for this play session
     hasCountedPlayRef.current = false;
 
-    if (currentSong?.id !== song.id) {
-      if (currentSong) {
+    if (currentSong?.id !== song.id || forceRestart) {
+      if (currentSong && currentSong.id !== song.id) {
         setHistory((prev) => [currentSong, ...prev.filter((s) => s.id !== currentSong.id)]);
       }
       setCurrentSong(song);
+      currentSongRef.current = song;
       setCurrentTime(0);
       setDuration(song.duration && song.duration > 0 ? song.duration : 210);
     } else {
       setCurrentSong(song);
+      currentSongRef.current = song;
     }
     setIsPlaying(true);
 
@@ -887,11 +950,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const chosenFormat = formatOverride || songFormatMap[song.id] || preferredAudioFormat;
     const activeUrl = resolveAudioUrl(song, chosenFormat, activePurchased);
 
-    audioEngine.playUrl(activeUrl, (dur) => {
-      if ((!song.duration || song.duration <= 0) && dur > 60) {
-        setDuration(dur);
-      }
-    });
+    audioEngine.playUrl(
+      activeUrl,
+      (dur) => {
+        if ((!song.duration || song.duration <= 0) && dur > 60) {
+          setDuration(dur);
+        }
+      },
+      forceRestart
+    );
   };
 
   const togglePlay = () => {
@@ -925,8 +992,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const nextSong = () => {
-    // 1: Bật ngẫu nhiên -> Random bài tiếp theo
-    if (isShuffle) {
+    const isShuffleActive = isShuffleRef.current;
+    const blocked = blockedSongIdsRef.current;
+    const currentSongItem = currentSongRef.current;
+    const poolSource = activePlaylistSongsRef.current.length > 0 ? activePlaylistSongsRef.current : songsRef.current;
+    const activePool = poolSource.filter((s) => !blocked.includes(s.id));
+
+    if (activePool.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
+
+    // 1: Bật ngẫu nhiên -> Random bài tiếp theo trong active pool
+    if (isShuffleActive) {
       const nextRandom = getRandomSong(true);
       if (nextRandom) {
         playSong(nextRandom);
@@ -935,7 +1013,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     // 2: Có bài trong hàng đợi
-    const unblockedQueue = queue.filter((s) => !blockedSongIds.includes(s.id));
+    const unblockedQueue = queueRef.current.filter((s) => !blocked.includes(s.id));
     if (unblockedQueue.length > 0) {
       const next = unblockedQueue[0];
       setQueue((q) => q.filter((s) => s.id !== next.id));
@@ -943,39 +1021,37 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    // 3: Tiếp tục bài kế tiếp trong danh sách bài hát
-    const curIdx = currentSong ? songs.findIndex((s) => s.id === currentSong.id) : -1;
-    if (curIdx !== -1 && curIdx + 1 < songs.length) {
-      const remainingSongs = songs.slice(curIdx + 1).filter((s) => !blockedSongIds.includes(s.id));
-      if (remainingSongs.length > 0) {
-        playSong(remainingSongs[0]);
-        return;
-      }
-    }
-
-    // 4: Đã ở cuối danh sách: nếu lặp lại playlist ('all') hoặc bấm thủ công -> Quay lại bài đầu tiên
-    const firstSong = songs.find((s) => !blockedSongIds.includes(s.id));
-    if (firstSong) {
-      if (repeatMode === 'all' || repeatMode === 'one') {
-        playSong(firstSong);
-      } else {
-        // Cuối danh sách không lặp lại: dừng hoặc quay lại đầu
-        playSong(firstSong);
-      }
-    } else {
-      setIsPlaying(false);
-    }
-  };
-
-  const prevSong = () => {
-    // 1: Nếu bài hát đã chạy > 3 giây, nút lùi sẽ tua về đầu bài hát hiện tại (chuẩn audio player)
-    if (currentTime > 3) {
-      seekTo(0);
+    // 3: Tiếp tục bài kế tiếp trong active pool
+    const curIdx = currentSongItem ? activePool.findIndex((s) => s.id === currentSongItem.id) : -1;
+    if (curIdx !== -1 && curIdx + 1 < activePool.length) {
+      playSong(activePool[curIdx + 1]);
       return;
     }
 
-    // 2: Nếu bật Random -> Lùi bài ngẫu nhiên
-    if (isShuffle) {
+    // 4: Đã ở cuối danh sách -> Quay lại bài đầu tiên
+    playSong(activePool[0]);
+  };
+
+  const prevSong = () => {
+    // Sửa lại cho logic lùi bài bình thường và lùi bài khi bật ngẫu nhiên (KHÔNG tua về đầu bài hiện tại)
+    const isShuffleActive = isShuffleRef.current;
+    const blocked = blockedSongIdsRef.current;
+    const currentSongItem = currentSongRef.current;
+    const poolSource = activePlaylistSongsRef.current.length > 0 ? activePlaylistSongsRef.current : songsRef.current;
+    const activePool = poolSource.filter((s) => !blocked.includes(s.id));
+
+    if (activePool.length === 0) return;
+
+    // 1: Khi bật Random -> Lùi về bài vừa nghe gần nhất trong lịch sử, nếu lịch sử trống thì random bài khác
+    if (isShuffleActive) {
+      const unblockedHistory = historyRef.current.filter((s) => !blocked.includes(s.id));
+      if (unblockedHistory.length > 0) {
+        const prev = unblockedHistory[0];
+        setHistory((h) => h.filter((s) => s.id !== prev.id));
+        if (currentSongItem) setQueue((q) => [currentSongItem, ...q.filter((s) => s.id !== currentSongItem.id)]);
+        playSong(prev);
+        return;
+      }
       const prevRandom = getRandomSong(true);
       if (prevRandom) {
         playSong(prevRandom);
@@ -983,30 +1059,25 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    // 3: Nếu có lịch sử nghe gần đây -> Phát lại bài vừa nghe
-    const unblockedHistory = history.filter((s) => !blockedSongIds.includes(s.id));
+    // 2: Lùi bình thường: Nếu có bài vừa nghe trong lịch sử
+    const unblockedHistory = historyRef.current.filter((s) => !blocked.includes(s.id));
     if (unblockedHistory.length > 0) {
       const prev = unblockedHistory[0];
       setHistory((h) => h.filter((s) => s.id !== prev.id));
-      if (currentSong) setQueue((q) => [currentSong, ...q]);
+      if (currentSongItem) setQueue((q) => [currentSongItem, ...q.filter((s) => s.id !== currentSongItem.id)]);
       playSong(prev);
       return;
     }
 
-    // 4: Nếu không có lịch sử -> Lùi về bài trước đó trong danh sách
-    const curIdx = currentSong ? songs.findIndex((s) => s.id === currentSong.id) : -1;
+    // 3: Lùi bài trong danh sách hiện tại (danh sách bài hát hoặc playlist cá nhân)
+    const curIdx = currentSongItem ? activePool.findIndex((s) => s.id === currentSongItem.id) : -1;
     if (curIdx > 0) {
-      const prevList = songs.slice(0, curIdx).filter((s) => !blockedSongIds.includes(s.id));
-      if (prevList.length > 0) {
-        playSong(prevList[prevList.length - 1]);
-        return;
-      }
-    } else if (curIdx === 0 && repeatMode === 'all') {
-      const lastSong = [...songs].reverse().find((s) => !blockedSongIds.includes(s.id));
-      if (lastSong) {
-        playSong(lastSong);
-        return;
-      }
+      playSong(activePool[curIdx - 1]);
+      return;
+    } else if (curIdx <= 0) {
+      // Đang ở bài đầu tiên: lùi sẽ quay về bài cuối cùng của danh sách
+      playSong(activePool[activePool.length - 1]);
+      return;
     }
 
     seekTo(0);
@@ -1544,17 +1615,29 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.upsertPlaylist(updated);
   };
 
+  const handleSetPlaybackSource = (source: string) => {
+    setPlaybackSource(source);
+    if (!playlists.some((p) => p.name === source)) {
+      setActivePlaylistSongs([]);
+      activePlaylistSongsRef.current = [];
+    }
+  };
+
   const playPlaylist = (playlist: Playlist, mode: 'order' | 'shuffle' = 'order') => {
     const pSongs = songs.filter((s) => playlist.songIds.includes(s.id) && !blockedSongIds.includes(s.id));
     if (pSongs.length > 0) {
       setPlaybackSource(playlist.name);
+      setActivePlaylistSongs(pSongs);
+      activePlaylistSongsRef.current = pSongs;
       if (mode === 'shuffle') {
         setIsShuffle(true);
+        isShuffleRef.current = true;
         const shuffled = [...pSongs].sort(() => Math.random() - 0.5);
         setQueue(shuffled.slice(1));
         playSong(shuffled[0]);
       } else {
         setIsShuffle(false);
+        isShuffleRef.current = false;
         setQueue(pSongs.slice(1));
         playSong(pSongs[0]);
       }
@@ -1720,6 +1803,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setPreferredAudioFormat,
         crossfadeDuration,
         setCrossfadeDuration,
+        playbackRate,
+        setPlaybackRate,
         isAudioSettingsModalOpen,
         setIsAudioSettingsModalOpen,
         playlists,
@@ -1760,7 +1845,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         siteSettings,
         updateSiteSettings,
         playbackSource,
-        setPlaybackSource,
+        setPlaybackSource: handleSetPlaybackSource,
       }}
     >
       {children}

@@ -6,34 +6,39 @@
     <script>
       (function () {
         try {
-          var _origFetch = window.fetch ? window.fetch.bind(window) : null;
-          var _activeFetch = _origFetch;
-          Object.defineProperty(window, 'fetch', {
-            configurable: true,
-            enumerable: true,
-            get: function () {
-              return _activeFetch;
-            },
-            set: function (fn) {
-              _activeFetch = fn;
-            },
-          });
-        } catch (e) {
+          var _rawFetch = window.fetch;
+          var _activeFetch = _rawFetch ? function () {
+            return _rawFetch.apply(window, arguments);
+          } : null;
+
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            try {
+              Object.defineProperty(Window.prototype, 'fetch', {
+                configurable: true,
+                enumerable: true,
+                get: function () {
+                  return _activeFetch;
+                },
+                set: function (fn) {
+                  _activeFetch = fn;
+                },
+              });
+            } catch (e) {}
+          }
+
           try {
-            var proto = Window.prototype;
-            var _protoFetch = proto.fetch;
-            Object.defineProperty(proto, 'fetch', {
+            Object.defineProperty(window, 'fetch', {
               configurable: true,
               enumerable: true,
               get: function () {
-                return _protoFetch;
+                return _activeFetch;
               },
               set: function (fn) {
-                _protoFetch = fn;
+                _activeFetch = fn;
               },
             });
-          } catch (err) {}
-        }
+          } catch (e) {}
+        } catch (err) {}
       })();
     </script>
     <title>XuanKen Music - Nghe & Mua Nhạc Bản Quyền Trực Tuyến</title>

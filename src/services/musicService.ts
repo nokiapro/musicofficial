@@ -291,8 +291,12 @@ export const MusicService = {
         localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(membersArray));
         return membersArray;
       }
-    } catch (err) {
-      console.warn('Firebase members fetch notice:', err);
+    } catch (err: any) {
+      // Permission denied is expected for non-admin/unauthenticated guests; fallback gracefully
+      const isPermDenied = err?.message?.toLowerCase().includes('permission_denied') || err?.message?.toLowerCase().includes('permission denied');
+      if (!isPermDenied) {
+        console.warn('Firebase members fetch notice:', err);
+      }
     }
 
     const localCached = localStorage.getItem(STORAGE_KEY_MEMBERS);
@@ -824,7 +828,14 @@ export const MusicService = {
   // XuanKen Rewind Sync across Android, iOS & PC (Requirement 2)
   // -------------------------------------------------------------
   async fetchRewindStats(uid?: string): Promise<RewindStats | null> {
-    const key = uid ? `users/${uid}/rewind` : 'rewind_stats/shared';
+    if (!uid) {
+      try {
+        const saved = localStorage.getItem('xuanken_music_rewind_v1');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return null;
+    }
+    const key = `users/${uid}/rewind`;
     try {
       const snapshot = await get(ref(rtdb, key));
       if (snapshot.exists()) {
@@ -834,8 +845,11 @@ export const MusicService = {
           return val;
         }
       }
-    } catch (e) {
-      console.warn('Rewind stats fetch notice:', e);
+    } catch (e: any) {
+      const isPermDenied = e?.message?.toLowerCase().includes('permission_denied') || e?.message?.toLowerCase().includes('permission denied');
+      if (!isPermDenied) {
+        console.warn('Rewind stats fetch notice:', e);
+      }
     }
     try {
       const saved = localStorage.getItem('xuanken_music_rewind_v1');
@@ -849,20 +863,19 @@ export const MusicService = {
     try {
       localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(clean));
     } catch (e) {}
+    if (!uid) return;
     try {
-      const key = uid ? `users/${uid}/rewind` : 'rewind_stats/shared';
+      const key = `users/${uid}/rewind`;
       await set(ref(rtdb, key), clean);
-      if (uid) {
-        // Also save to members profile
-        await update(ref(rtdb, `members/${uid}`), { rewindStats: clean });
-      }
+      await update(ref(rtdb, `members/${uid}`), { rewindStats: clean });
     } catch (e) {
       console.warn('Rewind stats save notice:', e);
     }
   },
 
   subscribeToRewindStats(onUpdate: (stats: RewindStats) => void, uid?: string): () => void {
-    const key = uid ? `users/${uid}/rewind` : 'rewind_stats/shared';
+    if (!uid) return () => {};
+    const key = `users/${uid}/rewind`;
     try {
       const rtdbRef = ref(rtdb, key);
       return onValue(
@@ -876,7 +889,12 @@ export const MusicService = {
             }
           }
         },
-        (err: any) => console.warn('Rewind RTDB listener notice:', err)
+        (err: any) => {
+          const isPermDenied = err?.message?.toLowerCase().includes('permission_denied') || err?.message?.toLowerCase().includes('permission denied');
+          if (!isPermDenied) {
+            console.warn('Rewind RTDB listener notice:', err);
+          }
+        }
       );
     } catch (e) {
       return () => {};
@@ -887,7 +905,19 @@ export const MusicService = {
   // Audio Format Settings (MP3 / WAV) Sync (Requirement 5)
   // -------------------------------------------------------------
   async fetchAudioSettings(uid?: string): Promise<{ preferredFormat: 'MP3' | 'WAV'; formatMap: Record<string, 'MP3' | 'WAV'> } | null> {
-    const key = uid ? `users/${uid}/audio_settings` : 'audio_settings/shared';
+    if (!uid) {
+      try {
+        const localPref = localStorage.getItem('xuanken_preferred_audio_format') as 'MP3' | 'WAV';
+        const localMap = localStorage.getItem('xuanken_song_format_map');
+        return {
+          preferredFormat: localPref === 'WAV' ? 'WAV' : 'MP3',
+          formatMap: localMap ? JSON.parse(localMap) : {},
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+    const key = `users/${uid}/audio_settings`;
     try {
       const snapshot = await get(ref(rtdb, key));
       if (snapshot.exists()) {
@@ -905,8 +935,11 @@ export const MusicService = {
           };
         }
       }
-    } catch (e) {
-      console.warn('Audio settings fetch notice:', e);
+    } catch (e: any) {
+      const isPermDenied = e?.message?.toLowerCase().includes('permission_denied') || e?.message?.toLowerCase().includes('permission denied');
+      if (!isPermDenied) {
+        console.warn('Audio settings fetch notice:', e);
+      }
     }
     try {
       const localPref = localStorage.getItem('xuanken_preferred_audio_format') as 'MP3' | 'WAV';

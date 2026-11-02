@@ -9,13 +9,11 @@ import {
   CheckCircle,
   FileText,
   Download,
-  Headphones,
   RotateCcw,
   Shuffle,
   ListPlus,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { Song } from '../../types/music';
 
 export const DesktopWeeklyTopPage: React.FC = () => {
   const {

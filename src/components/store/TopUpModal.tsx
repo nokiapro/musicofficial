@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Wallet, QrCode, ShieldAlert, Copy, Check, Mail, PhoneCall } from 'lucide-react';
+import { X, Wallet, QrCode, ShieldAlert, Copy, Check, Mail } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 
 export const TopUpModal: React.FC = () => {

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useMusic } from '../../context/MusicContext';
 import { Play, Heart, Disc } from 'lucide-react';
 
 export const InteractionSplash: React.FC = () => {
-  const { songs, playSong } = useMusic();
   const [isVisible, setIsVisible] = useState(() => {
     try {
       return sessionStorage.getItem('xuanken_splash_dismissed') !== 'true';

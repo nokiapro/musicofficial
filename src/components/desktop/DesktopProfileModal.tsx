@@ -8,7 +8,6 @@ import {
   Wallet,
   LogIn,
   LogOut,
-  Sparkles,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 

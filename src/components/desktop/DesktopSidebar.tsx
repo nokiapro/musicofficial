@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ListMusic,
   ShoppingBag,
@@ -19,7 +19,6 @@ export const DesktopSidebar: React.FC = () => {
     setActiveDesktopTab,
     currentUser,
     isAdmin,
-    isProfileModalOpen,
     setIsProfileModalOpen,
   } = useMusic();
 

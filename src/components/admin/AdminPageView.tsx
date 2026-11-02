@@ -6,14 +6,12 @@ import {
   Edit3,
   Users,
   Music2,
-  DollarSign,
   X,
   Save,
   CheckCircle,
   AlertCircle,
   LogIn,
   LogOut,
-  Wallet,
   Link,
   FileText,
   Clock,
@@ -31,7 +29,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { Song, AppUser, AudioFormat, Voucher, SiteSettings } from '../../types/music';
+import { Song, AppUser, AudioFormat } from '../../types/music';
 import { audioEngine } from '../../services/audioEngine';
 import { testFirebaseConnection } from '../../services/firebase';
 
@@ -46,7 +44,6 @@ export const AdminPageView: React.FC = () => {
     loginWithEmail,
     logout,
     members,
-    updateMemberBalance,
     updateMember,
     removeMember,
     toggleMemberRole,
@@ -551,25 +548,25 @@ export const AdminPageView: React.FC = () => {
   return (
     <div className="space-y-6 pb-20 select-none font-['Roboto_Condensed']">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-600/30 text-[#c273ed] flex items-center justify-center">
-            <ShieldCheck className="w-6 h-6" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-600/30 text-[#c273ed] flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase">
-              Quản Trị Hệ Thống XuanKen Music
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg sm:text-2xl font-extrabold text-white tracking-tight uppercase truncate">
+              Quản Trị XuanKen Music
             </h1>
-            <p className="text-xs text-white/60">
-              Đăng nhập bởi: <strong className="text-white">{currentUser.email}</strong> • Quản lý bài hát & thành viên
+            <p className="text-[11px] sm:text-xs text-white/60 truncate">
+              Admin: <strong className="text-white">{currentUser.email}</strong>
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             onClick={logout}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-red-500/20 text-white hover:text-red-300 text-xs font-bold transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-red-500/20 text-white hover:text-red-300 text-xs font-bold transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Đăng Xuất</span>
@@ -577,68 +574,67 @@ export const AdminPageView: React.FC = () => {
         </div>
       </div>
 
-      {/* Admin Tabs: Quản Lý Bài Hát vs Quản Lý Thành Viên vs Quy Tắc Firebase vs Mã Giảm Giá */}
-      <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 w-fit flex-wrap gap-1">
+      {/* Admin Tabs - Mobile-friendly horizontal scrollable pills */}
+      <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 w-full overflow-x-auto no-scrollbar gap-1 text-xs">
         <button
           onClick={() => setActiveAdminTab('songs')}
           style={activeAdminTab === 'songs' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
             activeAdminTab === 'songs'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Music2 className="w-4 h-4" />
-          <span>Quản Lý Bài Hát ({songs.length})</span>
+          <Music2 className="w-3.5 h-3.5" />
+          <span>Bài Hát ({songs.length})</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('members')}
           style={activeAdminTab === 'members' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
             activeAdminTab === 'members'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Users className="w-4 h-4" />
-          <span>Quản Lý Thành Viên ({members.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveAdminTab('rules')}
-          style={activeAdminTab === 'rules' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeAdminTab === 'rules'
-              ? 'text-white shadow'
-              : 'text-white/60 hover:text-white'
-          }`}
-        >
-          <Code className="w-4 h-4" />
-          <span>Quy Tắc Firebase (Rules)</span>
+          <Users className="w-3.5 h-3.5" />
+          <span>Thành Viên ({members.length})</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('vouchers')}
           style={activeAdminTab === 'vouchers' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
             activeAdminTab === 'vouchers'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Tag className="w-4 h-4" />
-          <span>Mã Giảm Giá ({vouchers.length})</span>
+          <Tag className="w-3.5 h-3.5" />
+          <span>Voucher ({vouchers.length})</span>
         </button>
-        {/* Item 11: Tab Cài Đặt Website */}
         <button
           onClick={() => setActiveAdminTab('settings')}
           style={activeAdminTab === 'settings' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
             activeAdminTab === 'settings'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Settings className="w-4 h-4" />
-          <span>Cài Đặt Website</span>
+          <Settings className="w-3.5 h-3.5" />
+          <span>Cài Đặt Web</span>
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('rules')}
+          style={activeAdminTab === 'rules' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+            activeAdminTab === 'rules'
+              ? 'text-white shadow'
+              : 'text-white/60 hover:text-white'
+          }`}
+        >
+          <Code className="w-3.5 h-3.5" />
+          <span>Rules Firebase</span>
         </button>
       </div>
 
@@ -747,126 +743,219 @@ export const AdminPageView: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center whitespace-nowrap">STT</th>
-                      <th className="py-3 px-4 min-w-[200px] whitespace-nowrap">TÊN BÀI HÁT</th>
-                      <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">CA SỸ</th>
-                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">ĐỊNH DẠNG</th>
-                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">GIÁ BÁN</th>
-                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[100px]">THỜI LƯỢNG</th>
-                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[130px]">3 LINK NHẠC</th>
-                      <th className="py-3 px-4 text-right whitespace-nowrap min-w-[100px]">THAO TÁC</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {[...songs]
-                      .sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
-                      .map((song, i) => (
-                      <tr key={song.id} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3 px-4 text-center font-mono text-white/40 font-bold">
+            <>
+              {/* Mobile View for Songs (sm:hidden) */}
+              <div className="sm:hidden space-y-2.5">
+                {[...songs]
+                  .sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+                  .map((song, i) => (
+                    <div
+                      key={song.id}
+                      className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 shadow-md"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-5 text-center font-mono text-[11px] text-white/40 font-bold">
                           {song.stt || i + 1}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 relative">
-                              {song.coverImage ? (
-                                <img
-                                  src={song.coverImage}
-                                  alt={song.title}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                />
-                              ) : null}
-                              <div className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}>
-                                <Music2 className="w-4 h-4 text-white/60" />
+                        </span>
+                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-zinc-900 relative">
+                          {song.coverImage ? (
+                            <img
+                              src={song.coverImage}
+                              alt={song.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : null}
+                          <div className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}>
+                            <Music2 className="w-5 h-5 text-white/60" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="font-bold text-white text-xs truncate">{song.title}</p>
+                            <span
+                              className={`px-1.5 py-0.5 rounded font-black text-[9px] shrink-0 ${
+                                song.audioFormat === 'WAV'
+                                  ? 'bg-amber-500/20 text-amber-300'
+                                  : 'bg-blue-500/20 text-blue-300'
+                              }`}
+                            >
+                              {song.audioFormat}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-white/60 truncate mt-0.5">{song.artists}</p>
+                          <div className="flex items-center gap-2 mt-1 text-[10px]">
+                            <span className="font-mono text-amber-300 font-bold">
+                              {(song.price ?? 20000).toLocaleString('vi-VN')} đ
+                            </span>
+                            <span className="text-white/30">•</span>
+                            <span className="text-white/60 font-mono">
+                              {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
+                            </span>
+                            <span className="text-white/30">•</span>
+                            <span className="text-emerald-400 font-mono">
+                              {song.playCount || 0} lượt
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2">
+                        <div className="flex items-center gap-1 text-[9px]">
+                          <span className={`px-1.5 py-0.5 rounded font-bold ${song.demoUrl ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-white/30'}`}>Demo</span>
+                          <span className={`px-1.5 py-0.5 rounded font-bold ${song.mp3Url ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-white/30'}`}>MP3</span>
+                          <span className={`px-1.5 py-0.5 rounded font-bold ${song.wavUrl ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-white/30'}`}>WAV</span>
+                          {song.lrcRaw || song.lrcUrl ? (
+                            <span className="px-1.5 py-0.5 rounded font-bold bg-cyan-500/20 text-cyan-300">LRC</span>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditModal(song)}
+                            className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white text-xs font-bold flex items-center gap-1 transition-colors"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Sửa</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Xóa bài hát "${song.title}"?`)) {
+                                removeSong(song.id);
+                              }
+                            }}
+                            className="p-1 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
+                            title="Xóa bài hát"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Desktop Table View (hidden sm:block) */}
+              <div className="hidden sm:block rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
+                        <th className="py-3 px-4 w-12 text-center whitespace-nowrap">STT</th>
+                        <th className="py-3 px-4 min-w-[200px] whitespace-nowrap">TÊN BÀI HÁT</th>
+                        <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">CA SỸ</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">ĐỊNH DẠNG</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">GIÁ BÁN</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[100px]">THỜI LƯỢNG</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[130px]">3 LINK NHẠC</th>
+                        <th className="py-3 px-4 text-right whitespace-nowrap min-w-[100px]">THAO TÁC</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {[...songs]
+                        .sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+                        .map((song, i) => (
+                        <tr key={song.id} className="hover:bg-white/5 transition-colors">
+                          <td className="py-3 px-4 text-center font-mono text-white/40 font-bold">
+                            {song.stt || i + 1}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 relative">
+                                {song.coverImage ? (
+                                  <img
+                                    src={song.coverImage}
+                                    alt={song.title}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+                                ) : null}
+                                <div className={`w-full h-full bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${song.coverImage ? 'absolute inset-0 -z-10' : ''}`}>
+                                  <Music2 className="w-4 h-4 text-white/60" />
+                                </div>
+                              </div>
+                              <div className="truncate">
+                                <p className="font-bold text-white truncate max-w-xs">{song.title}</p>
+                                <p className="text-[10px] text-white/40 truncate">{song.album || 'Độc quyền'}</p>
                               </div>
                             </div>
-                            <div className="truncate">
-                              <p className="font-bold text-white truncate max-w-xs">{song.title}</p>
-                              <p className="text-[10px] text-white/40 truncate">{song.album || 'Độc quyền'}</p>
+                          </td>
+                          <td className="py-3 px-4 text-white/80 font-medium truncate">
+                            {song.artists}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded font-black text-[10px] ${
+                                song.audioFormat === 'WAV'
+                                  ? 'bg-amber-500/20 text-amber-300'
+                                  : 'bg-blue-500/20 text-blue-300'
+                              }`}
+                            >
+                              {song.audioFormat}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono text-amber-300 font-bold">
+                            {(song.price ?? 20000).toLocaleString('vi-VN')} đ
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono text-white/60">
+                            {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5 text-[10px]">
+                              <span
+                                className={`px-1.5 py-0.5 rounded font-bold ${
+                                  song.demoUrl ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-white/30'
+                                }`}
+                                title={song.demoUrl || 'Chưa có link demo'}
+                              >
+                                Demo
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded font-bold ${
+                                  song.mp3Url ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-white/30'
+                                }`}
+                                title={song.mp3Url || 'Chưa có link mp3'}
+                              >
+                                MP3
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded font-bold ${
+                                  song.wavUrl ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-white/30'
+                                }`}
+                                title={song.wavUrl || 'Chưa có link wav'}
+                              >
+                                WAV
+                              </span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-white/80 font-medium truncate">
-                          {song.artists}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span
-                            className={`px-2 py-0.5 rounded font-black text-[10px] ${
-                              song.audioFormat === 'WAV'
-                                ? 'bg-amber-500/20 text-amber-300'
-                                : 'bg-blue-500/20 text-blue-300'
-                            }`}
-                          >
-                            {song.audioFormat}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-amber-300 font-bold">
-                          {(song.price ?? 20000).toLocaleString('vi-VN')} đ
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-white/60">
-                          {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-1.5 text-[10px]">
-                            <span
-                              className={`px-1.5 py-0.5 rounded font-bold ${
-                                song.demoUrl ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-white/30'
-                              }`}
-                              title={song.demoUrl || 'Chưa có link demo'}
-                            >
-                              Demo
-                            </span>
-                            <span
-                              className={`px-1.5 py-0.5 rounded font-bold ${
-                                song.mp3Url ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-white/30'
-                              }`}
-                              title={song.mp3Url || 'Chưa có link mp3'}
-                            >
-                              MP3
-                            </span>
-                            <span
-                              className={`px-1.5 py-0.5 rounded font-bold ${
-                                song.wavUrl ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-white/30'
-                              }`}
-                              title={song.wavUrl || 'Chưa có link wav'}
-                            >
-                              WAV
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleOpenEditModal(song)}
-                              className="p-1.5 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white"
-                              title="Sửa"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Xóa bài hát "${song.title}"?`)) {
-                                  removeSong(song.id);
-                                }
-                              }}
-                              className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white"
-                              title="Xóa"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditModal(song)}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white"
+                                title="Sửa"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Xóa bài hát "${song.title}"?`)) {
+                                    removeSong(song.id);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white"
+                                title="Xóa"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -883,78 +972,146 @@ export const AdminPageView: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center whitespace-nowrap">STT</th>
-                      <th className="py-3 px-4 min-w-[180px] whitespace-nowrap">EMAIL</th>
-                      <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">TÊN HIỂN THỊ</th>
-                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[90px]">VAI TRÒ</th>
-                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">SỐ DƯ</th>
-                      <th className="py-3 px-4 text-center whitespace-nowrap min-w-[90px]">ĐÃ MUA</th>
-                      <th className="py-3 px-4 text-right whitespace-nowrap min-w-[150px]">THAO TÁC</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {members.map((member, i) => (
-                      <tr key={member.uid} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3 px-4 text-center font-mono text-white/40 font-bold">
-                          {i + 1}
-                        </td>
-                        <td className="py-3 px-4 font-bold text-white truncate">{member.email}</td>
-                        <td className="py-3 px-4 text-white/80 truncate">{member.displayName}</td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => toggleMemberRole(member.uid)}
-                            className={`px-2 py-0.5 rounded font-black text-[10px] uppercase transition-colors ${
-                              member.role === 'admin'
-                                ? 'bg-purple-500/30 text-[#c273ed] border border-purple-500/50'
-                                : 'bg-white/10 text-white/70'
-                            }`}
-                            title="Bấm để đổi quyền Admin/User"
-                          >
-                            {member.role}
-                          </button>
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-emerald-400 whitespace-nowrap">
-                          <span className="whitespace-nowrap">{(member.balance || 0).toLocaleString('vi-VN')}&nbsp;đ</span>
-                        </td>
-                        <td className="py-3 px-4 text-center text-white/60">
-                          {member.purchasedSongIds?.length || 0} bài
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {/* Requirement 7: Nút Sửa */}
-                            <button
-                              onClick={() => handleOpenEditMember(member)}
-                              className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/30 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white font-bold flex items-center gap-1 transition-colors"
-                              title="Chỉnh sửa thông tin thành viên"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>Sửa</span>
-                            </button>
+            <>
+              {/* Mobile Card List for Members (sm:hidden) */}
+              <div className="sm:hidden space-y-2.5">
+                {members.map((member) => (
+                  <div
+                    key={member.uid}
+                    className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 shadow-md"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow">
+                          {member.displayName ? member.displayName.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-white text-xs truncate">{member.displayName || 'Thành viên'}</p>
+                          <p className="text-[10px] text-white/50 truncate font-mono">{member.email}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleMemberRole(member.uid)}
+                        className={`px-2 py-0.5 rounded font-black text-[9px] uppercase transition-colors shrink-0 ${
+                          member.role === 'admin'
+                            ? 'bg-purple-500/30 text-[#c273ed] border border-purple-500/50'
+                            : 'bg-white/10 text-white/70'
+                        }`}
+                        title="Bấm để đổi quyền Admin/User"
+                      >
+                        {member.role}
+                      </button>
+                    </div>
 
-                            <button
-                              onClick={() => {
-                                if (confirm(`Xóa thành viên "${member.email}"?`)) {
-                                  removeMember(member.uid);
-                                }
-                              }}
-                              className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
-                              title="Xóa thành viên"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="text-emerald-400 font-mono font-bold">
+                          {(member.balance || 0).toLocaleString('vi-VN')} đ
+                        </span>
+                        <span className="text-white/30">•</span>
+                        <span className="text-white/60 text-[10px]">
+                          {member.purchasedSongIds?.length || 0} bài mua
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditMember(member)}
+                          className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/30 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white font-bold text-xs flex items-center gap-1 transition-colors"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Sửa</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Xóa thành viên "${member.email}"?`)) {
+                              removeMember(member.uid);
+                            }
+                          }}
+                          className="p-1 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
+                          title="Xóa thành viên"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+
+              {/* Desktop Table View (hidden sm:block) */}
+              <div className="hidden sm:block rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 bg-white/5 text-[10px] font-bold text-white/50 uppercase tracking-wider">
+                        <th className="py-3 px-4 w-12 text-center whitespace-nowrap">STT</th>
+                        <th className="py-3 px-4 min-w-[180px] whitespace-nowrap">EMAIL</th>
+                        <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">TÊN HIỂN THỊ</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[90px]">VAI TRÒ</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[110px]">SỐ DƯ</th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap min-w-[90px]">ĐÃ MUA</th>
+                        <th className="py-3 px-4 text-right whitespace-nowrap min-w-[150px]">THAO TÁC</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {members.map((member, i) => (
+                        <tr key={member.uid} className="hover:bg-white/5 transition-colors">
+                          <td className="py-3 px-4 text-center font-mono text-white/40 font-bold">
+                            {i + 1}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-white truncate">{member.email}</td>
+                          <td className="py-3 px-4 text-white/80 truncate">{member.displayName}</td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => toggleMemberRole(member.uid)}
+                              className={`px-2 py-0.5 rounded font-black text-[10px] uppercase transition-colors ${
+                                member.role === 'admin'
+                                  ? 'bg-purple-500/30 text-[#c273ed] border border-purple-500/50'
+                                  : 'bg-white/10 text-white/70'
+                              }`}
+                              title="Bấm để đổi quyền Admin/User"
+                            >
+                              {member.role}
+                            </button>
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono font-bold text-emerald-400 whitespace-nowrap">
+                            <span className="whitespace-nowrap">{(member.balance || 0).toLocaleString('vi-VN')}&nbsp;đ</span>
+                          </td>
+                          <td className="py-3 px-4 text-center text-white/60">
+                            {member.purchasedSongIds?.length || 0} bài
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Requirement 7: Nút Sửa */}
+                              <button
+                                onClick={() => handleOpenEditMember(member)}
+                                className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/30 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white font-bold flex items-center gap-1 transition-colors"
+                                title="Chỉnh sửa thông tin thành viên"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>Sửa</span>
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Xóa thành viên "${member.email}"?`)) {
+                                    removeMember(member.uid);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
+                                title="Xóa thành viên"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1551,8 +1708,48 @@ service firebase.storage {
             </form>
           )}
 
-          {/* Danh sách voucher */}
-          <div className="rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-xl">
+          {/* Mobile Card List for Vouchers (sm:hidden) */}
+          <div className="sm:hidden space-y-2.5">
+            {vouchers.map((v) => (
+              <div
+                key={v.id}
+                className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2 shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-amber-300 text-sm tracking-wider">{v.code}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    v.isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'
+                  }`}>
+                    {v.isActive ? 'Đang áp dụng' : 'Tạm khóa'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/60">
+                    Giảm: <strong className="text-emerald-400 font-mono">
+                      {v.discountType === 'percent' ? `${v.discountValue}%` : `${v.discountValue.toLocaleString('vi-VN')} đ`}
+                    </strong> ({v.discountType === 'percent' ? 'Phần trăm' : 'Cố định'})
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Xóa voucher "${v.code}"?`)) {
+                        removeVoucher(v.id);
+                      }
+                    }}
+                    className="p-1 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
+                    title="Xóa voucher"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {v.description && (
+                  <p className="text-[11px] text-white/70 pt-1 border-t border-white/5">{v.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View (hidden sm:block) */}
+          <div className="hidden sm:block rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -2050,7 +2247,7 @@ service firebase.storage {
               </div>
 
               {/* Row 2: Album, Định dạng & Giá */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-white/70 mb-1 font-bold">Album</label>
                   <input
@@ -2086,13 +2283,13 @@ service firebase.storage {
                 </div>
               </div>
 
-              {/* Thông tin bài hát chi tiết (Hiển thị khi vuốt sang trái ở player như ảnh 3/4) */}
+              {/* Thông tin bài hát chi tiết (Hiển thị khi vuốt sang trái) */}
               <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
                 <p className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5" />
                   Thông Tin Bài Hát Chi Tiết (Hiển thị khi vuốt sang trái)
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-white/70 mb-1 font-bold">Nhạc sĩ (Composer)</label>
                     <input
@@ -2114,7 +2311,7 @@ service firebase.storage {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-white/70 mb-1 font-bold">Phát hành (Release Date)</label>
                     <input
@@ -2191,7 +2388,7 @@ service firebase.storage {
                 </div>
 
                 {/* Requirement 2: Thời lượng chuẩn (Phút : Giây) & Lượt nghe */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
                     <label className="block text-white/80 mb-1 font-bold flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-[#c273ed]" />

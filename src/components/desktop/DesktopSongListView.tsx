@@ -281,7 +281,6 @@ export const DesktopSongListView: React.FC = () => {
                   const isCurrent = currentSong?.id === song.id;
                   const isCurrentPlaying = isCurrent && isPlaying;
                   const isPurchased = isSongPurchased(song.id);
-                  const isLiked = likedSongIds.includes(song.id);
                   const activeFormat = songFormatMap[song.id] || preferredAudioFormat;
 
                   return (

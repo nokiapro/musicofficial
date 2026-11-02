@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Trash2, Play, MoreHorizontal, X, Music } from 'lucide-react';
+import { Clock, Trash2, Play, X, Music } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Visualizer } from '../common/Visualizer';
 

@@ -6,12 +6,8 @@ import {
   Pause,
   Heart,
   FileText,
-  ShoppingCart,
   CheckCircle,
   Plus,
-  ShoppingBag,
-  ShieldCheck,
-  Wallet,
   Download,
   Share2,
   ListPlus,
@@ -20,7 +16,6 @@ import {
   Sparkles,
   Headphones,
   Crown,
-  History,
   Trash2,
   MoreVertical,
   FolderHeart,
@@ -33,7 +28,6 @@ import { AdminPageView } from '../admin/AdminPageView';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileMiniPlayer } from './MobileMiniPlayer';
 import { MobileFullPlayerModal } from './MobileFullPlayerModal';
-import { Song, Playlist } from '../../types/music';
 
 export const MobileAppLayout: React.FC = () => {
   const {
@@ -41,7 +35,6 @@ export const MobileAppLayout: React.FC = () => {
     currentSong,
     isPlaying,
     activeMobileTab,
-    viewMode,
     setViewMode,
     playSong,
     togglePlay,
@@ -50,7 +43,6 @@ export const MobileAppLayout: React.FC = () => {
     isSongPurchased,
     setSelectedLrcSong,
     setSongToBuy,
-    setIsBuyModalOpen,
     setIsDemoLimitModalOpen,
     userBalance,
     setIsTopUpModalOpen,
@@ -62,7 +54,6 @@ export const MobileAppLayout: React.FC = () => {
     createPlaylist,
     deletePlaylist,
     playPlaylist,
-    history,
     setIsRewindModalOpen,
     rewindStats,
     preferredAudioFormat,
@@ -156,12 +147,7 @@ export const MobileAppLayout: React.FC = () => {
   const totalPurchasedPages = Math.max(1, Math.ceil(ownedSongs.length / PAGE_SIZE));
   const paginatedOwnedSongs = ownedSongs.slice((purchasedPage - 1) * PAGE_SIZE, purchasedPage * PAGE_SIZE);
 
-  const formatDuration = (seconds?: number) => {
-    if (!seconds || isNaN(seconds) || seconds <= 0) return '03:30';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
+
 
   const handleCreatePlaylist = async (e: React.FormEvent) => {
     e.preventDefault();

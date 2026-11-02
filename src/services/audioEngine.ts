@@ -15,6 +15,7 @@ export class AudioEngine {
   private playbackRate: number = 1.0;
   private crossfadeDuration: number = 0; // In seconds
   private currentUrl: string | null = null;
+  private onEndedCallback: (() => void) | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -31,11 +32,22 @@ export class AudioEngine {
       this.audioElement.volume = this.isMuted ? 0 : this.volume;
       this.audioElement.playbackRate = this.playbackRate;
 
+      this.audioElement.addEventListener('ended', () => {
+        this.isPlaying = false;
+        if (this.onEndedCallback) {
+          this.onEndedCallback();
+        }
+      });
+
       this.audioElement.addEventListener('error', (e) => {
         console.warn('Audio playback notice:', e);
       });
     }
     return this.audioElement;
+  }
+
+  public setOnEnded(cb: (() => void) | null) {
+    this.onEndedCallback = cb;
   }
 
   public static async calculateDurationFromUrl(url: string): Promise<number> {
@@ -64,7 +76,7 @@ export class AudioEngine {
     return AudioEngine.calculateDurationFromUrl(url);
   }
 
-  public playUrl(url?: string, onDurationLoaded?: (dur: number) => void) {
+  public playUrl(url?: string, onDurationLoaded?: (dur: number) => void, forceRestart: boolean = false) {
     if (!url || !url.trim()) {
       this.pause();
       this.currentUrl = null;
@@ -84,12 +96,13 @@ export class AudioEngine {
 
     const targetVolume = this.isMuted ? 0 : this.volume;
 
-    if (isDifferentTrack) {
-      audio.src = url;
+    if (isDifferentTrack || forceRestart) {
+      if (audio.src !== url) {
+        audio.src = url;
+      }
       audio.currentTime = 0;
       audio.playbackRate = this.playbackRate;
       audio.defaultPlaybackRate = this.playbackRate;
-      // Direct 1:1 hardware output volume - full dynamic range, zero compression
       audio.volume = targetVolume;
 
       audio
@@ -102,6 +115,10 @@ export class AudioEngine {
           this.isPlaying = false;
         });
     } else {
+      // Re-playing same track - if it ended or is near the end, rewind to 0
+      if (audio.ended || (audio.duration && audio.currentTime >= audio.duration - 0.5)) {
+        audio.currentTime = 0;
+      }
       audio.playbackRate = this.playbackRate;
       audio.defaultPlaybackRate = this.playbackRate;
       audio.volume = targetVolume;

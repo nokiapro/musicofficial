@@ -14,7 +14,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { Song } from '../../types/music';
 
 export const StorePageView: React.FC = () => {
   const {
