@@ -4,13 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <script>
+      // Compatibility shim for browser extensions & devtools interceptors:
+      // Prevents "TypeError: Cannot set property fetch of #<Window> which has only a getter"
+      // by ensuring both window.fetch and Window.prototype.fetch have configurable getter and setter.
       (function () {
         try {
           var _rawFetch = window.fetch;
           var _activeFetch = _rawFetch ? function () {
             return _rawFetch.apply(window, arguments);
           } : null;
-
           if (typeof Window !== 'undefined' && Window.prototype) {
             try {
               Object.defineProperty(Window.prototype, 'fetch', {
@@ -25,7 +27,6 @@
               });
             } catch (e) {}
           }
-
           try {
             Object.defineProperty(window, 'fetch', {
               configurable: true,
@@ -39,11 +40,35 @@
             });
           } catch (e) {}
         } catch (err) {}
+
+        // Suppress uncaught errors from external browser extensions
+        window.addEventListener('error', function(event) {
+          if (event) {
+            var filename = event.filename || '';
+            var message = event.message || '';
+            if (filename.indexOf('chrome-extension://') !== -1 || message.indexOf('Cannot set property fetch') !== -1) {
+              if (event.preventDefault) event.preventDefault();
+              if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+              return true;
+            }
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          if (event && event.reason) {
+            var msg = String(event.reason.message || event.reason);
+            var stack = String(event.reason.stack || '');
+            if (stack.indexOf('chrome-extension://') !== -1 || msg.indexOf('Cannot set property fetch') !== -1) {
+              if (event.preventDefault) event.preventDefault();
+              if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+            }
+          }
+        }, true);
       })();
     </script>
-    <title>XuanKen Music - Nghe & Mua Nhạc Bản Quyền Trực Tuyến</title>
+    <title>XuanKen Music - Quản Trị & Phát Nhạc Độc Quyền</title>
     <meta name="description" content="Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV, lời bài hát chạy chữ karaoke LRC và quản trị Firebase." />
-    <meta property="og:title" content="XuanKen Music - Nghe & Mua Nhạc Bản Quyền Trực Tuyến" />
+    <meta property="og:title" content="XuanKen Music - Quản Trị & Phát Nhạc Độc Quyền" />
     <meta property="og:description" content="Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music: Nghe demo 60s, mua bản quyền MP3/WAV, lời bài hát chạy chữ karaoke LRC và quản trị Firebase." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />

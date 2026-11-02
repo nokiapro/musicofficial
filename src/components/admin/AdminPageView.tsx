@@ -27,11 +27,13 @@ import {
   Globe,
   Sliders,
   Upload,
+  Disc3,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song, AppUser, AudioFormat } from '../../types/music';
 import { audioEngine } from '../../services/audioEngine';
 import { testFirebaseConnection } from '../../services/firebase';
+import { AdminCuratedAlbumsTab } from './AdminCuratedAlbumsTab';
 
 export const AdminPageView: React.FC = () => {
   const {
@@ -55,9 +57,10 @@ export const AdminPageView: React.FC = () => {
     siteSettings,
     updateSiteSettings,
     theme,
+    exclusiveAlbums,
   } = useMusic();
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'members' | 'rules' | 'vouchers' | 'settings'>('songs');
+  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'albums' | 'members' | 'rules' | 'vouchers' | 'settings'>('songs');
 
   // Website Settings State (Item 11)
   const [siteNameInput, setSiteNameInput] = useState(siteSettings?.siteName || 'XuanKen Music');
@@ -139,7 +142,7 @@ export const AdminPageView: React.FC = () => {
   const [isAddingVoucher, setIsAddingVoucher] = useState(false);
 
   // Login form state for unauthenticated admin
-  const [loginEmail, setLoginEmail] = useState('admin@xuanken.vn');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginSuccess, setLoginSuccess] = useState('');
@@ -299,7 +302,7 @@ export const AdminPageView: React.FC = () => {
               required
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
-              placeholder="admin@xuanken.vn"
+              placeholder=""
               className="w-full bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
             />
           </div>
@@ -587,6 +590,18 @@ export const AdminPageView: React.FC = () => {
         >
           <Music2 className="w-3.5 h-3.5" />
           <span>Bài Hát ({songs.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('albums')}
+          style={activeAdminTab === 'albums' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+            activeAdminTab === 'albums'
+              ? 'text-white shadow'
+              : 'text-white/60 hover:text-white'
+          }`}
+        >
+          <Disc3 className="w-3.5 h-3.5" />
+          <span>Album Nhạc Hay ({exclusiveAlbums.length})</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('members')}
@@ -958,6 +973,11 @@ export const AdminPageView: React.FC = () => {
             </>
           )}
         </div>
+      )}
+
+      {/* TAB: QUẢN LÝ ALBUM NHẠC HAY */}
+      {activeAdminTab === 'albums' && (
+        <AdminCuratedAlbumsTab />
       )}
 
       {/* TAB 2: QUẢN LÝ THÀNH VIÊN */}
@@ -1381,6 +1401,17 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    match /exclusive_albums/{albumId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /chat_messages/{messageId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
   }
 }`}
             </pre>
@@ -1392,7 +1423,7 @@ service cloud.firestore {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-white text-sm">database.rules.json (Realtime Database Security)</span>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-400 text-black">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white">
                     Chống Hack Số Dư
                   </span>
                 </div>
@@ -1457,6 +1488,14 @@ service cloud.firestore {
                             "$reportId": {
                               ".write": true
                             }
+                          },
+                          exclusive_albums: {
+                            ".read": true,
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+                          },
+                          chat_messages: {
+                            ".read": true,
+                            ".write": true
                           }
                         }
                       },
@@ -1496,29 +1535,16 @@ service cloud.firestore {
         }
       }
     },
-    "members": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
-      "$userId": {
-        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
-        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
-      }
-    },
-    "purchases": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
-      "$purchaseId": {
-        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
-        ".write": "auth != null && (!data.exists() ? newData.child('userId').val() === auth.uid : root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
-      }
-    },
-    "playlists": {
-      ".read": true,
-      "$playlistId": {
-        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
-      }
-    },
-    "vouchers": {
+    "exclusive_albums": {
       ".read": true,
       ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+    },
+    "chat_messages": {
+      ".read": true,
+      ".write": true
+    },
+    "members": {
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
     }
   }
 }`}
@@ -1650,7 +1676,7 @@ service firebase.storage {
                     required
                     value={newVoucherCode}
                     onChange={(e) => setNewVoucherCode(e.target.value.toUpperCase())}
-                    placeholder="VD: XUANKEN50"
+                    placeholder=""
                     className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono uppercase text-xs focus:outline-none focus:border-[#9b4de0]"
                   />
                 </div>

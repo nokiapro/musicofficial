@@ -59,6 +59,14 @@
       ".read": true,
       ".write": "auth != null"
     },
+    "exclusive_albums": {
+      ".read": true,
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+    },
+    "chat_messages": {
+      ".read": true,
+      ".write": true
+    },
     "users": {
       "$userId": {
         ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",

@@ -17,6 +17,7 @@ import { DemoLimitModal } from './components/store/DemoLimitModal';
 
 function MainMusicApp() {
   const { effectiveIsMobile, theme } = useMusic();
+
   return (
     <div
       data-theme={theme}

@@ -170,7 +170,7 @@ export const MobileProfileView: React.FC = () => {
                   {currentUser.displayName || 'Thành viên'}
                 </h2>
                 {isAdmin ? (
-                  <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase bg-amber-400 text-black shrink-0">
+                  <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase bg-red-600 text-white shrink-0">
                     ADMIN
                   </span>
                 ) : (

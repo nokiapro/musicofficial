@@ -1,7 +1,7 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
 import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { rtdb, db } from './firebase';
-import { Song, AppUser, Playlist, Voucher, SiteSettings, RewindStats } from '../types/music';
+import { Song, AppUser, Playlist, Voucher, SiteSettings, RewindStats, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
 import { SONGS_DATABASE } from '../data/songs';
 
 const STORAGE_KEY_SONGS = 'xuanken_music_songs_v3';
@@ -51,6 +51,53 @@ export function sanitizeSong(raw: any, idFallback: string): Song {
     genre: raw?.genre || 'Việt Nam, V-Pop',
     provider: raw?.provider || 'XuanKen Official',
     plays: raw?.plays || '0 lượt nghe',
+  };
+}
+
+export function sanitizeAlbum(raw: any, idFallback: string): ExclusiveAlbum {
+  let songsList: any[] = [];
+  if (Array.isArray(raw?.songs)) {
+    songsList = raw.songs.filter(Boolean);
+  } else if (raw?.songs && typeof raw.songs === 'object' && raw?.songs !== null) {
+    songsList = Object.values(raw.songs).filter(Boolean);
+  }
+
+  const albumId = raw?.id || idFallback;
+  const albumArtist = raw?.artist || 'XuanKen Official';
+  const albumCover = raw?.coverImage || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
+
+  const sanitizedSongs: AlbumSong[] = songsList.map((s: any, idx: number) => ({
+    id: s?.id || `albsong-${albumId}-${idx + 1}`,
+    albumId: s?.albumId || albumId,
+    stt: typeof s?.stt === 'number' ? s.stt : idx + 1,
+    title: s?.title || `Bài hát ${idx + 1}`,
+    artists: s?.artists || albumArtist,
+    duration: typeof s?.duration === 'number' && s.duration > 0 ? s.duration : 210,
+    audioFormat: s?.audioFormat === 'WAV' ? 'WAV' : 'MP3',
+    coverImage: s?.coverImage || albumCover,
+    mp3Url: s?.mp3Url || '',
+    wavUrl: s?.wavUrl || '',
+    demoUrl: s?.demoUrl || s?.mp3Url || s?.wavUrl || '',
+    lrcRaw: s?.lrcRaw || '',
+    lyrics: Array.isArray(s?.lyrics) ? s.lyrics : [],
+    playCount: typeof s?.playCount === 'number' ? s.playCount : 0,
+    createdAt: s?.createdAt || new Date().toISOString(),
+  }));
+
+  sanitizedSongs.forEach((s, idx) => {
+    s.stt = idx + 1;
+  });
+
+  return {
+    id: albumId,
+    title: raw?.title || 'Album Mới',
+    artist: albumArtist,
+    coverImage: albumCover,
+    description: raw?.description || '',
+    releaseYear: raw?.releaseYear || new Date().getFullYear().toString(),
+    genre: raw?.genre || 'V-Pop / Ballad',
+    songs: sanitizedSongs,
+    createdAt: raw?.createdAt || new Date().toISOString(),
   };
 }
 
@@ -630,7 +677,8 @@ export const MusicService = {
     songs: Song[],
     members: AppUser[],
     playlists: Playlist[],
-    vouchers: Voucher[]
+    vouchers: Voucher[],
+    exclusiveAlbums?: ExclusiveAlbum[]
   ): Promise<{
     success: boolean;
     rtdb: boolean;
@@ -647,6 +695,7 @@ export const MusicService = {
     const cleanMembers = cleanForFirebase(members) || [];
     const cleanPlaylists = cleanForFirebase(playlists) || [];
     const cleanVouchers = cleanForFirebase(vouchers) || [];
+    const cleanAlbums = (exclusiveAlbums || []).map((a, i) => sanitizeAlbum(a, a.id || `alb-${i}`));
 
     const songsMap: Record<string, any> = {};
     cleanSongs.forEach((s: Song) => { if (s?.id) songsMap[s.id] = s; });
@@ -660,15 +709,22 @@ export const MusicService = {
     const vouchersMap: Record<string, any> = {};
     cleanVouchers.forEach((v: Voucher) => { if (v?.id) vouchersMap[v.id] = v; });
 
+    const albumsMap: Record<string, any> = {};
+    cleanAlbums.forEach((a: ExclusiveAlbum) => { if (a?.id) albumsMap[a.id] = cleanForFirebase(a); });
+
     // 2. Write to Firebase Realtime Database
     try {
-      await update(ref(rtdb), {
+      const payload: Record<string, any> = {
         songs: songsMap,
         members: membersMap,
         playlists: playlistsMap,
         vouchers: vouchersMap,
         lastSyncedAt: new Date().toISOString(),
-      });
+      };
+      if (cleanAlbums.length > 0) {
+        payload.exclusive_albums = albumsMap;
+      }
+      await update(ref(rtdb), payload);
       rtdbSuccess = true;
     } catch (err: any) {
       lastError = err?.message || String(err);
@@ -686,6 +742,11 @@ export const MusicService = {
       for (const v of cleanVouchers) {
         if (v?.id) await setDoc(doc(db, 'vouchers', v.id), v, { merge: true });
       }
+      if (cleanAlbums.length > 0) {
+        for (const a of cleanAlbums) {
+          if (a?.id) await setDoc(doc(db, 'exclusive_albums', a.id), cleanForFirebase(a), { merge: true });
+        }
+      }
       firestoreSuccess = true;
     } catch (err: any) {
       if (!lastError) lastError = err?.message || String(err);
@@ -699,7 +760,7 @@ export const MusicService = {
       firestore: firestoreSuccess,
       error: overallSuccess ? undefined : lastError,
       details: overallSuccess
-        ? `Đã đồng bộ ${cleanSongs.length} bài hát, ${cleanMembers.length} thành viên, ${cleanPlaylists.length} playlists, ${cleanVouchers.length} vouchers lên Firebase!`
+        ? `Đã đồng bộ ${cleanSongs.length} bài hát, ${cleanAlbums.length} album, ${cleanMembers.length} thành viên, ${cleanPlaylists.length} playlists, ${cleanVouchers.length} vouchers lên Firebase!`
         : `Lỗi đồng bộ: ${lastError}`,
     };
   },
@@ -973,6 +1034,507 @@ export const MusicService = {
       console.warn('Audio settings save notice:', e);
     }
   },
+
+  // -------------------------------------------------------------
+  // Curated / Exclusive Albums (Album Nhạc Hay)
+  // Strict Isolation: Album songs ONLY live inside their albums
+  // -------------------------------------------------------------
+  async fetchExclusiveAlbums(): Promise<ExclusiveAlbum[]> {
+    const hasInitialized = localStorage.getItem('xuanken_exclusive_albums_init') === 'true';
+
+    try {
+      const dbRef = ref(rtdb);
+      const snapshot = await get(child(dbRef, 'exclusive_albums'));
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        if (val && (val._empty === true || val === 'EMPTY')) {
+          localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify([]));
+          localStorage.setItem('xuanken_exclusive_albums_init', 'true');
+          return [];
+        }
+        let rawList: any[] = [];
+        if (Array.isArray(val)) {
+          rawList = val.filter(Boolean);
+        } else if (typeof val === 'object' && val !== null) {
+          rawList = Object.values(val).filter((item: any) => item && typeof item === 'object' && item.title);
+        }
+        const albums = rawList.map((a: any, idx: number) => sanitizeAlbum(a, a?.id || `alb-${idx}`));
+        localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(albums));
+        localStorage.setItem('xuanken_exclusive_albums_init', 'true');
+        return albums;
+      }
+    } catch (e: any) {
+      const isPerm = e?.message?.toLowerCase().includes('permission_denied') || e?.message?.toLowerCase().includes('permission denied');
+      if (!isPerm) console.warn('Fetch exclusive albums RTDB notice:', e);
+    }
+
+    // Try Firestore fallback
+    try {
+      const colRef = collection(db, 'exclusive_albums');
+      const docsSnap = await getDocs(colRef);
+      if (!docsSnap.empty) {
+        const albums: ExclusiveAlbum[] = [];
+        docsSnap.forEach((d: any) => {
+          const val = d.data();
+          if (val && val.title) {
+            albums.push(sanitizeAlbum(val, d.id));
+          }
+        });
+        localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(albums));
+        localStorage.setItem('xuanken_exclusive_albums_init', 'true');
+        return albums;
+      }
+    } catch (e: any) {
+      // ignore
+    }
+
+    // Check localStorage
+    try {
+      const local = localStorage.getItem('xuanken_exclusive_albums_v1');
+      if (local !== null) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed)) {
+          if (parsed.length > 0 || hasInitialized) {
+            return parsed.map((a: any, idx: number) => sanitizeAlbum(a, a?.id || `alb-${idx}`));
+          }
+        }
+      }
+    } catch (e) {}
+
+    // Only fallback to default curated albums on brand new first-time setup
+    if (!hasInitialized) {
+      const defaults = DEFAULT_EXCLUSIVE_ALBUMS.map((a, idx) => sanitizeAlbum(a, a.id || `alb-${idx}`));
+      localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(defaults));
+      return defaults;
+    }
+
+    return [];
+  },
+
+  async saveExclusiveAlbums(albums: ExclusiveAlbum[]): Promise<{
+    success: boolean;
+    rtdb: boolean;
+    firestore: boolean;
+    error?: string;
+  }> {
+    const cleanAlbums = (albums || []).map((a, i) => sanitizeAlbum(a, a.id || `alb-${i}`));
+    try {
+      localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(cleanAlbums));
+      localStorage.setItem('xuanken_exclusive_albums_init', 'true');
+    } catch (e) {}
+
+    let rtdbSuccess = false;
+    let firestoreSuccess = false;
+    let lastError = '';
+
+    // Convert list to map by ID for Realtime Database
+    const albumsMap: Record<string, any> = {};
+    if (cleanAlbums.length === 0) {
+      albumsMap._empty = true;
+      albumsMap.updatedAt = new Date().toISOString();
+    } else {
+      cleanAlbums.forEach((a) => {
+        if (a?.id) {
+          albumsMap[a.id] = cleanForFirebase(a);
+        }
+      });
+    }
+
+    try {
+      await set(ref(rtdb, 'exclusive_albums'), albumsMap);
+      rtdbSuccess = true;
+    } catch (e: any) {
+      lastError = e?.message || String(e);
+      console.warn('Save exclusive albums RTDB notice:', e);
+    }
+
+    try {
+      // Keep Firestore in sync by removing deleted albums
+      const colRef = collection(db, 'exclusive_albums');
+      const docsSnap = await getDocs(colRef);
+      const remainingIds = new Set(cleanAlbums.map((a) => a.id));
+      for (const d of docsSnap.docs) {
+        if (!remainingIds.has(d.id)) {
+          await deleteDoc(doc(db, 'exclusive_albums', d.id));
+        }
+      }
+      for (const a of cleanAlbums) {
+        if (a?.id) {
+          await setDoc(doc(db, 'exclusive_albums', a.id), cleanForFirebase(a), { merge: true });
+        }
+      }
+      await setDoc(doc(db, 'system', 'exclusive_albums'), { albums: cleanForFirebase(cleanAlbums), updatedAt: new Date().toISOString() }, { merge: true });
+      firestoreSuccess = true;
+    } catch (e: any) {
+      if (!lastError) lastError = e?.message || String(e);
+      console.warn('Save exclusive albums Firestore notice:', e);
+    }
+
+    const overallSuccess = rtdbSuccess || firestoreSuccess;
+    return {
+      success: overallSuccess,
+      rtdb: rtdbSuccess,
+      firestore: firestoreSuccess,
+      error: overallSuccess ? undefined : lastError,
+    };
+  },
+
+  async deleteExclusiveAlbum(albumId: string): Promise<void> {
+    try {
+      await set(ref(rtdb, `exclusive_albums/${albumId}`), null);
+    } catch (e) {}
+    try {
+      await deleteDoc(doc(db, 'exclusive_albums', albumId));
+    } catch (e) {}
+    try {
+      const local = localStorage.getItem('xuanken_exclusive_albums_v1');
+      if (local) {
+        const parsed: ExclusiveAlbum[] = JSON.parse(local);
+        const filtered = parsed.filter((a) => a.id !== albumId);
+        localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(filtered));
+        localStorage.setItem('xuanken_exclusive_albums_init', 'true');
+      }
+    } catch (e) {}
+  },
+
+  async seedDefaultAlbums(): Promise<{ success: boolean; error?: string }> {
+    const defaults = DEFAULT_EXCLUSIVE_ALBUMS.map((a, idx) => sanitizeAlbum(a, a.id || `alb-${idx}`));
+    localStorage.setItem('xuanken_exclusive_albums_init', 'true');
+    return await this.saveExclusiveAlbums(defaults);
+  },
+
+  subscribeToExclusiveAlbums(onUpdate: (albums: ExclusiveAlbum[]) => void): () => void {
+    try {
+      const albumsRef = ref(rtdb, 'exclusive_albums');
+      return onValue(
+        albumsRef,
+        (snapshot: any) => {
+          if (snapshot.exists()) {
+            const val = snapshot.val();
+            if (val && (val._empty === true || val === 'EMPTY')) {
+              localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify([]));
+              localStorage.setItem('xuanken_exclusive_albums_init', 'true');
+              onUpdate([]);
+              return;
+            }
+            let rawList: any[] = [];
+            if (Array.isArray(val)) {
+              rawList = val.filter(Boolean);
+            } else if (typeof val === 'object' && val !== null) {
+              rawList = Object.values(val).filter((item: any) => item && typeof item === 'object' && item.title);
+            }
+            const albums = rawList.map((a: any, idx: number) => sanitizeAlbum(a, a?.id || `alb-${idx}`));
+            localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(albums));
+            localStorage.setItem('xuanken_exclusive_albums_init', 'true');
+            onUpdate(albums);
+          }
+        },
+        (err: any) => {
+          const isPerm = err?.message?.toLowerCase().includes('permission_denied') || err?.message?.toLowerCase().includes('permission denied');
+          if (!isPerm) console.warn('Exclusive albums RTDB listener notice:', err);
+        }
+      );
+    } catch (e) {
+      return () => {};
+    }
+  },
+
+  // -------------------------------------------------------------
+  // Community Chat Box
+  // -------------------------------------------------------------
+  async fetchChatMessages(): Promise<ChatMessage[]> {
+    try {
+      const dbRef = ref(rtdb);
+      const snapshot = await get(child(dbRef, 'chat_messages'));
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        let list: ChatMessage[] = [];
+        if (Array.isArray(val)) {
+          list = val.filter(Boolean);
+        } else if (typeof val === 'object') {
+          list = Object.values(val);
+        }
+        if (list.length > 0) {
+          list.sort((a, b) => a.timestamp - b.timestamp);
+          localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(list));
+          return list;
+        }
+      }
+    } catch (e: any) {
+      const isPerm = e?.message?.toLowerCase().includes('permission_denied') || e?.message?.toLowerCase().includes('permission denied');
+      if (!isPerm) console.warn('Fetch chat messages notice:', e);
+    }
+
+    try {
+      const local = localStorage.getItem('xuanken_chat_messages_v1');
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+
+    localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(DEFAULT_CHAT_MESSAGES));
+    return DEFAULT_CHAT_MESSAGES;
+  },
+
+  async sendChatMessage(msg: Omit<ChatMessage, 'id'>): Promise<ChatMessage> {
+    const id = 'chat-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
+    const newMsg: ChatMessage = {
+      ...msg,
+      id,
+      timestamp: msg.timestamp || Date.now(),
+    };
+
+    // Update local cache first
+    try {
+      const current = await this.fetchChatMessages();
+      const updated = [...current, newMsg].slice(-100); // keep latest 100 messages
+      localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(updated));
+    } catch (e) {}
+
+    // Save to RTDB
+    try {
+      await set(ref(rtdb, `chat_messages/${id}`), cleanForFirebase(newMsg));
+    } catch (e: any) {
+      console.warn('Send chat message RTDB notice:', e);
+    }
+
+    return newMsg;
+  },
+
+  async deleteChatMessage(id: string): Promise<void> {
+    try {
+      const current = await this.fetchChatMessages();
+      const filtered = current.filter((m) => m.id !== id);
+      localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(filtered));
+    } catch (e) {}
+
+    try {
+      await set(ref(rtdb, `chat_messages/${id}`), null);
+    } catch (e) {}
+  },
+
+  async togglePinChatMessage(id: string, isPinned: boolean): Promise<void> {
+    try {
+      const current = await this.fetchChatMessages();
+      const updated = current.map((m) => (m.id === id ? { ...m, isPinned } : m));
+      localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(updated));
+    } catch (e) {}
+
+    try {
+      await update(ref(rtdb, `chat_messages/${id}`), { isPinned });
+    } catch (e) {}
+  },
+
+  subscribeToChatMessages(onUpdate: (messages: ChatMessage[]) => void): () => void {
+    try {
+      const chatRef = ref(rtdb, 'chat_messages');
+      return onValue(
+        chatRef,
+        (snapshot: any) => {
+          if (snapshot.exists()) {
+            const val = snapshot.val();
+            let list: ChatMessage[] = [];
+            if (Array.isArray(val)) {
+              list = val.filter(Boolean);
+            } else if (typeof val === 'object') {
+              list = Object.values(val);
+            }
+            if (list.length > 0) {
+              list.sort((a, b) => a.timestamp - b.timestamp);
+              localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(list));
+              onUpdate(list);
+            }
+          }
+        },
+        () => {}
+      );
+    } catch (e) {
+      return () => {};
+    }
+  },
 };
+
+export const DEFAULT_EXCLUSIVE_ALBUMS: ExclusiveAlbum[] = [
+  {
+    id: 'alb-xk-01',
+    title: 'Tuyển Tập Tuyệt Phẩm XuanKen',
+    artist: 'XuanKen Official',
+    coverImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+    description: 'Album tuyển chọn những ca khúc độc quyền mang đậm phong cách ballad và pop hiện đại từ XuanKen Music.',
+    releaseYear: '2026',
+    genre: 'V-Pop / Ballad',
+    createdAt: new Date().toISOString(),
+    songs: [
+      {
+        id: 'albsong-01-01',
+        albumId: 'alb-xk-01',
+        stt: 1,
+        title: 'Gió Thoảng Mây Bay',
+        artists: 'XuanKen',
+        duration: 215,
+        audioFormat: 'MP3',
+        coverImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        lrcRaw: '[00:00.00] Gió Thoảng Mây Bay - XuanKen\n[00:15.00] Gió vẫn nhẹ bay qua từng con phố quen...\n[00:30.00] Ký ức ngày xưa ngỡ như vừa mới hôm qua...\n[00:45.00] Còn lại nơi đây nỗi nhớ không tên...',
+        lyrics: [
+          { time: 0, text: 'Gió Thoảng Mây Bay - XuanKen' },
+          { time: 15, text: 'Gió vẫn nhẹ bay qua từng con phố quen...' },
+          { time: 30, text: 'Ký ức ngày xưa ngỡ như vừa mới hôm qua...' },
+          { time: 45, text: 'Còn lại nơi đây nỗi nhớ không tên...' },
+        ],
+        playCount: 520,
+      },
+      {
+        id: 'albsong-01-02',
+        albumId: 'alb-xk-01',
+        stt: 2,
+        title: 'Vết Thương Lòng',
+        artists: 'XuanKen',
+        duration: 250,
+        audioFormat: 'WAV',
+        coverImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        lrcRaw: '[00:00.00] Vết Thương Lòng - XuanKen\n[00:18.00] Từng lời hứa năm xưa giờ trôi dạt nơi đâu...\n[00:36.00] Khi cơn mưa kéo đến xua tan giấc mộng đầu...\n[00:54.00] Anh ôm nỗi đau lặng thầm...',
+        lyrics: [
+          { time: 0, text: 'Vết Thương Lòng - XuanKen' },
+          { time: 18, text: 'Từng lời hứa năm xưa giờ trôi dạt nơi đâu...' },
+          { time: 36, text: 'Khi cơn mưa kéo đến xua tan giấc mộng đầu...' },
+          { time: 54, text: 'Anh ôm nỗi đau lặng thầm...' },
+        ],
+        playCount: 890,
+      },
+      {
+        id: 'albsong-01-03',
+        albumId: 'alb-xk-01',
+        stt: 3,
+        title: 'Về Với Anh',
+        artists: 'XuanKen ft. Mai Anh',
+        duration: 230,
+        audioFormat: 'MP3',
+        coverImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        lrcRaw: '[00:00.00] Về Với Anh - XuanKen ft. Mai Anh\n[00:16.00] Hãy về bên anh khi hoàng hôn buông xuống...\n[00:32.00] Ta sẽ cùng nhau đi qua giông bão cuộc đời...',
+        lyrics: [
+          { time: 0, text: 'Về Với Anh - XuanKen ft. Mai Anh' },
+          { time: 16, text: 'Hãy về bên anh khi hoàng hôn buông xuống...' },
+          { time: 32, text: 'Ta sẽ cùng nhau đi qua giông bão cuộc đời...' },
+        ],
+        playCount: 1120,
+      },
+    ],
+  },
+  {
+    id: 'alb-xk-02',
+    title: 'Acoustic Healing V-Pop 2026',
+    artist: 'Nhiều Nghệ Sĩ',
+    coverImage: 'https://images.unsplash.com/photo-1445985543469-221a5a449231?w=600&auto=format&fit=crop&q=80',
+    description: 'Tuyển tập những thanh âm mộc mạc của tiếng đàn guitar gỗ, xoa dịu tâm hồn bạn mỗi đêm muộn.',
+    releaseYear: '2026',
+    genre: 'Acoustic / Indie',
+    createdAt: new Date().toISOString(),
+    songs: [
+      {
+        id: 'albsong-02-01',
+        albumId: 'alb-xk-02',
+        stt: 1,
+        title: 'Chạm Khẽ Tim Anh',
+        artists: 'Quốc Bảo (Acoustic Version)',
+        duration: 245,
+        audioFormat: 'MP3',
+        coverImage: 'https://images.unsplash.com/photo-1445985543469-221a5a449231?w=600&auto=format&fit=crop&q=80',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        lrcRaw: '[00:00.00] Chạm Khẽ Tim Anh - Acoustic Version\n[00:15.00] Từng nốt nhạc buông lơi trong chiều vắng...\n[00:30.00] Em có nghe thấy tiếng con tim anh...',
+        lyrics: [
+          { time: 0, text: 'Chạm Khẽ Tim Anh - Acoustic Version' },
+          { time: 15, text: 'Từng nốt nhạc buông lơi trong chiều vắng...' },
+          { time: 30, text: 'Em có nghe thấy tiếng con tim anh...' },
+        ],
+        playCount: 430,
+      },
+      {
+        id: 'albsong-02-02',
+        albumId: 'alb-xk-02',
+        stt: 2,
+        title: 'Đêm Ngắm Sao',
+        artists: 'Thanh Trúc Guitar',
+        duration: 210,
+        audioFormat: 'WAV',
+        coverImage: 'https://images.unsplash.com/photo-1445985543469-221a5a449231?w=600&auto=format&fit=crop&q=80',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        lrcRaw: '[00:00.00] Đêm Ngắm Sao - Thanh Trúc Guitar\n[00:20.00] Đêm nay trăng thanh gió mát ngàn trùng...',
+        lyrics: [
+          { time: 0, text: 'Đêm Ngắm Sao - Thanh Trúc Guitar' },
+          { time: 20, text: 'Đêm nay trăng thanh gió mát ngàn trùng...' },
+        ],
+        playCount: 610,
+      },
+    ],
+  },
+  {
+    id: 'alb-xk-03',
+    title: 'Remix Bass House Nonstop',
+    artist: 'XuanKen & DJ Hoàng',
+    coverImage: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80',
+    description: 'Bass đập căng cực, quẩy tung nóc với những bản phối độc quyền chỉ có tại album XuanKen Music.',
+    releaseYear: '2026',
+    genre: 'Vinahouse / EDM',
+    createdAt: new Date().toISOString(),
+    songs: [
+      {
+        id: 'albsong-03-01',
+        albumId: 'alb-xk-03',
+        stt: 1,
+        title: 'Vũ Điệu Ánh Sáng (EDM Mix)',
+        artists: 'DJ Hoàng ft. XuanKen',
+        duration: 205,
+        audioFormat: 'MP3',
+        coverImage: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        lrcRaw: '[00:00.00] Vũ Điệu Ánh Sáng (EDM Mix)\n[00:15.00] Put your hands up in the air!\n[00:30.00] 3 2 1 Drop!',
+        lyrics: [
+          { time: 0, text: 'Vũ Điệu Ánh Sáng (EDM Mix)' },
+          { time: 15, text: 'Put your hands up in the air!' },
+          { time: 30, text: '3 2 1 Drop!' },
+        ],
+        playCount: 1540,
+      },
+    ],
+  },
+];
+
+export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
+  {
+    id: 'chat-pin-01',
+    userId: 'admin-xuanken',
+    userName: 'XuanKen Admin',
+    userRole: 'admin',
+    content: '🎉 Chào mừng các bạn đến với Cộng Đồng Chat XuanKen Music! Cùng lắng nghe những giai điệu tuyệt vời và trò chuyện vui vẻ nhé! ❤️',
+    timestamp: Date.now() - 3600000,
+    isPinned: true,
+  },
+  {
+    id: 'chat-msg-02',
+    userId: 'user-guest-01',
+    userName: 'Minh Hoàng',
+    userRole: 'user',
+    content: 'Album Nhạc Hay mới ra chất lượng đỉnh quá mọi người ơi, nghe bằng tai nghe bass đã tai thật sự 🔥🎶',
+    timestamp: Date.now() - 1800000,
+  },
+];
 
 

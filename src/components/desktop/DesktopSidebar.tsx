@@ -4,7 +4,8 @@ import {
   ShoppingBag,
   ShieldCheck,
   TrendingUp,
-  Radio,
+  Disc3,
+  MessageSquare,
   FolderHeart,
   Disc,
   Flame,
@@ -22,15 +23,17 @@ export const DesktopSidebar: React.FC = () => {
     setIsProfileModalOpen,
   } = useMusic();
 
-  // Item 2: Cho phần nghe nhiều nhất tuần xuống dưới xuankenchart và đổi tên là Top Tuần
-  // Requirement 3: Tab Thư viện cá nhân chỉ khi đăng nhập tài khoản mới hiện
+  // Navigation Items
+  // 1: Thay radio trực tuyến thành Album Nhạc Hay
+  // 2: Thêm phần Chat Box
   const mainNavItems: { id: ActiveDesktopTab; label: string; icon: React.ReactNode; isLive?: boolean; isHot?: boolean }[] = [
     { id: 'discover', label: 'Danh Sách Bài Hát', icon: <ListMusic className="w-5 h-5" /> },
     { id: 'chart', label: '#xuankenchart', icon: <TrendingUp className="w-5 h-5" /> },
     { id: 'weeklyTop', label: 'Top Tuần', icon: <Flame className="w-5 h-5 text-amber-400" />, isHot: true },
+    { id: 'albums', label: 'Album Nhạc Hay', icon: <Disc3 className="w-5 h-5 text-purple-400" /> },
+    { id: 'chat', label: 'Chat Box', icon: <MessageSquare className="w-5 h-5 text-sky-400" />, isLive: true },
     { id: 'store', label: 'Cửa Hàng Nhạc', icon: <ShoppingBag className="w-5 h-5" /> },
     { id: 'admin', label: 'Admin Quản Trị', icon: <ShieldCheck className="w-5 h-5" /> },
-    { id: 'radio', label: 'Radio Trực Tuyến', icon: <Radio className="w-5 h-5" />, isLive: true },
     ...(currentUser ? [{ id: 'library' as ActiveDesktopTab, label: 'Thư Viện Của Tôi', icon: <FolderHeart className="w-5 h-5" /> }] : []),
   ];
 
@@ -89,7 +92,7 @@ export const DesktopSidebar: React.FC = () => {
                     </span>
                   )}
                   {item.isHot && (
-                    <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-500 to-rose-500 text-black tracking-wider">
+                    <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-red-600 text-white tracking-wider shadow-sm">
                       TOP 10
                     </span>
                   )}
@@ -141,7 +144,7 @@ export const DesktopSidebar: React.FC = () => {
 
             {/* Requirement 1: Badge ADMIN ở bên phải nhưng căn giữa chữ admin với chỉnh sửa tài khoản */}
             {currentUser && isAdmin && (
-              <span className="shrink-0 ml-2 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-400 text-black shadow-xs tracking-wider self-center">
+              <span className="shrink-0 ml-2 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-600 text-white shadow-xs tracking-wider self-center">
                 ADMIN
               </span>
             )}

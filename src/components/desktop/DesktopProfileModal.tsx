@@ -179,7 +179,7 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-white text-base truncate max-w-xs">{currentUser.displayName || 'Thành viên'}</p>
                     <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                      isAdmin ? 'bg-amber-400 text-black' : 'bg-purple-500/20 text-[#c273ed]'
+                      isAdmin ? 'bg-red-600 text-white' : 'bg-purple-500/20 text-[#c273ed]'
                     }`}>
                       {currentUser.role}
                     </span>

@@ -146,7 +146,7 @@ export const DesktopLibraryPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-black text-white">XuanKen Rewind 2026</h2>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-400 text-black">
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white">
                 Mới
               </span>
             </div>

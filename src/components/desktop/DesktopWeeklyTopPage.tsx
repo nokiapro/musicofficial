@@ -117,7 +117,7 @@ export const DesktopWeeklyTopPage: React.FC = () => {
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase flex items-center gap-2">
                 <span>Nghe Nhiều Nhất Tuần</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-amber-400 text-black">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-red-600 text-white">
                   Top 10
                 </span>
               </h1>

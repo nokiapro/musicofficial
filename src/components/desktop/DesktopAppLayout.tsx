@@ -9,44 +9,13 @@ import { DesktopChartPage } from './DesktopChartPage';
 import { DesktopLibraryPage } from './DesktopLibraryPage';
 import { StorePageView } from '../store/StorePageView';
 import { AdminPageView } from '../admin/AdminPageView';
-import { Radio } from 'lucide-react';
-
 import { DesktopWeeklyTopPage } from './DesktopWeeklyTopPage';
 import { DesktopProfileModal } from './DesktopProfileModal';
+import { CuratedAlbumsView } from '../albums/CuratedAlbumsView';
+import { ChatBoxView } from '../chat/ChatBoxView';
 
 export const DesktopAppLayout: React.FC = () => {
-  const { activeDesktopTab, playSong, songs, isProfileModalOpen, setIsProfileModalOpen } = useMusic();
-
-  const radioStations = [
-    {
-      id: 'rad-1',
-      title: 'Xone Radio',
-      genre: 'Top Hits V-Pop & US-UK',
-      listeners: '14.2K người đang nghe',
-      gradient: 'from-purple-600 to-indigo-800',
-    },
-    {
-      id: 'rad-2',
-      title: 'Chạm & Yêu (Acoustic)',
-      genre: 'Giai điệu chữa lành đêm muộn',
-      listeners: '8.7K người đang nghe',
-      gradient: 'from-pink-600 to-rose-700',
-    },
-    {
-      id: 'rad-3',
-      title: 'Zing EDM Nonstop',
-      genre: 'Vinahouse & Bass House 2026',
-      listeners: '21.5K người đang nghe',
-      gradient: 'from-amber-500 to-red-600',
-    },
-    {
-      id: 'rad-4',
-      title: 'Nhạc Trẻ Gây Nghiện',
-      genre: 'V-Pop TikTok Trending',
-      listeners: '32.1K người đang nghe',
-      gradient: 'from-cyan-600 to-blue-800',
-    },
-  ];
+  const { activeDesktopTab, isProfileModalOpen, setIsProfileModalOpen } = useMusic();
 
   const renderContent = () => {
     switch (activeDesktopTab) {
@@ -71,42 +40,14 @@ export const DesktopAppLayout: React.FC = () => {
       case 'library':
         return <DesktopLibraryPage />;
 
+      case 'albums':
+        return <CuratedAlbumsView />;
+
+      case 'chat':
+        return <ChatBoxView />;
+
       case 'radio':
-        return (
-          <div className="space-y-6 pb-16">
-            <h1 className="text-3xl font-bold text-white tracking-tight">Radio Trực Tuyến</h1>
-            <p className="text-sm text-white/60">
-              Lắng nghe các luồng âm nhạc được phát trực tiếp 24/7 cùng hàng nghìn thính giả
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {radioStations.map((r, i) => (
-                <div
-                  key={r.id}
-                  onClick={() => {
-                    if (songs.length > 0) {
-                      playSong(songs[i % songs.length]);
-                    }
-                  }}
-                  className={`p-5 rounded-2xl bg-gradient-to-br ${r.gradient} shadow-xl cursor-pointer text-white flex flex-col justify-between h-48 hover:scale-[1.02] transition-transform`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500 uppercase tracking-wider">
-                      LIVE
-                    </span>
-                    <Radio className="w-5 h-5 text-white animate-pulse" />
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-bold">{r.title}</h3>
-                    <p className="text-xs text-white/80 mt-0.5">{r.genre}</p>
-                    <p className="text-[11px] text-white/60 mt-2 font-medium">{r.listeners}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
+        return <CuratedAlbumsView />;
 
       default:
         return <DesktopSongListView />;

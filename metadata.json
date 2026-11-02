@@ -1,6 +1,6 @@
 {
-  "name": "XuanKen Music",
-  "description": "Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music với nghe demo 60s, mua nhạc bản quyền MP3/WAV, karaoke LRC và giao diện di động/máy tính tối ưu.",
+  "name": "XuanKen Music - Quản Trị & Phát Nhạc Độc Quyền",
+  "description": "Nền tảng nghe nhạc trực tuyến XuanKen Music với hệ thống quản lý album nhạc hay, bài hát độc quyền và bảng xếp hạng.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

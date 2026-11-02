@@ -67,9 +67,61 @@ export type ThemeId =
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
-export type ActiveDesktopTab = 'discover' | 'store' | 'admin' | 'chart' | 'radio' | 'library' | 'weeklyTop';
+export type ActiveDesktopTab = 'discover' | 'store' | 'admin' | 'chart' | 'albums' | 'chat' | 'radio' | 'library' | 'weeklyTop';
 
-export type ActiveMobileTab = 'discover' | 'store' | 'admin' | 'chart' | 'library' | 'profile';
+export type ActiveMobileTab = 'discover' | 'store' | 'admin' | 'chart' | 'albums' | 'chat' | 'library' | 'profile';
+
+export interface AlbumSong {
+  id: string;
+  albumId: string;
+  stt?: number;
+  title: string;
+  artists: string;
+  duration: number; // in seconds
+  audioFormat: AudioFormat; // 'MP3' | 'WAV'
+  coverImage?: string;
+  mp3Url?: string;
+  wavUrl?: string;
+  demoUrl?: string;
+  lrcRaw?: string;
+  lyrics?: LyricLine[];
+  playCount?: number;
+  createdAt?: string;
+}
+
+export interface ExclusiveAlbum {
+  id: string;
+  title: string;
+  artist: string;
+  coverImage: string;
+  description: string;
+  releaseYear?: string;
+  genre?: string;
+  songs: AlbumSong[];
+  createdAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  userRole: 'admin' | 'user';
+  content: string;
+  timestamp: number;
+  sharedSong?: {
+    id: string;
+    title: string;
+    artists: string;
+    coverImage?: string;
+    mp3Url?: string;
+    wavUrl?: string;
+    duration?: number;
+    isAlbumTrack?: boolean;
+    albumTitle?: string;
+  };
+  isPinned?: boolean;
+}
 
 export interface Playlist {
   id: string;

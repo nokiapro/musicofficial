@@ -67,7 +67,7 @@ export const XuanKenRewindModal: React.FC = () => {
             <div>
               <h2 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-1.5 text-white">
                 <span>XUANKEN REWIND</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-400 text-black font-extrabold uppercase">
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-600 text-white font-extrabold uppercase">
                   2026
                 </span>
               </h2>

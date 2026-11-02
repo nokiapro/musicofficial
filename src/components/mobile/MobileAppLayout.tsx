@@ -28,6 +28,8 @@ import { AdminPageView } from '../admin/AdminPageView';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileMiniPlayer } from './MobileMiniPlayer';
 import { MobileFullPlayerModal } from './MobileFullPlayerModal';
+import { CuratedAlbumsView } from '../albums/CuratedAlbumsView';
+import { ChatBoxView } from '../chat/ChatBoxView';
 
 export const MobileAppLayout: React.FC = () => {
   const {
@@ -757,7 +759,7 @@ export const MobileAppLayout: React.FC = () => {
                 <div>
                   <h3 className="text-xs font-black text-white flex items-center gap-1.5">
                     <span>XuanKen Rewind</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-400 text-black font-extrabold">2026</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-red-600 text-white font-extrabold">2026</span>
                   </h3>
                   <p className="text-[10px] text-purple-200/80">
                     {Math.floor(rewindStats.totalSeconds / 60)} phút • {rewindStats.totalPlays} lượt nghe
@@ -1091,6 +1093,20 @@ export const MobileAppLayout: React.FC = () => {
         return (
           <div className="pb-32 px-1 sm:px-3 pt-2 max-w-5xl mx-auto">
             <AdminPageView />
+          </div>
+        );
+
+      case 'albums':
+        return (
+          <div className="pb-32 px-3 pt-2 max-w-5xl mx-auto">
+            <CuratedAlbumsView />
+          </div>
+        );
+
+      case 'chat':
+        return (
+          <div className="pb-32 px-2 pt-2 max-w-5xl mx-auto">
+            <ChatBoxView />
           </div>
         );
 

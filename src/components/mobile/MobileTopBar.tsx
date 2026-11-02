@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, X, Settings, Palette, Waves, Clock } from 'lucide-react';
+import { Search, X, Settings, Palette, Waves, Clock, Disc3, MessageSquare, ListMusic } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ThemeId } from '../../types/music';
 
@@ -7,6 +7,7 @@ export const MobileTopBar: React.FC = () => {
   const {
     searchQuery,
     setSearchQuery,
+    activeMobileTab,
     setActiveMobileTab,
     theme,
     setTheme,
@@ -255,6 +256,46 @@ export const MobileTopBar: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Quick Navigation Pills for Mobile: Bài Hát, Album Nhạc Hay, Chat Box */}
+      <div className="px-3 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px] font-bold">
+        <button
+          onClick={() => setActiveMobileTab('discover')}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
+            activeMobileTab === 'discover'
+              ? 'bg-[#f43f5e] text-white shadow-sm'
+              : 'bg-white/5 text-white/70 hover:text-white'
+          }`}
+        >
+          <ListMusic className="w-3.5 h-3.5" />
+          <span>Bài Hát</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMobileTab('albums')}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
+            activeMobileTab === 'albums'
+              ? 'bg-[#9b4de0] text-white shadow-sm'
+              : 'bg-white/5 text-white/70 hover:text-white'
+          }`}
+        >
+          <Disc3 className="w-3.5 h-3.5" />
+          <span>Album Nhạc Hay</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMobileTab('chat')}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
+            activeMobileTab === 'chat'
+              ? 'bg-[#0284c7] text-white shadow-sm'
+              : 'bg-white/5 text-white/70 hover:text-white'
+          }`}
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          <span>Chat Box</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+        </button>
       </div>
     </div>
   );

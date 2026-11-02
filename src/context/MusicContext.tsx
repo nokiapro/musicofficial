@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, RewindStats, SiteSettings } from '../types/music';
+import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, RewindStats, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
 import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
 import { MusicService } from '../services/musicService';
@@ -168,6 +168,27 @@ interface MusicContextType {
   // Site Settings (Requirement 11)
   siteSettings: SiteSettings;
   updateSiteSettings: (settings: Partial<SiteSettings>) => Promise<void>;
+
+  // Exclusive / Curated Albums (Album Nhạc Hay - Strict Isolation)
+  exclusiveAlbums: ExclusiveAlbum[];
+  selectedAlbum: ExclusiveAlbum | null;
+  setSelectedAlbum: (album: ExclusiveAlbum | null) => void;
+  addExclusiveAlbum: (albumData: Omit<ExclusiveAlbum, 'id' | 'createdAt' | 'songs'>) => Promise<ExclusiveAlbum>;
+  updateExclusiveAlbum: (id: string, albumData: Partial<ExclusiveAlbum>) => Promise<void>;
+  deleteExclusiveAlbum: (id: string) => Promise<void>;
+  addSongToAlbum: (albumId: string, songData: Omit<AlbumSong, 'id' | 'albumId' | 'createdAt'>) => Promise<AlbumSong>;
+  updateSongInAlbum: (albumId: string, songId: string, songData: Partial<AlbumSong>) => Promise<void>;
+  removeSongFromAlbum: (albumId: string, songId: string) => Promise<void>;
+  reorderSongInAlbum: (albumId: string, songId: string, direction: 'up' | 'down') => Promise<void>;
+  seedDefaultAlbums: () => Promise<{ success: boolean; error?: string }>;
+  syncExclusiveAlbumsToFirebase: () => Promise<{ success: boolean; rtdb: boolean; firestore: boolean; error?: string }>;
+  playAlbumTrack: (track: AlbumSong, album: ExclusiveAlbum, shuffle?: boolean) => void;
+
+  // Community Chat Box
+  chatMessages: ChatMessage[];
+  sendChatMessage: (content: string, sharedSong?: ChatMessage['sharedSong']) => Promise<void>;
+  deleteChatMessage: (id: string) => Promise<void>;
+  togglePinChatMessage: (id: string, isPinned: boolean) => Promise<void>;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -309,6 +330,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [members, setMembers] = useState<AppUser[]>([]);
 
   const [activePlaylistSongs, setActivePlaylistSongs] = useState<Song[]>([]);
+
+  // Exclusive / Curated Albums (Album Nhạc Hay - Strict Isolation)
+  const [exclusiveAlbums, setExclusiveAlbums] = useState<ExclusiveAlbum[]>([]);
+  const [selectedAlbum, setSelectedAlbum] = useState<ExclusiveAlbum | null>(null);
+
+  // Community Chat Messages
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   const timerRef = useRef<number | null>(null);
   // Requirement 8: Nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
@@ -598,12 +626,32 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
+    MusicService.fetchExclusiveAlbums().then((loadedAlbums) => {
+      setExclusiveAlbums(loadedAlbums || []);
+    });
+    const unsubscribeAlbums = MusicService.subscribeToExclusiveAlbums((updatedAlbums) => {
+      setExclusiveAlbums(updatedAlbums || []);
+    });
+
+    MusicService.fetchChatMessages().then((loadedMsgs) => {
+      setChatMessages(loadedMsgs || []);
+    });
+    const unsubscribeChat = MusicService.subscribeToChatMessages((updatedMsgs) => {
+      setChatMessages(updatedMsgs || []);
+    });
+
     return () => {
       unsubscribeRealtime();
       unsubscribeRewind();
+      unsubscribeAlbums();
+      unsubscribeChat();
     };
   }, []);
   const isSongPurchased = (songId: string): boolean => {
+    // Album tracks inside exclusive albums are full quality and free to play
+    if (exclusiveAlbums.some((a) => (a.songs || []).some((s) => s.id === songId))) {
+      return true;
+    }
     return purchasedSongIds.includes(songId);
   };
 
@@ -673,12 +721,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased?: boolean) => {
     if (!song) return '';
+    const isActuallyPurchased = purchased || song.isPurchased || isSongPurchased(song.id);
     // Security Restriction: If song is NOT purchased and user is NOT admin,
     // ONLY the 60-second demo URL is provided. Full lossless master links are protected.
-    if (!purchased && !isAdmin) {
-      return song.demoUrl || '';
+    if (!isActuallyPurchased && !isAdmin) {
+      return song.demoUrl || song.mp3Url || '';
     }
-    // Song is purchased or user is Admin: provide full audio stream
+    // Song is purchased, is an album track, or user is Admin: provide full audio stream
     const wantsWav = format === 'WAV' || song.audioFormat === 'WAV';
     if (wantsWav) {
       return (song.wavUrl || song.mp3Url || song.demoUrl) || '';
@@ -1363,7 +1412,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Sync all state to Firebase in 1 click
   const syncAllToFirebase = async () => {
-    return await MusicService.syncAllToFirebase(songs, members, playlists, vouchers);
+    return await MusicService.syncAllToFirebase(songs, members, playlists, vouchers, exclusiveAlbums);
   };
 
   // Seed sample songs to Firebase if empty
@@ -1710,6 +1759,255 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return MusicService.downloadSongAudio(song, format);
   };
 
+  // -------------------------------------------------------------
+  // Exclusive / Curated Albums (Album Nhạc Hay - Strict Isolation)
+  // -------------------------------------------------------------
+  const addExclusiveAlbum = async (albumData: Omit<ExclusiveAlbum, 'id' | 'createdAt' | 'songs'>): Promise<ExclusiveAlbum> => {
+    const id = 'alb-' + Date.now();
+    const newAlbum: ExclusiveAlbum = {
+      ...albumData,
+      id,
+      songs: [],
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [newAlbum, ...exclusiveAlbums];
+    setExclusiveAlbums(updated);
+    await MusicService.saveExclusiveAlbums(updated);
+    return newAlbum;
+  };
+
+  const updateExclusiveAlbum = async (id: string, albumData: Partial<ExclusiveAlbum>) => {
+    const updated = exclusiveAlbums.map((a) => {
+      if (a.id === id) {
+        return {
+          ...a,
+          ...albumData,
+          songs: Array.isArray(albumData.songs) ? albumData.songs : (a.songs || []),
+        };
+      }
+      return a;
+    });
+    setExclusiveAlbums(updated);
+    if (selectedAlbum?.id === id) {
+      setSelectedAlbum((prev) => (prev ? {
+        ...prev,
+        ...albumData,
+        songs: Array.isArray(albumData.songs) ? albumData.songs : (prev.songs || []),
+      } : null));
+    }
+    await MusicService.saveExclusiveAlbums(updated);
+  };
+
+  const deleteExclusiveAlbum = async (id: string) => {
+    const updated = exclusiveAlbums.filter((a) => a.id !== id);
+    setExclusiveAlbums(updated);
+    if (selectedAlbum?.id === id) {
+      setSelectedAlbum(null);
+    }
+    await MusicService.deleteExclusiveAlbum(id);
+    await MusicService.saveExclusiveAlbums(updated);
+  };
+
+  const addSongToAlbum = async (albumId: string, songData: Omit<AlbumSong, 'id' | 'albumId' | 'createdAt'>): Promise<AlbumSong> => {
+    const songId = 'albsong-' + Date.now();
+    const existingAlbum = exclusiveAlbums.find((a) => a.id === albumId);
+    const existingSongs = Array.isArray(existingAlbum?.songs) ? existingAlbum.songs : [];
+    const newSong: AlbumSong = {
+      ...songData,
+      id: songId,
+      albumId,
+      stt: existingSongs.length + 1,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = exclusiveAlbums.map((a) => {
+      if (a.id === albumId) {
+        const curSongs = Array.isArray(a.songs) ? a.songs : [];
+        const nextSongs = [...curSongs, newSong].map((s, idx) => ({ ...s, stt: idx + 1 }));
+        return {
+          ...a,
+          songs: nextSongs,
+        };
+      }
+      return a;
+    });
+    setExclusiveAlbums(updated);
+    if (selectedAlbum?.id === albumId) {
+      setSelectedAlbum((prev) => {
+        if (!prev) return null;
+        const curSongs = Array.isArray(prev.songs) ? prev.songs : [];
+        const nextSongs = [...curSongs, newSong].map((s, idx) => ({ ...s, stt: idx + 1 }));
+        return {
+          ...prev,
+          songs: nextSongs,
+        };
+      });
+    }
+    await MusicService.saveExclusiveAlbums(updated);
+    return newSong;
+  };
+
+  const updateSongInAlbum = async (albumId: string, songId: string, songData: Partial<AlbumSong>) => {
+    const updated = exclusiveAlbums.map((a) => {
+      if (a.id === albumId) {
+        const curSongs = Array.isArray(a.songs) ? a.songs : [];
+        return {
+          ...a,
+          songs: curSongs.map((s) => (s.id === songId ? { ...s, ...songData } : s)),
+        };
+      }
+      return a;
+    });
+    setExclusiveAlbums(updated);
+    if (selectedAlbum?.id === albumId) {
+      setSelectedAlbum((prev) => {
+        if (!prev) return null;
+        const curSongs = Array.isArray(prev.songs) ? prev.songs : [];
+        return {
+          ...prev,
+          songs: curSongs.map((s) => (s.id === songId ? { ...s, ...songData } : s)),
+        };
+      });
+    }
+    await MusicService.saveExclusiveAlbums(updated);
+  };
+
+  const removeSongFromAlbum = async (albumId: string, songId: string) => {
+    const updated = exclusiveAlbums.map((a) => {
+      if (a.id === albumId) {
+        const curSongs = Array.isArray(a.songs) ? a.songs : [];
+        const filtered = curSongs.filter((s) => s.id !== songId).map((s, idx) => ({ ...s, stt: idx + 1 }));
+        return {
+          ...a,
+          songs: filtered,
+        };
+      }
+      return a;
+    });
+    setExclusiveAlbums(updated);
+    if (selectedAlbum?.id === albumId) {
+      setSelectedAlbum((prev) => {
+        if (!prev) return null;
+        const curSongs = Array.isArray(prev.songs) ? prev.songs : [];
+        const filtered = curSongs.filter((s) => s.id !== songId).map((s, idx) => ({ ...s, stt: idx + 1 }));
+        return {
+          ...prev,
+          songs: filtered,
+        };
+      });
+    }
+    await MusicService.saveExclusiveAlbums(updated);
+  };
+
+  const reorderSongInAlbum = async (albumId: string, songId: string, direction: 'up' | 'down') => {
+    const album = exclusiveAlbums.find((a) => a.id === albumId);
+    if (!album) return;
+    const curSongs = Array.isArray(album.songs) ? [...album.songs] : [];
+    const idx = curSongs.findIndex((s) => s.id === songId);
+    if (idx === -1) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === curSongs.length - 1) return;
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const temp = curSongs[idx];
+    curSongs[idx] = curSongs[targetIdx];
+    curSongs[targetIdx] = temp;
+
+    const reindexed = curSongs.map((s, i) => ({ ...s, stt: i + 1 }));
+    const updated = exclusiveAlbums.map((a) => (a.id === albumId ? { ...a, songs: reindexed } : a));
+    setExclusiveAlbums(updated);
+    if (selectedAlbum?.id === albumId) {
+      setSelectedAlbum((prev) => (prev ? { ...prev, songs: reindexed } : null));
+    }
+    await MusicService.saveExclusiveAlbums(updated);
+  };
+
+  const seedDefaultAlbums = async (): Promise<{ success: boolean; error?: string }> => {
+    const res = await MusicService.seedDefaultAlbums();
+    if (res.success) {
+      const refreshed = await MusicService.fetchExclusiveAlbums();
+      setExclusiveAlbums(refreshed);
+    }
+    return res;
+  };
+
+  const syncExclusiveAlbumsToFirebase = async (): Promise<{ success: boolean; rtdb: boolean; firestore: boolean; error?: string }> => {
+    return await MusicService.saveExclusiveAlbums(exclusiveAlbums);
+  };
+
+  const playAlbumTrack = (track: AlbumSong, album: ExclusiveAlbum, shuffle: boolean = false) => {
+    // Strictly convert album tracks for isolated playback without altering the global songs catalog
+    const albumSongsList = Array.isArray(album.songs) ? album.songs : [];
+    const albumAsSongs: Song[] = albumSongsList.map((s, idx) => ({
+      id: s.id,
+      stt: s.stt || idx + 1,
+      title: s.title,
+      artists: s.artists,
+      duration: s.duration,
+      audioFormat: s.audioFormat || 'MP3',
+      coverImage: s.coverImage || album.coverImage,
+      coverGradient: 'from-purple-900 to-indigo-950',
+      album: album.title,
+      price: 0,
+      isPurchased: true,
+      demoUrl: s.demoUrl || s.mp3Url || s.wavUrl,
+      mp3Url: s.mp3Url,
+      wavUrl: s.wavUrl,
+      lyrics: s.lyrics || [],
+      lrcRaw: s.lrcRaw,
+      plays: `${(s.playCount || 0).toLocaleString('vi-VN')} lượt nghe`,
+      playCount: s.playCount || 0,
+    }));
+
+    handleSetPlaybackSource(`Album: ${album.title}`);
+    setActivePlaylistSongs(albumAsSongs);
+
+    const target = albumAsSongs.find((s) => s.id === track.id) || albumAsSongs[0];
+    if (target) {
+      if (shuffle) {
+        const remaining = albumAsSongs.filter((s) => s.id !== target.id);
+        const shuffled = [...remaining].sort(() => Math.random() - 0.5);
+        setQueue(shuffled);
+        playSong(target);
+      } else {
+        const idx = albumAsSongs.findIndex((s) => s.id === target.id);
+        const customQueue = idx !== -1 ? [...albumAsSongs.slice(idx + 1), ...albumAsSongs.slice(0, idx)] : albumAsSongs.slice(1);
+        setQueue(customQueue);
+        playSong(target);
+      }
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Community Chat Box Methods
+  // -------------------------------------------------------------
+  const sendChatMessage = async (content: string, sharedSong?: ChatMessage['sharedSong']) => {
+    const senderName = currentUser?.displayName || 'Khách Vô Danh';
+    const senderRole = currentUser?.role === 'admin' ? 'admin' : 'user';
+    const senderAvatar = currentUser?.avatarUrl;
+    const senderUid = currentUser?.uid || 'guest-' + Math.random().toString(36).substring(2, 6);
+
+    const newMsg = await MusicService.sendChatMessage({
+      userId: senderUid,
+      userName: senderName,
+      userRole: senderRole,
+      userAvatar: senderAvatar,
+      content,
+      timestamp: Date.now(),
+      sharedSong,
+    });
+    setChatMessages((prev) => [...prev, newMsg]);
+  };
+
+  const deleteChatMessage = async (id: string) => {
+    await MusicService.deleteChatMessage(id);
+    setChatMessages((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const togglePinChatMessage = async (id: string, isPinned: boolean) => {
+    await MusicService.togglePinChatMessage(id, isPinned);
+    setChatMessages((prev) => prev.map((m) => (m.id === id ? { ...m, isPinned } : m)));
+  };
+
   return (
     <MusicContext.Provider
       value={{
@@ -1846,6 +2144,25 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateSiteSettings,
         playbackSource,
         setPlaybackSource: handleSetPlaybackSource,
+
+        // Exclusive Albums & Chat Box
+        exclusiveAlbums,
+        selectedAlbum,
+        setSelectedAlbum,
+        addExclusiveAlbum,
+        updateExclusiveAlbum,
+        deleteExclusiveAlbum,
+        addSongToAlbum,
+        updateSongInAlbum,
+        removeSongFromAlbum,
+        reorderSongInAlbum,
+        seedDefaultAlbums,
+        syncExclusiveAlbumsToFirebase,
+        playAlbumTrack,
+        chatMessages,
+        sendChatMessage,
+        deleteChatMessage,
+        togglePinChatMessage,
       }}
     >
       {children}
