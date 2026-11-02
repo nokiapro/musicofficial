@@ -14,9 +14,13 @@ import {
   MessageSquare,
   ShieldCheck,
   Disc,
+  Heart,
+  MoreVertical,
+  ListPlus,
+  Download,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
-import { ExclusiveAlbum, AlbumSong } from '../../types/music';
+import { ExclusiveAlbum, AlbumSong, Song } from '../../types/music';
 
 export const CuratedAlbumsView: React.FC = () => {
   const {
@@ -32,11 +36,35 @@ export const CuratedAlbumsView: React.FC = () => {
     setSelectedLrcSong,
     sendChatMessage,
     isAdmin,
+    likedSongIds,
+    toggleLike,
+    openAddToPlaylistModal,
+    openDownloadModal,
+    openShareModal,
   } = useMusic();
 
   const [searchAlbumQuery, setSearchAlbumQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [shareSuccessMsg, setShareSuccessMsg] = useState<string | null>(null);
+  const [activeSongMenuId, setActiveSongMenuId] = useState<string | null>(null);
+  const [isAlbumLiked, setIsAlbumLiked] = useState<boolean>(false);
+
+  // Convert AlbumSong to Song object for global handlers
+  const convertAlbumSongToSong = (song: AlbumSong, album: ExclusiveAlbum): Song => ({
+    id: song.id,
+    title: song.title,
+    artists: song.artists,
+    duration: song.duration || 210,
+    audioFormat: song.audioFormat || 'MP3',
+    coverImage: song.coverImage || album.coverImage,
+    demoUrl: song.mp3Url || song.wavUrl,
+    mp3Url: song.mp3Url,
+    wavUrl: song.wavUrl,
+    price: 0,
+    lyrics: song.lyrics || [],
+    lrcRaw: song.lrcRaw,
+    album: album.title,
+  });
 
   // List of genres from existing albums
   const genres: string[] = ['all', ...Array.from(new Set(exclusiveAlbums.map((a) => a.genre).filter((g): g is string => !!g)))];
@@ -80,11 +108,25 @@ export const CuratedAlbumsView: React.FC = () => {
   if (selectedAlbum) {
     const albumSongsList = Array.isArray(selectedAlbum.songs) ? selectedAlbum.songs : [];
     const totalDurationSecs = albumSongsList.reduce((acc, s) => acc + (s.duration || 0), 0);
-    const totalMins = Math.floor(totalDurationSecs / 60);
+    const totalHours = Math.floor(totalDurationSecs / 3600);
+    const totalMins = Math.floor((totalDurationSecs % 3600) / 60);
+    const durationText = totalHours > 0
+      ? `${totalHours} giờ ${totalMins} phút`
+      : `${totalMins} phút`;
+
+    const isCurrentAlbumActive = albumSongsList.some((s) => s.id === currentSong?.id);
+    const isCurrentAlbumSpinning = isPlaying && isCurrentAlbumActive;
+
+    // Ảnh bài hát đang phát trong album, hoặc bài hát đầu tiên trong album
+    const activeSong = albumSongsList.find((s) => s.id === currentSong?.id) || (albumSongsList.length > 0 ? albumSongsList[0] : null);
+    const displaySongImage = (isCurrentAlbumActive && currentSong?.coverImage)
+      || activeSong?.coverImage
+      || selectedAlbum.coverImage
+      || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
 
     return (
       <div className="space-y-6 pb-24 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
-        {/* Back Button */}
+        {/* Top Back & Admin Controls */}
         <div className="flex items-center justify-between">
           <button
             onClick={() => setSelectedAlbum(null)}
@@ -100,7 +142,7 @@ export const CuratedAlbumsView: React.FC = () => {
                 setActiveDesktopTab('admin');
                 setActiveMobileTab('admin');
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-xs hover:bg-amber-500/30 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600/20 text-red-300 border border-red-500/40 font-bold text-xs hover:bg-red-600/30 transition-colors cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Quản lý Album trong Admin</span>
@@ -124,242 +166,314 @@ export const CuratedAlbumsView: React.FC = () => {
           </div>
         )}
 
-        {/* Album Hero Header */}
-        <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-purple-900/50 via-zinc-900/80 to-black border border-white/10 shadow-2xl backdrop-blur-md">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10">
-            {/* Album Cover Art with Vinyl Effect */}
-            <div className="relative group shrink-0">
-              {/* Spinning Vinyl Record behind */}
-              <div
-                className={`absolute -right-3 top-2 w-36 h-36 sm:w-44 sm:h-44 rounded-full bg-zinc-950 border border-zinc-800 shadow-2xl flex items-center justify-center transition-transform duration-500 group-hover:translate-x-5 ${
-                  isPlaying && currentSong?.album === selectedAlbum.title ? 'animate-spin-slow' : ''
-                }`}
-              >
-                <div className="w-14 h-14 rounded-full border-2 border-zinc-700 bg-zinc-900 flex items-center justify-center">
-                  <div className="w-5 h-5 rounded-full bg-black border border-zinc-600" />
-                </div>
-              </div>
-
-              {/* Main Cover Card */}
-              <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-zinc-900">
-                <img
-                  src={selectedAlbum.coverImage}
-                  alt={selectedAlbum.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              </div>
+        {/* Zing MP3 Album Detail Layout */}
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start relative">
+          {/* CỘT TRÁI CỐ ĐỊNH (Sticky): Bìa đĩa tròn quay 360 độ + Thông tin + Nút phát */}
+          <div className="w-full lg:w-72 xl:w-80 shrink-0 lg:sticky lg:top-4 flex flex-col items-center text-center self-start">
+            {/* Ảnh bìa bài hát tròn quay 360 độ khi đang phát và dừng khi dừng nghe (không đục lỗ ở giữa) */}
+            <div
+              className="relative w-52 h-52 sm:w-64 sm:h-64 rounded-full overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.7)] border-4 border-white/20 select-none group shrink-0"
+              style={{
+                animation: 'spin 20s linear infinite',
+                animationPlayState: isCurrentAlbumSpinning ? 'running' : 'paused',
+              }}
+            >
+              <img
+                src={displaySongImage}
+                alt={activeSong?.title || selectedAlbum.title}
+                className="w-full h-full object-cover rounded-full"
+                onError={(e) => {
+                  e.currentTarget.src = selectedAlbum.coverImage || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
+                }}
+              />
             </div>
 
-            {/* Album Metadata */}
-            <div className="flex-1 text-center sm:text-left min-w-0">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-[#c273ed] border border-purple-500/30">
-                  Album Độc Quyền
-                </span>
-                {selectedAlbum.genre && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white/80">
-                    {selectedAlbum.genre}
-                  </span>
-                )}
-                {selectedAlbum.releaseYear && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white/60">
-                    Năm {selectedAlbum.releaseYear}
-                  </span>
-                )}
-              </div>
-
-              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight uppercase">
+            {/* Thông tin Album bên dưới ảnh bìa */}
+            <div className="mt-4 w-full px-2">
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase line-clamp-2">
                 {selectedAlbum.title}
               </h1>
-              <p className="text-sm sm:text-base font-bold text-white/80 mt-1">
-                Nghệ sĩ: <span className="text-[#c273ed]">{selectedAlbum.artist}</span>
+              <p className="text-xs text-white/50 mt-1">
+                Cập nhật: {selectedAlbum.releaseYear ? `Năm ${selectedAlbum.releaseYear}` : '02/11/2026'}
               </p>
-              <p className="text-xs text-white/60 mt-2 max-w-2xl leading-relaxed">
-                {selectedAlbum.description || 'Album chọn lọc đặc biệt dành riêng cho người dùng XuanKen Music.'}
+              <p className="text-xs font-semibold text-white/70 mt-0.5 line-clamp-1">
+                {selectedAlbum.artist}
               </p>
 
-              {/* Stats & Notice */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3 text-xs text-white/50">
-                <span>{albumSongsList.length} bài hát</span>
-                <span>•</span>
-                <span>Khoảng {totalMins} phút</span>
-                <span>•</span>
-                <span className="text-amber-400/90 font-medium flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Bài hát chỉ lưu hành & hiển thị độc quyền trong album này
-                </span>
-              </div>
+              {/* Tổng hợp trong album có bao nhiêu bài hát và cập nhật thời lượng */}
+              <p className="text-xs text-white/50 mt-1.5 font-medium">
+                {albumSongsList.length} bài hát • {durationText}
+              </p>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-5">
+              {/* Nút Tiếp Tục Phát / Phát Tất Cả đồng bộ với màu theme */}
+              <div className="flex flex-col items-center gap-3 mt-4">
                 <button
                   disabled={albumSongsList.length === 0}
                   onClick={() => {
-                    if (albumSongsList.length > 0) {
-                      playAlbumTrack(albumSongsList[0], selectedAlbum, false);
+                    if (albumSongsList.length === 0) return;
+                    if (isCurrentAlbumActive) {
+                      togglePlay();
+                    } else {
+                      playAlbumTrack(albumSongsList[0], selectedAlbum);
                     }
                   }}
                   style={{ backgroundColor: 'var(--color-accent)' }}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-xs shadow-lg hover:opacity-95 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+                  className="w-full max-w-[220px] py-2.5 px-6 rounded-full hover:opacity-90 active:scale-95 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer disabled:opacity-40"
                 >
-                  <Play className="w-4 h-4 fill-current ml-0.5" />
-                  <span>Phát Tất Cả</span>
+                  {isCurrentAlbumSpinning ? (
+                    <>
+                      <Pause className="w-4 h-4 fill-current" />
+                      <span>TẠM DỪNG</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current ml-0.5" />
+                      <span>{isCurrentAlbumActive ? 'TIẾP TỤC PHÁT' : 'PHÁT TẤT CẢ'}</span>
+                    </>
+                  )}
                 </button>
 
-                <button
-                  disabled={albumSongsList.length === 0}
-                  onClick={() => {
-                    if (albumSongsList.length > 0) {
-                      const randomIdx = Math.floor(Math.random() * albumSongsList.length);
-                      playAlbumTrack(albumSongsList[randomIdx], selectedAlbum, true);
-                    }
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all active:scale-95 cursor-pointer disabled:opacity-40"
-                >
-                  <Shuffle className="w-4 h-4" />
-                  <span>Phát Ngẫu Nhiên</span>
-                </button>
+                {/* Hàng nút phụ: Yêu thích Album + Phát Ngẫu Nhiên */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsAlbumLiked(!isAlbumLiked)}
+                    className={`w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer ${
+                      isAlbumLiked ? 'text-rose-500' : 'text-white/70 hover:text-white'
+                    }`}
+                    title="Yêu thích album"
+                  >
+                    <Heart className={`w-4 h-4 ${isAlbumLiked ? 'fill-current' : ''}`} />
+                  </button>
+                  <button
+                    disabled={albumSongsList.length === 0}
+                    onClick={() => {
+                      if (albumSongsList.length > 0) {
+                        const randIdx = Math.floor(Math.random() * albumSongsList.length);
+                        playAlbumTrack(albumSongsList[randIdx], selectedAlbum, true);
+                      }
+                    }}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+                    title="Phát ngẫu nhiên album"
+                  >
+                    <Shuffle className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Tracklist Table */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-2">
-            <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
-              <Disc3 className="w-5 h-5 text-[#c273ed]" />
-              <span>Danh Sách Bài Hát Trong Album ({albumSongsList.length})</span>
-            </h2>
-          </div>
-
-          {albumSongsList.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-white/5 border border-white/10 text-white/50 text-xs">
-              Album này chưa có bài hát nào. Admin có thể thêm bài hát vào album qua mục Admin Quản Trị!
+          {/* CỘT PHẢI: Kéo lướt danh sách bài hát độc lập (Ảnh bìa vẫn giữ nguyên vị trí) */}
+          <div className="flex-1 min-w-0 w-full space-y-4">
+            {/* Lời tựa (Description box kiểu Zing MP3) */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-white/80 leading-relaxed backdrop-blur-xs">
+              <span className="text-[#c273ed] font-bold">Lời tựa: </span>
+              {selectedAlbum.description ||
+                `Tuyển tập các ca khúc độc quyền đặc sắc nhất của ${selectedAlbum.artist}. Dữ liệu được chọn lọc và thưởng thức trọn vẹn không giới hạn trên XuanKen Music.`}
             </div>
-          ) : (
-            <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/5 backdrop-blur-xs">
-              <div className="divide-y divide-white/5">
-                {albumSongsList.map((song, idx) => {
-                  const isCurrent = currentSong?.id === song.id;
-                  const isPlayingThis = isCurrent && isPlaying;
 
-                  return (
-                    <div
-                      key={song.id}
-                      onClick={() => playAlbumTrack(song, selectedAlbum)}
-                      className={`flex items-center justify-between p-3 sm:px-4 hover:bg-white/10 transition-colors cursor-pointer group ${
-                        isCurrent ? 'bg-purple-600/20' : ''
-                      }`}
-                    >
-                      {/* Left: STT + Play Indicator + Title */}
-                      <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                        <div className="w-7 text-center shrink-0">
+            {/* Bảng danh sách bài hát */}
+            <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/5 backdrop-blur-xs">
+              {/* Tiêu đề cột: # (STT) - BÀI HÁT (không icon) - ALBUM - TIM - THỜI GIAN - THAO TÁC */}
+              <div className="flex items-center px-3 sm:px-4 py-2.5 text-xs font-bold text-white/50 border-b border-white/10 uppercase tracking-wider select-none">
+                <div className="w-8 sm:w-10 text-center shrink-0 text-white/40">
+                  #
+                </div>
+                <div className="flex-1 min-w-0 pl-3 sm:pl-4 text-left">
+                  BÀI HÁT
+                </div>
+                <div className="hidden md:block w-44 lg:w-56 text-left shrink-0 truncate px-2">
+                  ALBUM
+                </div>
+                <div className="w-14 sm:w-16 text-center shrink-0">
+                  TIM
+                </div>
+                <div className="w-16 sm:w-20 text-center shrink-0">
+                  THỜI GIAN
+                </div>
+                <div className="w-16 sm:w-20 text-center shrink-0">
+                  THAO TÁC
+                </div>
+              </div>
+
+              {/* Danh sách các bài hát trong album */}
+              {albumSongsList.length === 0 ? (
+                <div className="p-12 text-center text-white/40 text-xs">
+                  Album này chưa có bài hát nào.
+                </div>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {albumSongsList.map((song, idx) => {
+                    const isCurrent = currentSong?.id === song.id;
+                    const isPlayingThis = isCurrent && isPlaying;
+                    const isLiked = likedSongIds.includes(song.id);
+                    const songObj = convertAlbumSongToSong(song, selectedAlbum);
+                    const isMenuOpen = activeSongMenuId === song.id;
+
+                    return (
+                      <div
+                        key={song.id}
+                        onClick={() => playAlbumTrack(song, selectedAlbum)}
+                        className={`relative flex items-center px-3 sm:px-4 py-2.5 transition-all cursor-pointer group ${
+                          isCurrent
+                            ? 'bg-purple-600/25 border-l-2 border-[#c273ed]'
+                            : 'hover:bg-white/10'
+                        }`}
+                      >
+                        {/* Cột 1: # STT / Sóng nhạc / Nút Play khi hover */}
+                        <div className="w-8 sm:w-10 flex items-center justify-center shrink-0">
                           {isPlayingThis ? (
-                            <div className="flex items-center justify-center gap-0.5">
-                              <span className="w-1 h-3 bg-[#c273ed] animate-pulse" />
-                              <span className="w-1 h-4 bg-[#c273ed] animate-pulse delay-100" />
-                              <span className="w-1 h-2 bg-[#c273ed] animate-pulse delay-200" />
+                            <div className="flex items-end justify-center gap-0.5 h-3.5">
+                              <span className="w-0.5 h-3.5 bg-pink-400 animate-pulse" />
+                              <span className="w-0.5 h-2 bg-pink-400 animate-pulse delay-100" />
+                              <span className="w-0.5 h-3 bg-pink-400 animate-pulse delay-200" />
                             </div>
                           ) : (
-                            <span className="text-xs font-mono font-bold text-white/40 group-hover:hidden">
-                              {(idx + 1).toString().padStart(2, '0')}
-                            </span>
+                            <>
+                              <span className="text-xs font-mono font-bold text-white/40 group-hover:hidden">
+                                {(idx + 1).toString().padStart(2, '0')}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isCurrent) {
+                                    togglePlay();
+                                  } else {
+                                    playAlbumTrack(song, selectedAlbum);
+                                  }
+                                }}
+                                className="hidden group-hover:flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-white hover:bg-pink-600 transition-colors"
+                              >
+                                <Play className="w-3 h-3 fill-current ml-0.5" />
+                              </button>
+                            </>
                           )}
+                        </div>
+
+                        {/* Cột 2: BÀI HÁT (Thumbnail + Title + Artists) */}
+                        <div className="flex-1 min-w-0 flex items-center gap-3 pl-3 sm:pl-4 pr-2">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
+                            <img
+                              src={song.coverImage || selectedAlbum.coverImage}
+                              alt={song.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              onError={(e) => {
+                                e.currentTarget.src = selectedAlbum.coverImage;
+                              }}
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-xs sm:text-sm font-bold truncate ${isCurrent ? 'text-pink-400' : 'text-white group-hover:text-pink-300'}`}>
+                              {song.title}
+                            </p>
+                            <p className="text-[11px] text-white/50 truncate mt-0.5">
+                              {song.artists}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Cột 3: ALBUM */}
+                        <div className="hidden md:block w-44 lg:w-56 text-left text-xs text-white/50 truncate shrink-0 px-2">
+                          {selectedAlbum.title}
+                        </div>
+
+                        {/* Cột 4: TIM */}
+                        <div className="w-14 sm:w-16 flex items-center justify-center shrink-0" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (isCurrent) {
-                                togglePlay();
-                              } else {
-                                playAlbumTrack(song, selectedAlbum);
-                              }
-                            }}
-                            className="hidden group-hover:flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-white hover:bg-purple-600 transition-colors"
+                            onClick={() => toggleLike(song.id)}
+                            className={`p-1.5 rounded-full transition-colors cursor-pointer ${
+                              isLiked ? 'text-rose-500' : 'text-white/30 hover:text-rose-400'
+                            }`}
+                            title={isLiked ? 'Bỏ thích bài hát' : 'Thích bài hát này'}
                           >
-                            {isPlayingThis ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current ml-0.5" />}
+                            <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
                           </button>
                         </div>
 
-                        {/* Song Cover Thumbnail */}
-                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
-                          <img
-                            src={song.coverImage || selectedAlbum.coverImage}
-                            alt={song.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src = selectedAlbum.coverImage;
-                            }}
-                          />
-                        </div>
-
-                        {/* Song Title and Artists */}
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-xs sm:text-sm font-bold truncate ${isCurrent ? 'text-[#c273ed]' : 'text-white'}`}>
-                            {song.title}
-                          </p>
-                          <p className="text-[11px] text-white/50 truncate mt-0.5">
-                            {song.artists}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Right: Format Badge + Duration + Actions */}
-                      <div className="flex items-center gap-2 sm:gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
-                          song.audioFormat === 'WAV'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                        }`}>
-                          {song.audioFormat || 'MP3'}
-                        </span>
-
-                        {/* View lyrics button */}
-                        {song.lrcRaw && (
-                          <button
-                            onClick={() => {
-                              setSelectedLrcSong({
-                                id: song.id,
-                                title: song.title,
-                                artists: song.artists,
-                                duration: song.duration,
-                                audioFormat: song.audioFormat || 'MP3',
-                                price: 0,
-                                lyrics: song.lyrics || [],
-                                lrcRaw: song.lrcRaw,
-                              });
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-                            title="Xem lời bài hát LRC"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
-                        {/* Share to Chat Box */}
-                        <button
-                          onClick={() => handleShareToChat(song, selectedAlbum)}
-                          className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-[#38bdf8] transition-colors"
-                          title="Chia sẻ bài hát lên Chat Box"
-                        >
-                          <Share2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Duration */}
-                        <span className="text-xs font-mono text-white/50 w-12 text-right">
+                        {/* Cột 5: THỜI GIAN */}
+                        <div className="w-16 sm:w-20 flex items-center justify-center shrink-0 text-xs font-mono text-white/50">
                           {formatSeconds(song.duration || 0)}
-                        </span>
+                        </div>
+
+                        {/* Cột 6: THAO TÁC (3 gạch dọc / MoreVertical menu) */}
+                        <div className="w-16 sm:w-20 flex items-center justify-center shrink-0 relative" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => setActiveSongMenuId(isMenuOpen ? null : song.id)}
+                            className={`p-1.5 rounded-full hover:bg-white/15 transition-colors cursor-pointer ${
+                              isMenuOpen ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white'
+                            }`}
+                            title="Thao tác"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+
+                          {/* Menu Tùy Chọn Popup */}
+                          {isMenuOpen && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setActiveSongMenuId(null)}
+                              />
+                              <div className="absolute right-0 bottom-full mb-1 sm:bottom-auto sm:top-full sm:mt-1 w-52 rounded-2xl bg-zinc-900 border border-white/15 shadow-2xl p-1.5 z-50 text-xs backdrop-blur-md animate-in fade-in zoom-in-95 duration-100">
+                                {/* Thêm bài hát vào playlist */}
+                                <button
+                                  onClick={() => {
+                                    setActiveSongMenuId(null);
+                                    openAddToPlaylistModal(songObj);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors text-left font-medium cursor-pointer"
+                                >
+                                  <ListPlus className="w-3.5 h-3.5 text-[#c273ed]" />
+                                  <span>Thêm vào playlist</span>
+                                </button>
+
+                                {/* Chia sẻ bài hát */}
+                                <button
+                                  onClick={() => {
+                                    setActiveSongMenuId(null);
+                                    openShareModal(songObj);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors text-left font-medium cursor-pointer"
+                                >
+                                  <Share2 className="w-3.5 h-3.5 text-sky-400" />
+                                  <span>Chia sẻ bài hát</span>
+                                </button>
+
+                                {/* Tải bài hát */}
+                                <button
+                                  onClick={() => {
+                                    setActiveSongMenuId(null);
+                                    openDownloadModal(songObj);
+                                  }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors text-left font-medium cursor-pointer"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>Tải bài hát</span>
+                                </button>
+
+                                {/* Xem lời bài hát */}
+                                {song.lrcRaw && (
+                                  <button
+                                    onClick={() => {
+                                      setActiveSongMenuId(null);
+                                      setSelectedLrcSong(songObj);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors text-left font-medium cursor-pointer"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-amber-400" />
+                                    <span>Xem lời bài hát (LRC)</span>
+                                  </button>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     );

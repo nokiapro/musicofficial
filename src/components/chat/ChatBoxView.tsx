@@ -242,10 +242,14 @@ export const ChatBoxView: React.FC = () => {
                       {msg.userName}
                     </span>
 
-                    {/* Admin Badge */}
-                    {isMsgAdmin && (
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-xs tracking-wider">
+                    {/* Role Badges: Admin (red bg white text) or Thành Viên (blue bg white text) */}
+                    {isMsgAdmin ? (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-600 text-white shadow-xs tracking-wider">
                         ADMIN
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-blue-600 text-white shadow-xs tracking-wider">
+                        THÀNH VIÊN
                       </span>
                     )}
 

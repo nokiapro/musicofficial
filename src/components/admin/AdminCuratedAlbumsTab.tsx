@@ -1309,18 +1309,6 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                     className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-purple-500"
                   />
                 </div>
-
-                {/* Demo URL */}
-                <div>
-                  <label className="block text-white/70 font-semibold text-[11px] mb-1">Link Demo (Tùy chọn)</label>
-                  <input
-                    type="url"
-                    value={songDemoUrl}
-                    onChange={(e) => setSongDemoUrl(e.target.value)}
-                    placeholder="https://.../demo.mp3 (Nếu để trống sẽ phát MP3/WAV)"
-                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-purple-500"
-                  />
-                </div>
               </div>
 
               {/* Lyrics (LRC) */}
