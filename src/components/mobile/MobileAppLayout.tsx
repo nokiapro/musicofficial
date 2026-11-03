@@ -315,7 +315,7 @@ export const MobileAppLayout: React.FC = () => {
                   >
                     {/* Left Info: STT, Cover, Title, Artist */}
                     <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
-                      <span className="w-5 text-center text-xs font-bold text-white/40 font-mono">
+                      <span className="w-5 text-center text-sm font-bold text-white/50 font-so">
                         {(discoverPage - 1) * PAGE_SIZE + idx + 1}
                       </span>
 
@@ -658,7 +658,7 @@ export const MobileAppLayout: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate min-w-0 flex-1">
-                      <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-black text-xs shrink-0 ${
+                      <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-black text-xs shrink-0 font-so ${
                         rank === 1
                           ? 'border-amber-400/50 text-amber-300 bg-amber-500/10'
                           : rank === 2
@@ -1119,21 +1119,21 @@ export const MobileAppLayout: React.FC = () => {
 
       case 'admin':
         return (
-          <div className="pb-32 px-1 sm:px-3 pt-2 max-w-5xl mx-auto">
+          <div className="pb-32 px-1 sm:px-3 pt-2 max-w-6xl mx-auto">
             <AdminPageView />
           </div>
         );
 
       case 'albums':
         return (
-          <div className="pb-32 px-3 pt-2 max-w-5xl mx-auto">
+          <div className="pb-32 px-3 pt-2 max-w-6xl mx-auto">
             <CuratedAlbumsView />
           </div>
         );
 
       case 'chat':
         return (
-          <div className="pb-32 px-2 pt-2 max-w-5xl mx-auto">
+          <div className="pb-32 px-2 pt-2 max-w-6xl mx-auto">
             <ChatBoxView />
           </div>
         );
@@ -1154,7 +1154,7 @@ export const MobileAppLayout: React.FC = () => {
     >
       {/* Top Banner on Desktop when viewing Mobile App mode */}
       <div
-        className="hidden sm:flex items-center justify-between w-full max-w-[420px] px-4 py-2 mb-2 rounded-xl border text-xs text-[var(--text-primary)] shrink-0"
+        className="hidden sm:flex items-center justify-between w-full max-w-[460px] px-4 py-2 mb-2 rounded-xl border text-xs text-[var(--text-primary)] shrink-0"
         style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
       >
         <div className="flex items-center gap-2">
@@ -1174,7 +1174,7 @@ export const MobileAppLayout: React.FC = () => {
       {/* Phone Frame on Desktop or Edge-to-Edge on Mobile Phone */}
       <div
         data-theme={theme}
-        className="w-full h-full sm:max-w-[420px] sm:h-[860px] sm:max-h-[92vh] sm:rounded-[44px] sm:border-[8px] sm:border-zinc-800 sm:ring-1 sm:ring-white/20 sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col relative overflow-hidden transition-colors duration-200"
+        className="w-full h-full sm:max-w-[460px] sm:h-[860px] sm:max-h-[92vh] sm:rounded-[44px] sm:border-[8px] sm:border-zinc-800 sm:ring-1 sm:ring-white/20 sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col relative overflow-hidden transition-colors duration-200"
         style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       >
         {/* Dynamic Island / Notch on Desktop Mockup */}

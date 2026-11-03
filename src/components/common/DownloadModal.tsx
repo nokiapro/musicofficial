@@ -29,7 +29,7 @@ export const DownloadModal: React.FC = () => {
     try {
       const res = await downloadSong(songToDownload, format);
       if (res.success) {
-        setDownloadMsg({ isError: false, text: `✅ Đang tải bài hát ${isAlbumSong ? '128kbps' : format} về thiết bị!` });
+        setDownloadMsg({ isError: false, text: `Đang tải bài hát ${isAlbumSong ? '128kbps' : format} về thiết bị!` });
       } else {
         setDownloadMsg({ isError: true, text: `⚠️ ${res.message || 'Lỗi khi tải file nhạc'}` });
       }

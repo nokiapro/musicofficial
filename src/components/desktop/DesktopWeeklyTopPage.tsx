@@ -222,7 +222,7 @@ export const DesktopWeeklyTopPage: React.FC = () => {
                   >
                     {/* Rank */}
                     <td className="py-3.5 px-4 text-center">
-                      <div className={`w-8 h-8 rounded-xl border flex items-center justify-center font-black text-sm mx-auto shadow-sm ${rankStyle}`}>
+                      <div className={`w-8 h-8 rounded-xl border flex items-center justify-center font-black text-sm mx-auto shadow-sm font-so ${rankStyle}`}>
                         {rank === 1 ? <Crown className="w-4 h-4 fill-amber-400 text-amber-400" /> : rank}
                       </div>
                     </td>
@@ -274,9 +274,9 @@ export const DesktopWeeklyTopPage: React.FC = () => {
 
                     {/* Weekly plays */}
                     <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 font-mono font-bold text-amber-300 text-xs">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 font-bold text-amber-300 text-xs">
                         <Flame className="w-3.5 h-3.5 text-amber-400" />
-                        <span>{song.weeklyPlaysCount} lượt</span>
+                        <span><strong className="font-so text-sm">{song.weeklyPlaysCount}</strong> lượt</span>
                       </span>
                     </td>
 

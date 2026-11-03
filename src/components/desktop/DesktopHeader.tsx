@@ -126,7 +126,7 @@ export const DesktopHeader: React.FC = () => {
       </div>
 
       {/* Center: Clean Search Bar (Item 5: Căn giữa khung tìm kiếm) */}
-      <div className="relative w-full max-w-xl mx-auto">
+      <div className="relative w-full max-w-2xl mx-auto">
         <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/10 border border-white/10 focus-within:border-[#9b4de0] focus-within:bg-[#231b2e] transition-all">
           <Search className="w-4 h-4 text-white/50 shrink-0" />
           <input

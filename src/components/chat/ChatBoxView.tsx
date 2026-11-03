@@ -139,7 +139,7 @@ export const ChatBoxView: React.FC = () => {
   const pinnedMessages = displayMessages.filter((m) => m.isPinned);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-170px)] sm:h-[calc(100vh-150px)] max-w-5xl mx-auto rounded-3xl bg-zinc-900/60 border border-white/10 backdrop-blur-md overflow-hidden shadow-2xl select-none font-['Roboto_Condensed']">
+    <div className="flex flex-col h-[calc(100vh-170px)] sm:h-[calc(100vh-150px)] max-w-6xl mx-auto rounded-3xl bg-zinc-900/60 border border-white/10 backdrop-blur-md overflow-hidden shadow-2xl select-none font-['Roboto_Condensed']">
       {/* Top Header */}
       <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3 min-w-0">

@@ -5,6 +5,15 @@
   --font-mono: 'Roboto Condensed', monospace;
 }
 
+@font-face {
+  font-family: 'FontSo';
+  src: url('/fonts/fontso.ttf') format('truetype'),
+       url('https://raw.githubusercontent.com/nokiapro/musicofficial/refs/heads/main/fontso.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Enforce Roboto Condensed for ALL text, digits, headers, inputs, buttons, and code */
 html, body, #root, *::before, *::after {
   font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
@@ -14,10 +23,22 @@ input, button, textarea, select, table, span, label {
   font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
+/* Custom FontSo for rank/order numbers */
+.font-so, [class*="font-so"] {
+  font-family: 'FontSo', -apple-system, sans-serif !important;
+  font-variant-numeric: normal !important;
+  letter-spacing: 0.03em;
+}
+
 /* Ensure numbers and monospace elements use Roboto Condensed with tabular digits */
 .font-mono, [class*="font-mono"], code, pre, kbd, samp {
   font-family: 'Roboto Condensed', monospace !important;
   font-variant-numeric: tabular-nums lining-nums !important;
+}
+
+/* When font-so is applied together with font-mono or alone, font-so wins */
+.font-mono.font-so, .font-so.font-mono {
+  font-family: 'FontSo', -apple-system, sans-serif !important;
 }
 
 :root, [data-theme="purple"], :root[data-theme="purple"] {

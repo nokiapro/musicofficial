@@ -509,16 +509,14 @@ export const MusicService = {
     // Keep cached members list up to date
     try {
       const cached = localStorage.getItem(STORAGE_KEY_MEMBERS);
-      if (cached) {
-        const list: AppUser[] = JSON.parse(cached);
-        const idx = list.findIndex((m) => m.uid === member.uid);
-        if (idx >= 0) {
-          list[idx] = { ...list[idx], ...clean };
-        } else {
-          list.push(clean);
-        }
-        localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(list));
+      const list: AppUser[] = cached ? JSON.parse(cached) : [];
+      const idx = list.findIndex((m) => m.uid === member.uid);
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...clean };
+      } else {
+        list.push(clean);
       }
+      localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(list));
     } catch (e) {}
 
     let success = false;

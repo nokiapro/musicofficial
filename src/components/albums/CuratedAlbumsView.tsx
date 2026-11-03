@@ -289,7 +289,7 @@ export const CuratedAlbumsView: React.FC = () => {
                             </div>
                           ) : (
                             <>
-                              <span className="text-xs font-mono font-bold text-white/40 group-hover:hidden">
+                              <span className="text-sm font-bold text-white/50 group-hover:hidden font-so">
                                 {(idx + 1).toString().padStart(2, '0')}
                               </span>
                               <button
@@ -512,7 +512,7 @@ export const CuratedAlbumsView: React.FC = () => {
                 >
                   {/* Left: STT + Vinyl Thumbnail + Title & Artist */}
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <span className="w-6 text-center font-mono font-bold text-xs text-white/40 group-hover:text-white shrink-0">
+                    <span className="w-6 text-center font-bold text-sm text-white/50 group-hover:text-white shrink-0 font-so">
                       {idx + 1}
                     </span>
 

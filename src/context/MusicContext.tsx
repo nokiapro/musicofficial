@@ -361,7 +361,27 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Auth & Members
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
-  const [members, setMembers] = useState<AppUser[]>([]);
+  const [members, setMembers] = useState<AppUser[]>(() => {
+    try {
+      const cached = localStorage.getItem('xuanken_music_members_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          return parsed.map((m: any) => {
+            try {
+              const localBal = localStorage.getItem(`xuanken_member_balance_${m.uid}`);
+              if (localBal !== null) {
+                const num = parseInt(localBal, 10);
+                if (!isNaN(num)) return { ...m, balance: num };
+              }
+            } catch (e) {}
+            return m;
+          });
+        }
+      }
+    } catch (e) {}
+    return [];
+  });
 
   const [activePlaylistSongs, setActivePlaylistSongs] = useState<Song[]>([]);
 

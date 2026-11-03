@@ -189,7 +189,7 @@ export const DesktopChartPage: React.FC = () => {
               return (
                 <span key={s.id} className="flex items-center gap-1.5 font-semibold" style={{ color: colors[idx] }}>
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors[idx] }} />
-                  #{idx + 1} {s.title} ({s.artists})
+                  <span className="font-so">#{idx + 1}</span> {s.title} ({s.artists})
                 </span>
               );
             })}
@@ -295,7 +295,7 @@ export const DesktopChartPage: React.FC = () => {
                 {/* Rank column */}
                 <div className="flex items-center justify-center gap-2">
                   <div
-                    className={`w-8 h-8 rounded-xl border flex items-center justify-center font-black text-sm shadow-sm ${rankBadgeStyle}`}
+                    className={`w-8 h-8 rounded-xl border flex items-center justify-center font-black text-sm shadow-sm font-so ${rankBadgeStyle}`}
                   >
                     {rank === 1 ? <Crown className="w-4 h-4 fill-amber-400 text-amber-400" /> : rank}
                   </div>

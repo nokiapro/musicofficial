@@ -223,7 +223,7 @@ export const AdminPageView: React.FC = () => {
       const res = await testFirebaseConnection();
       setFirebaseTestResult(res);
       if (res.rtdbWrite) {
-        setSyncSuccessMsg('✅ Kết nối & Quyền ghi Firebase Realtime Database đã mở! Sẵn sàng lưu dữ liệu.');
+        setSyncSuccessMsg('Kết nối & Quyền ghi Firebase Realtime Database đã mở! Sẵn sàng lưu dữ liệu.');
         setSyncErrorMsg(null);
       } else {
         setSyncErrorMsg('⚠️ Firebase RTDB đang chặn quyền ghi (PERMISSION_DENIED). Hãy kiểm tra tab "Quy Tắc Firebase (Rules)" để mở quyền!');
@@ -249,7 +249,7 @@ export const AdminPageView: React.FC = () => {
     try {
       const res = await syncAllToFirebase();
       if (res.success) {
-        setSyncSuccessMsg(`✅ ${res.details} Hãy mở Firebase Console (F5) để thấy dữ liệu xuất hiện ngay!`);
+        setSyncSuccessMsg(`${res.details} Hãy mở Firebase Console (F5) để thấy dữ liệu xuất hiện ngay!`);
       } else {
         setSyncErrorMsg(`❌ ${res.details}. Nguyên nhân: Tab Quy tắc (Rules) trên Firebase Console đang khóa ghi. Hãy qua tab "Quy Tắc Firebase (Rules)" để mở!`);
       }
@@ -267,7 +267,7 @@ export const AdminPageView: React.FC = () => {
     try {
       const res = await seedDefaultSongs();
       if (res.success) {
-        setSyncSuccessMsg('✅ Đã nạp 3 bài hát mẫu XuanKen lên Firebase Realtime Database & Firestore thành công! Hãy F5 Firebase Console để thấy dữ liệu.');
+        setSyncSuccessMsg('Đã nạp 3 bài hát mẫu XuanKen lên Firebase Realtime Database & Firestore thành công! Hãy F5 Firebase Console để thấy dữ liệu.');
       } else {
         setSyncErrorMsg(`⚠️ Đã tạo bài hát trên web nhưng Firebase chưa cho phép ghi: ${res.error}. Hãy vào tab Quy Tắc Firebase để mở quyền ghi!`);
       }
@@ -534,8 +534,8 @@ export const AdminPageView: React.FC = () => {
     if (saveResult.success) {
       setSyncSuccessMsg(
         editingSongId
-          ? '✅ Đã cập nhật bài hát và lưu thành công lên Firebase RTDB & Firestore!'
-          : '✅ Đã thêm bài hát và lưu thành công lên Firebase RTDB & Firestore!'
+          ? 'Đã cập nhật bài hát và lưu thành công lên Firebase RTDB & Firestore!'
+          : 'Đã thêm bài hát và lưu thành công lên Firebase RTDB & Firestore!'
       );
       setSyncErrorMsg(null);
       setTimeout(() => setSyncSuccessMsg(null), 5000);
@@ -1060,22 +1060,6 @@ export const AdminPageView: React.FC = () => {
                 <span>{adminAddMsg.text}</span>
               </div>
             )}
-
-            {/* Hướng Dẫn Chi Tiết 2 Cách Thêm Admin */}
-            <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-[11px] text-white/70 space-y-1.5 leading-relaxed">
-              <p className="font-bold text-white flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>2 Cách để thêm Admin toàn quyền như admin chính:</span>
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-white/60 pl-1">
-                <li>
-                  <strong className="text-white">Cách 1 (Nhanh nhất trên web):</strong> Nhập email vào ô trên và bấm <span className="text-amber-300 font-semibold">"Cấp Quyền Admin Toàn Quyền"</span>, hoặc bấm trực tiếp nút vai trò <span className="text-purple-300 font-semibold">"user / admin"</span> tại danh sách bên dưới.
-                </li>
-                <li>
-                  <strong className="text-white">Cách 2 (Cố định vĩnh viễn trong code):</strong> Mở file <code className="text-amber-300 font-mono bg-black/40 px-1 py-0.5 rounded">src/context/MusicContext.tsx</code>, thêm email vào mảng <code className="text-amber-300 font-mono bg-black/40 px-1 py-0.5 rounded">PRIMARY_ADMIN_EMAILS</code> (đã có sẵn <code className="text-white font-mono">admin@xuanken.vn</code> và <code className="text-white font-mono">phamthikimthanh.qy@gmail.com</code>). Khi đăng nhập, tài khoản này luôn luôn là Super Admin toàn quyền.
-                </li>
-              </ul>
-            </div>
           </div>
 
           {members.length === 0 ? (

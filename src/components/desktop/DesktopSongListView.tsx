@@ -300,7 +300,7 @@ export const DesktopSongListView: React.FC = () => {
                             <Pause className="w-3.5 h-3.5 fill-current" />
                           </div>
                         ) : (
-                          <span className="group-hover:hidden">
+                          <span className="group-hover:hidden font-so text-sm">
                             {globalIndex + 1}
                           </span>
                         )}
