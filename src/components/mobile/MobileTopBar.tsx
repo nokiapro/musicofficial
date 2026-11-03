@@ -37,6 +37,12 @@ export const MobileTopBar: React.FC = () => {
     };
   }, [isSettingsOpen]);
 
+  useEffect(() => {
+    if (!currentUser && activeMobileTab === 'chat') {
+      setActiveMobileTab('discover');
+    }
+  }, [currentUser, activeMobileTab, setActiveMobileTab]);
+
   const themeList: { id: ThemeId; name: string; hex: string }[] = [
     { id: 'purple', name: 'Tím Zing', hex: '#9b4de0' },
     { id: 'blue', name: 'Xanh Biển', hex: '#06b6d4' },
@@ -284,18 +290,20 @@ export const MobileTopBar: React.FC = () => {
           <span>Album Nhạc Hay</span>
         </button>
 
-        <button
-          onClick={() => setActiveMobileTab('chat')}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
-            activeMobileTab === 'chat'
-              ? 'bg-[#0284c7] text-white shadow-sm'
-              : 'bg-white/5 text-white/70 hover:text-white'
-          }`}
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>Chat Box</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-        </button>
+        {currentUser && (
+          <button
+            onClick={() => setActiveMobileTab('chat')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
+              activeMobileTab === 'chat'
+                ? 'bg-[#0284c7] text-white shadow-sm'
+                : 'bg-white/5 text-white/70 hover:text-white'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Chat Box</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          </button>
+        )}
       </div>
     </div>
   );

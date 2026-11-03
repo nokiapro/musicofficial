@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   ShoppingBag,
-  Wallet,
-  PlusCircle,
   Download,
   CheckCircle,
   Play,
@@ -51,41 +49,6 @@ export const StorePageView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 select-none font-['Roboto_Condensed']">
-      {/* Top Banner & Wallet Status */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-950 via-[#23143c] to-[#120822] border border-white/10 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#c273ed]">
-            <ShoppingBag className="w-4 h-4" />
-            <span>Cổng Mua Bản Quyền XuanKen Music</span>
-          </div>
-          <h1 className="text-3xl font-black text-white tracking-tight mt-1">
-            Mua & Sở Hữu Nhạc Chất Lượng Cao
-          </h1>
-          <p className="text-xs text-white/70 mt-1 max-w-xl">
-            Nhạc chưa mua sẽ được nghe thử demo 60 giây. Sau khi mua, bạn được nghe trọn đời không giới hạn và tải về định dạng MP3 320kbps hoặc WAV Lossless.
-          </p>
-        </div>
-
-        {/* Wallet Box */}
-        <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center gap-4 shrink-0">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-            <Wallet className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs text-white/50">Số dư ví của bạn</p>
-            <p className="text-xl font-black text-amber-300">
-              {userBalance.toLocaleString('vi-VN')} đ
-            </p>
-          </div>
-          <button
-            onClick={() => setIsTopUpModalOpen(true)}
-            className="ml-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition-transform active:scale-95 flex items-center gap-1.5"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Nạp tiền</span>
-          </button>
-        </div>
-      </div>
 
       {/* Tabs */}
       <div className="flex items-center justify-between border-b border-white/10 pb-3">

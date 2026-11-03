@@ -12,7 +12,6 @@ import {
   Share2,
   ListPlus,
   FolderPlus,
-  Trophy,
   Sparkles,
   Headphones,
   Crown,
@@ -37,6 +36,7 @@ export const MobileAppLayout: React.FC = () => {
     currentSong,
     isPlaying,
     activeMobileTab,
+    setActiveMobileTab,
     setViewMode,
     playSong,
     togglePlay,
@@ -56,8 +56,6 @@ export const MobileAppLayout: React.FC = () => {
     createPlaylist,
     deletePlaylist,
     playPlaylist,
-    setIsRewindModalOpen,
-    rewindStats,
     preferredAudioFormat,
     setPreferredAudioFormat,
     currentUser,
@@ -78,6 +76,12 @@ export const MobileAppLayout: React.FC = () => {
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
   const [menuPositionMap, setMenuPositionMap] = useState<Record<string, 'down' | 'up'>>({});
   const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (!currentUser && activeMobileTab === 'chat') {
+      setActiveMobileTab('discover');
+    }
+  }, [currentUser, activeMobileTab, setActiveMobileTab]);
 
   // Search filtering across all songs and album tracks (Requirement 3)
   const baseSearchPool = searchQuery.trim() ? (allSearchableSongs || songs) : songs;
@@ -778,30 +782,6 @@ export const MobileAppLayout: React.FC = () => {
 
         return (
           <div className="space-y-3 px-3 pb-32 pt-2 select-none">
-            {/* XuanKen Rewind 2026 Banner */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-900/60 via-pink-900/40 to-indigo-900/60 border border-purple-500/30 flex items-center justify-between shadow-lg">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-pink-500 flex items-center justify-center text-white shadow">
-                  <Trophy className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-black text-white flex items-center gap-1.5">
-                    <span>XuanKen Rewind</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-red-600 text-white font-extrabold">2026</span>
-                  </h3>
-                  <p className="text-[10px] text-purple-200/80">
-                    {Math.floor(rewindStats.totalSeconds / 60)} phút • {rewindStats.totalPlays} lượt nghe
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsRewindModalOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs shadow active:scale-95 transition-all shrink-0"
-              >
-                Xem Rewind
-              </button>
-            </div>
-
             {/* Sub-tabs: Yêu thích, Playlists, Đã mua (Lịch sử removed per Req 9) */}
             <div className="flex items-center p-1 bg-white/5 border border-white/10 rounded-xl gap-1 overflow-x-auto no-scrollbar text-xs">
               <button

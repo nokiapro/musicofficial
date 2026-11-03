@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, RewindStats, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
+import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
 import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
 import { MusicService } from '../services/musicService';
@@ -152,11 +152,6 @@ interface MusicContextType {
   setIsShareModalOpen: (open: boolean) => void;
   songToShare: Song | null;
   openShareModal: (song: Song) => void;
-
-  // XuanKen Rewind Listening Stats
-  isRewindModalOpen: boolean;
-  setIsRewindModalOpen: (open: boolean) => void;
-  rewindStats: RewindStats;
 
   // Vouchers & Coupons
   vouchers: Voucher[];
@@ -337,21 +332,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [songToShare, setSongToShare] = useState<Song | null>(null);
 
-  // Rewind Listening Stats
-  const [isRewindModalOpen, setIsRewindModalOpen] = useState<boolean>(false);
-  const [rewindStats, setRewindStats] = useState<RewindStats>(() => {
-    try {
-      const local = localStorage.getItem('xuanken_music_rewind_v1');
-      if (local) return JSON.parse(local);
-    } catch (e) {}
-    return {
-      totalSeconds: 0,
-      totalPlays: 0,
-      songPlays: {},
-      artistPlays: {},
-      lastUpdated: new Date().toISOString(),
-    };
-  });
+  // Vouchers
 
   // Vouchers
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -418,7 +399,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const timerRef = useRef<number | null>(null);
   // Requirement 8: Nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
   const hasCountedPlayRef = useRef<boolean>(false);
-  const lastRewindSyncRef = useRef<number>(Date.now());
   const lastEndedTimestampRef = useRef<number>(0);
 
   // Synchronized refs to eliminate stale closure bugs during continuous audio playback
@@ -631,18 +611,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     MusicService.fetchSongs().then((loadedSongs) => {
       const validSongs = loadedSongs || [];
       setSongs(validSongs);
-      if (validSongs.length > 0) {
-        setQueue(validSongs.slice(1));
-        const firstSong = validSongs[0];
-        setCurrentSong(firstSong);
-        setDuration(firstSong.duration && firstSong.duration > 0 ? firstSong.duration : 210);
-        setCurrentTime(0);
-        setIsPlaying(false);
-      } else {
-        setQueue([]);
-        setCurrentSong(null);
-        setIsPlaying(false);
-      }
+      setCurrentSong(null);
+      setQueue([]);
+      setCurrentTime(0);
+      setIsPlaying(false);
     });
 
     // Real-time listener for live sync across devices
@@ -650,9 +622,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const list = updatedSongs || [];
       setSongs(list);
       setCurrentSong((cur) => {
-        if (!cur) return list.length > 0 ? list[0] : null;
+        if (!cur) return null;
         const matched = list.find((s) => s.id === cur.id);
-        return matched ? { ...cur, ...matched } : (list.length > 0 ? list[0] : null);
+        return matched ? { ...cur, ...matched } : null;
       });
     });
 
@@ -673,20 +645,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setVouchers(loadedVouchers || []);
     });
 
-    let unsubscribeRewind = () => {};
     if (currentUser?.uid) {
-      MusicService.fetchRewindStats(currentUser.uid).then((stats) => {
-        if (stats && stats.totalSeconds !== undefined) {
-          setRewindStats(stats);
-        }
-      });
-
-      unsubscribeRewind = MusicService.subscribeToRewindStats((stats) => {
-        if (stats && stats.totalSeconds !== undefined) {
-          setRewindStats(stats);
-        }
-      }, currentUser.uid);
-
       MusicService.fetchAudioSettings(currentUser.uid).then((settings) => {
         if (settings) {
           if (settings.preferredFormat) {
@@ -737,7 +696,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       unsubscribeRealtime();
-      unsubscribeRewind();
       unsubscribeAlbums();
       unsubscribeChat();
     };
@@ -966,24 +924,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             });
             setCurrentSong((prev) => (prev && prev.id === currentSong.id ? { ...prev, playCount: (prev.playCount || 0) + 1 } : prev));
 
-            // Update XuanKen Rewind for play count & artists (Synced to Firebase across all devices)
-            setRewindStats((prevStats) => {
-              const songPlays = { ...prevStats.songPlays, [currentSong.id]: (prevStats.songPlays[currentSong.id] || 0) + 1 };
-              const artistPlays = { ...prevStats.artistPlays, [currentSong.artists]: (prevStats.artistPlays[currentSong.artists] || 0) + 1 };
-              const newStats: RewindStats = {
-                ...prevStats,
-                totalPlays: (prevStats.totalPlays || 0) + 1,
-                songPlays,
-                artistPlays,
-                lastUpdated: new Date().toISOString(),
-              };
-              try {
-                localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
-              } catch (e) {}
-              MusicService.saveRewindStats(newStats, currentUser?.uid);
-              return newStats;
-            });
-
             // Update Weekly Plays
             setWeeklyPlays((prevWeekly) => {
               const updated = {
@@ -992,26 +932,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               };
               MusicService.saveWeeklyPlays(currentWeekKey, updated);
               return updated;
-            });
-          }
-
-          // XuanKen Rewind: accumulate listening seconds when a full second advances
-          if (hasSecondChanged) {
-            setRewindStats((prevStats) => {
-              const newStats: RewindStats = {
-                ...prevStats,
-                totalSeconds: (prevStats.totalSeconds || 0) + 1,
-                lastUpdated: new Date().toISOString(),
-              };
-              try {
-                localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(newStats));
-              } catch (e) {}
-              // Sync to Firebase periodically (every 10s) to keep all devices in sync without flood
-              if (Date.now() - lastRewindSyncRef.current >= 10000) {
-                lastRewindSyncRef.current = Date.now();
-                MusicService.saveRewindStats(newStats, currentUser?.uid);
-              }
-              return newStats;
             });
           }
 
@@ -1656,8 +1576,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ];
 
     setSongs(sampleSongs);
-    setCurrentSong(sampleSongs[0]);
-    setQueue(sampleSongs.slice(1));
+    setCurrentSong(null);
+    setQueue([]);
     return await MusicService.saveSongsToFirebase(sampleSongs);
   };
 
@@ -2223,10 +2143,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Community Chat Box Methods (Requirement 9: Deduplicate to prevent double-message)
   // -------------------------------------------------------------
   const sendChatMessage = async (content: string, sharedSong?: ChatMessage['sharedSong']) => {
-    const senderName = currentUser?.displayName || 'Khách Vô Danh';
-    const senderRole = currentUser?.role === 'admin' ? 'admin' : 'user';
-    const senderAvatar = currentUser?.avatarUrl;
-    const senderUid = currentUser?.uid || 'guest-' + Math.random().toString(36).substring(2, 6);
+    if (!currentUser) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+    const senderName = currentUser.displayName || 'Thành Viên';
+    const senderRole = currentUser.role === 'admin' ? 'admin' : 'user';
+    const senderAvatar = currentUser.avatarUrl;
+    const senderUid = currentUser.uid;
 
     const newMsg = await MusicService.sendChatMessage({
       userId: senderUid,
@@ -2371,9 +2295,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsShareModalOpen,
         songToShare,
         openShareModal,
-        isRewindModalOpen,
-        setIsRewindModalOpen,
-        rewindStats,
         vouchers,
         applyVoucher,
         addVoucher,

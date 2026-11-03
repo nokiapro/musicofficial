@@ -660,3 +660,140 @@ input, textarea, select, button {
   will-change: transform, opacity;
 }
 
+/* ==========================================================================
+   Light Theme Accessibility & Text Contrast Fixes (Light, Gray, Light-Blue, Lotus-Pink)
+   Prevents white-on-white invisible text when light themes are active
+   ========================================================================== */
+[data-theme="light"],
+[data-theme="gray"],
+[data-theme="light-blue"],
+[data-theme="lotus-pink"] {
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .text-white,
+[data-theme="gray"] .text-white,
+[data-theme="light-blue"] .text-white,
+[data-theme="lotus-pink"] .text-white {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .text-white\/90,
+[data-theme="gray"] .text-white\/90,
+[data-theme="light-blue"] .text-white\/90,
+[data-theme="lotus-pink"] .text-white\/90,
+[data-theme="light"] .text-white\/80,
+[data-theme="gray"] .text-white\/80,
+[data-theme="light-blue"] .text-white\/80,
+[data-theme="lotus-pink"] .text-white\/80 {
+  color: rgba(15, 23, 42, 0.88) !important;
+}
+
+[data-theme="light"] .text-white\/70,
+[data-theme="gray"] .text-white\/70,
+[data-theme="light-blue"] .text-white\/70,
+[data-theme="lotus-pink"] .text-white\/70,
+[data-theme="light"] .text-white\/60,
+[data-theme="gray"] .text-white\/60,
+[data-theme="light-blue"] .text-white\/60,
+[data-theme="lotus-pink"] .text-white\/60 {
+  color: rgba(15, 23, 42, 0.68) !important;
+}
+
+[data-theme="light"] .text-white\/50,
+[data-theme="gray"] .text-white\/50,
+[data-theme="light-blue"] .text-white\/50,
+[data-theme="lotus-pink"] .text-white\/50,
+[data-theme="light"] .text-white\/40,
+[data-theme="gray"] .text-white\/40,
+[data-theme="light-blue"] .text-white\/40,
+[data-theme="lotus-pink"] .text-white\/40 {
+  color: rgba(15, 23, 42, 0.5) !important;
+}
+
+[data-theme="light"] .text-white\/30,
+[data-theme="gray"] .text-white\/30,
+[data-theme="light-blue"] .text-white\/30,
+[data-theme="lotus-pink"] .text-white\/30 {
+  color: rgba(15, 23, 42, 0.38) !important;
+}
+
+/* Backgrounds in light themes */
+[data-theme="light"] .bg-white\/5,
+[data-theme="gray"] .bg-white\/5,
+[data-theme="light-blue"] .bg-white\/5,
+[data-theme="lotus-pink"] .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .bg-white\/10,
+[data-theme="gray"] .bg-white\/10,
+[data-theme="light-blue"] .bg-white\/10,
+[data-theme="lotus-pink"] .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.07) !important;
+}
+
+[data-theme="light"] .bg-white\/15,
+[data-theme="gray"] .bg-white\/15,
+[data-theme="light-blue"] .bg-white\/15,
+[data-theme="lotus-pink"] .bg-white\/15,
+[data-theme="light"] .bg-white\/20,
+[data-theme="gray"] .bg-white\/20,
+[data-theme="light-blue"] .bg-white\/20,
+[data-theme="lotus-pink"] .bg-white\/20 {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="gray"] .hover\:bg-white\/5:hover,
+[data-theme="light-blue"] .hover\:bg-white\/5:hover,
+[data-theme="lotus-pink"] .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .hover\:bg-white\/10:hover,
+[data-theme="gray"] .hover\:bg-white\/10:hover,
+[data-theme="light-blue"] .hover\:bg-white\/10:hover,
+[data-theme="lotus-pink"] .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Borders in light themes */
+[data-theme="light"] .border-white\/5,
+[data-theme="gray"] .border-white\/5,
+[data-theme="light-blue"] .border-white\/5,
+[data-theme="lotus-pink"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="gray"] .border-white\/10,
+[data-theme="light-blue"] .border-white\/10,
+[data-theme="lotus-pink"] .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .border-white\/15,
+[data-theme="gray"] .border-white\/15,
+[data-theme="light-blue"] .border-white\/15,
+[data-theme="lotus-pink"] .border-white\/15,
+[data-theme="light"] .border-white\/20,
+[data-theme="gray"] .border-white\/20,
+[data-theme="light-blue"] .border-white\/20,
+[data-theme="lotus-pink"] .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.16) !important;
+}
+
+/* Player controls in light themes */
+[data-theme="light"] footer,
+[data-theme="gray"] footer,
+[data-theme="light-blue"] footer,
+[data-theme="lotus-pink"] footer {
+  background-color: var(--bg-player) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] footer button,
+[data-theme="gray"] footer button,
+[data-theme="light-blue"] footer button,
+[data-theme="lotus-pink"] footer button {
+  color: inherit;
+}
+

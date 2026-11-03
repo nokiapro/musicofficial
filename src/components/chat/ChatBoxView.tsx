@@ -15,6 +15,7 @@ import {
   X,
   Radio,
   Check,
+  Lock,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ChatMessage, Song } from '../../types/music';
@@ -53,6 +54,10 @@ export const ChatBoxView: React.FC = () => {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      setIsLoginModalOpen(true);
+      return;
+    }
     if (!inputContent.trim() && !attachedSong) return;
 
     setIsSending(true);
@@ -353,75 +358,93 @@ export const ChatBoxView: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Emoji Bar */}
-      <div className="px-4 py-2 border-t border-white/5 bg-black/20 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-        <span className="text-[10px] text-white/40 font-bold shrink-0 mr-1">Biểu cảm nhanh:</span>
-        {quickEmojis.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            onClick={() => setInputContent((prev) => prev + emoji)}
-            className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-sm transition-transform active:scale-125 shrink-0 cursor-pointer"
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
+      {/* Chat Participation Area: Only for Logged-In Members */}
+      {currentUser ? (
+        <>
+          {/* Quick Emoji Bar */}
+          <div className="px-4 py-2 border-t border-white/5 bg-black/20 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+            <span className="text-[10px] text-white/40 font-bold shrink-0 mr-1">Biểu cảm nhanh:</span>
+            {quickEmojis.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => setInputContent((prev) => prev + emoji)}
+                className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-sm transition-transform active:scale-125 shrink-0 cursor-pointer"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
 
-      {/* Attached Song Preview Bar */}
-      {attachedSong && (
-        <div className="px-4 py-2 bg-purple-900/30 border-t border-purple-500/30 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Music className="w-4 h-4 text-[#c273ed] shrink-0" />
-            <span className="text-xs text-white truncate">
-              Đính kèm: <strong>{attachedSong.title}</strong> - {attachedSong.artists}
-            </span>
+          {/* Attached Song Preview Bar */}
+          {attachedSong && (
+            <div className="px-4 py-2 bg-purple-900/30 border-t border-purple-500/30 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Music className="w-4 h-4 text-[#c273ed] shrink-0" />
+                <span className="text-xs text-white truncate">
+                  Đính kèm: <strong>{attachedSong.title}</strong> - {attachedSong.artists}
+                </span>
+              </div>
+              <button
+                onClick={() => setAttachedSong(null)}
+                className="p-1 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Input Composer Form */}
+          <form onSubmit={handleSend} className="p-3 sm:p-4 border-t border-white/10 bg-white/5 flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Attach Song Button */}
+            <button
+              type="button"
+              onClick={() => setIsSongSelectorOpen(true)}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                attachedSong
+                  ? 'bg-purple-600/40 border-purple-500 text-[#c273ed]'
+                  : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+              }`}
+              title="Đính kèm bài hát vào tin nhắn"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+
+            {/* Message Input */}
+            <input
+              type="text"
+              value={inputContent}
+              onChange={(e) => setInputContent(e.target.value)}
+              placeholder={`Nhập tin nhắn (${currentUser.displayName})...`}
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder-white/40 focus:outline-none focus:border-purple-500"
+            />
+
+            {/* Send Button */}
+            <button
+              type="submit"
+              disabled={isSending || (!inputContent.trim() && !attachedSong)}
+              style={{ backgroundColor: 'var(--color-accent)' }}
+              className="px-4 py-2.5 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shadow-lg hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+              <span className="hidden sm:inline">Gửi</span>
+            </button>
+          </form>
+        </>
+      ) : (
+        <div className="p-4 border-t border-white/10 bg-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left shrink-0">
+          <div className="flex items-center gap-2.5 text-white/80 text-xs sm:text-sm">
+            <Lock className="w-5 h-5 text-amber-400 shrink-0" />
+            <span>Khách vô danh không được tham gia chat box. Vui lòng đăng nhập để gửi tin nhắn và giao lưu.</span>
           </div>
           <button
-            onClick={() => setAttachedSong(null)}
-            className="p-1 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+            onClick={() => setIsLoginModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 transition-transform active:scale-95 cursor-pointer shadow-lg"
           >
-            <X className="w-4 h-4" />
+            Đăng nhập ngay
           </button>
         </div>
       )}
-
-      {/* Input Composer Form */}
-      <form onSubmit={handleSend} className="p-3 sm:p-4 border-t border-white/10 bg-white/5 flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Attach Song Button */}
-        <button
-          type="button"
-          onClick={() => setIsSongSelectorOpen(true)}
-          className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-            attachedSong
-              ? 'bg-purple-600/40 border-purple-500 text-[#c273ed]'
-              : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
-          }`}
-          title="Đính kèm bài hát vào tin nhắn"
-        >
-          <Share2 className="w-4 h-4" />
-        </button>
-
-        {/* Message Input */}
-        <input
-          type="text"
-          value={inputContent}
-          onChange={(e) => setInputContent(e.target.value)}
-          placeholder={currentUser ? `Nhập tin nhắn (${currentUser.displayName})...` : 'Nhập tin nhắn giao lưu âm nhạc...'}
-          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder-white/40 focus:outline-none focus:border-purple-500"
-        />
-
-        {/* Send Button */}
-        <button
-          type="submit"
-          disabled={isSending || (!inputContent.trim() && !attachedSong)}
-          style={{ backgroundColor: 'var(--color-accent)' }}
-          className="px-4 py-2.5 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shadow-lg hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
-        >
-          <Send className="w-4 h-4" />
-          <span className="hidden sm:inline">Gửi</span>
-        </button>
-      </form>
 
       {/* Song Selector Modal */}
       {isSongSelectorOpen && (

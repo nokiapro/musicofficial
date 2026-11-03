@@ -357,11 +357,11 @@ export const DesktopSongListView: React.FC = () => {
                         }}
                       >
                         <button
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white/80 hover:text-white text-xs font-semibold transition-colors"
-                          title="Bấm để xem và tải file lời (.lrc)"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-500/20 border border-purple-500/40 text-[#c273ed] hover:bg-purple-600 hover:text-white hover:border-transparent text-xs font-bold transition-all shadow-sm group/lrc"
+                          title="Bấm để xem và tải tệp lời (.lrc)"
                         >
-                          <FileText className="w-3.5 h-3.5 text-[#c273ed] group-hover:text-white" />
-                          <span>LRC</span>
+                          <FileText className="w-3.5 h-3.5 text-[#c273ed] group-hover/lrc:text-white" />
+                          <span className="font-semibold tracking-wide">LRC</span>
                         </button>
                       </td>
 

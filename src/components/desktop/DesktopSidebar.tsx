@@ -23,22 +23,23 @@ export const DesktopSidebar: React.FC = () => {
     setIsProfileModalOpen,
   } = useMusic();
 
-  // Safety redirect: If a non-admin or guest is on admin tab, redirect to discover
+  // Safety redirect: If a non-admin is on admin tab, or guest is on chat/library tab, redirect to discover
   React.useEffect(() => {
     if (!isAdmin && activeDesktopTab === 'admin') {
       setActiveDesktopTab('discover');
     }
-  }, [isAdmin, activeDesktopTab, setActiveDesktopTab]);
+    if (!currentUser && (activeDesktopTab === 'chat' || activeDesktopTab === 'library')) {
+      setActiveDesktopTab('discover');
+    }
+  }, [isAdmin, currentUser, activeDesktopTab, setActiveDesktopTab]);
 
   // Navigation Items
-  // 1: Thay radio trực tuyến thành Album Nhạc Hay
-  // 2: Thêm phần Chat Box
   const mainNavItems: { id: ActiveDesktopTab; label: string; icon: React.ReactNode; isLive?: boolean; isHot?: boolean }[] = [
     { id: 'discover', label: 'Danh Sách Bài Hát', icon: <ListMusic className="w-5 h-5" /> },
     { id: 'chart', label: '#xuankenchart', icon: <TrendingUp className="w-5 h-5" /> },
     { id: 'weeklyTop', label: 'Top Tuần', icon: <Flame className="w-5 h-5 text-amber-400" />, isHot: true },
     { id: 'albums', label: 'Album Nhạc Hay', icon: <Disc3 className="w-5 h-5 text-purple-400" /> },
-    { id: 'chat', label: 'Chat Box', icon: <MessageSquare className="w-5 h-5 text-sky-400" />, isLive: true },
+    ...(currentUser ? [{ id: 'chat' as ActiveDesktopTab, label: 'Chat Box', icon: <MessageSquare className="w-5 h-5 text-sky-400" />, isLive: true }] : []),
     { id: 'store', label: 'Cửa Hàng Nhạc', icon: <ShoppingBag className="w-5 h-5" /> },
     ...(isAdmin ? [{ id: 'admin' as ActiveDesktopTab, label: 'Admin Quản Trị', icon: <ShieldCheck className="w-5 h-5 text-amber-400" /> }] : []),
     ...(currentUser ? [{ id: 'library' as ActiveDesktopTab, label: 'Thư Viện Của Tôi', icon: <FolderHeart className="w-5 h-5" /> }] : []),

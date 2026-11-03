@@ -6,7 +6,6 @@ import {
   Trash2,
   Download,
   Share2,
-  Trophy,
   Sparkles,
   ShoppingBag,
   ListMusic,
@@ -28,8 +27,6 @@ export const DesktopLibraryPage: React.FC = () => {
     isSongPurchased,
     downloadSong,
     openShareModal,
-    setIsRewindModalOpen,
-    rewindStats,
     currentUser,
     setIsLoginModalOpen,
     isShuffle,
@@ -137,34 +134,6 @@ export const DesktopLibraryPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 select-none">
-      {/* Rewind Banner */}
-      <div className="p-5 rounded-3xl bg-gradient-to-r from-purple-900/60 via-pink-900/40 to-indigo-900/60 border border-purple-500/30 flex items-center justify-between shadow-xl relative overflow-hidden">
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-pink-500 flex items-center justify-center text-white shadow-lg">
-            <Trophy className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-black text-white">XuanKen Rewind 2026</h2>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white">
-                Mới
-              </span>
-            </div>
-            <p className="text-xs text-purple-200/80 mt-0.5">
-              Bạn đã thưởng thức {Math.floor(rewindStats.totalSeconds / 60)} phút âm nhạc với {rewindStats.totalPlays} lượt phát
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setIsRewindModalOpen(true)}
-          className="relative z-10 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 active:scale-95 font-bold text-xs flex items-center gap-2 shadow-lg transition-all shrink-0"
-        >
-          <Sparkles className="w-4 h-4 text-purple-600" />
-          <span>Xem Thống Kê Của Tôi</span>
-        </button>
-      </div>
-
       {/* Main Header & Tab Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
         <div className="flex items-center gap-3">

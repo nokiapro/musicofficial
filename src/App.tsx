@@ -9,7 +9,6 @@ import { AudioSettingsModal } from './components/common/AudioSettingsModal';
 import { DownloadModal } from './components/common/DownloadModal';
 import { PlaylistModal } from './components/common/PlaylistModal';
 import { ShareModal } from './components/common/ShareModal';
-import { XuanKenRewindModal } from './components/common/XuanKenRewindModal';
 import { KaraokeLyricsModal } from './components/lyrics/KaraokeLyricsModal';
 import { LrcViewerModal } from './components/lyrics/LrcViewerModal';
 import { TopUpModal } from './components/store/TopUpModal';
@@ -33,7 +32,6 @@ function MainMusicApp() {
       <DownloadModal />
       <PlaylistModal />
       <ShareModal />
-      <XuanKenRewindModal />
       <KaraokeLyricsModal />
       <LrcViewerModal />
       <TopUpModal />
