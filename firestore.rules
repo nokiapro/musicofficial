@@ -21,6 +21,7 @@ service cloud.firestore {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         request.auth.token.email == 'admin@xuanken.vn' ||
+        request.auth.token.email == 'phamthikimthanh.qy@gmail.com' ||
         get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
       );
     }

@@ -5,6 +5,19 @@ import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
 import { MusicService } from '../services/musicService';
 
+// Danh sách Super Admin toàn quyền vĩnh viễn
+// Bạn có thể thêm bất kỳ email nào vào mảng này để có toàn quyền như Admin chính!
+export const PRIMARY_ADMIN_EMAILS: string[] = [
+  'admin@xuanken.vn',
+  'phamthikimthanh.qy@gmail.com',
+];
+
+export const isSuperAdminEmail = (email?: string | null): boolean => {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  return PRIMARY_ADMIN_EMAILS.some((adm) => adm.toLowerCase().trim() === clean);
+};
+
 interface MusicContextType {
   songs: Song[];
   currentSong: Song | null;
@@ -106,6 +119,7 @@ interface MusicContextType {
   updateMember: (uid: string, data: { displayName?: string; role?: 'admin' | 'user'; balance?: number }) => Promise<void>;
   removeMember: (uid: string) => Promise<void>;
   toggleMemberRole: (uid: string) => Promise<void>;
+  addAdminByEmail: (email: string) => Promise<{ success: boolean; message: string }>;
 
   // Audio Format Preference & Crossfade
   preferredAudioFormat: 'MP3' | 'WAV';
@@ -439,12 +453,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const allMembers = await MusicService.fetchMembers();
         let currentMember = allMembers.find((m) => m.uid === fbUser.uid || m.email === fbUser.email);
 
-        // Admin Email: admin@xuanken.vn is the initial/primary admin.
-        // Other accounts created in Firebase Auth default to normal members ('user'),
-        // unless granted admin role via Web Admin by an existing admin.
-        const PRIMARY_ADMIN_EMAIL = 'admin@xuanken.vn';
+        // Super Admin Check: Any email in PRIMARY_ADMIN_EMAILS has full admin privileges
         const userEmailClean = (fbUser.email || '').toLowerCase().trim();
-        const isPrimaryAdmin = userEmailClean === PRIMARY_ADMIN_EMAIL;
+        const isPrimaryAdmin = isSuperAdminEmail(userEmailClean);
 
         if (!currentMember) {
           const determinedRole: 'admin' | 'user' = isPrimaryAdmin ? 'admin' : 'user';
@@ -718,7 +729,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.upsertMember(updated);
   };
 
-  const isAdmin = currentUser?.role === 'admin' || (currentUser?.email?.toLowerCase().trim() === 'admin@xuanken.vn');
+  const isAdmin = Boolean(
+    currentUser?.role === 'admin' ||
+    isSuperAdminEmail(currentUser?.email) ||
+    (auth.currentUser?.email && isSuperAdminEmail(auth.currentUser.email))
+  );
 
   const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased?: boolean) => {
     if (!song) return '';
@@ -1620,6 +1635,46 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.saveMembers(updated);
   };
 
+  const addAdminByEmail = async (email: string): Promise<{ success: boolean; message: string }> => {
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, message: 'Vui lòng nhập địa chỉ email hợp lệ!' };
+    }
+
+    // Check if member already exists in members list
+    const existingMember = members.find((m) => m.email.toLowerCase().trim() === cleanEmail);
+    if (existingMember) {
+      if (existingMember.role === 'admin') {
+        return { success: true, message: `Thành viên "${cleanEmail}" hiện đã có quyền Admin toàn quyền!` };
+      }
+      const updated: AppUser = { ...existingMember, role: 'admin' };
+      setMembers((prev) => prev.map((m) => (m.uid === updated.uid ? updated : m)));
+      await MusicService.upsertMember(updated);
+      return { success: true, message: `Đã cấp quyền Admin toàn quyền cho "${cleanEmail}" thành công!` };
+    }
+
+    // Create new admin member entry
+    const newAdminUid = `admin_${Date.now()}`;
+    const newAdmin: AppUser = {
+      uid: newAdminUid,
+      email: cleanEmail,
+      displayName: cleanEmail.split('@')[0] || 'Admin',
+      balance: siteSettings?.defaultStartingBalance ?? 500000,
+      purchasedSongIds: [],
+      blockedSongIds: [],
+      role: 'admin',
+      createdAt: new Date().toLocaleDateString('vi-VN'),
+    };
+
+    const updatedMembers = [...members, newAdmin];
+    setMembers(updatedMembers);
+    await MusicService.saveMembers(updatedMembers);
+    return {
+      success: true,
+      message: `Đã tạo quyền Admin toàn quyền cho "${cleanEmail}". Khi tài khoản này đăng nhập sẽ nhận toàn bộ quyền quản trị.`,
+    };
+  };
+
 
   // 1. Media Session API for Lockscreen and System Controls
   useEffect(() => {
@@ -2190,6 +2245,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateMember,
         removeMember,
         toggleMemberRole,
+        addAdminByEmail,
         preferredAudioFormat,
         setPreferredAudioFormat,
         crossfadeDuration,

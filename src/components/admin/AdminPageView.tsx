@@ -49,6 +49,7 @@ export const AdminPageView: React.FC = () => {
     updateMember,
     removeMember,
     toggleMemberRole,
+    addAdminByEmail,
     vouchers,
     addVoucher,
     removeVoucher,
@@ -147,6 +148,29 @@ export const AdminPageView: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   const [loginSuccess, setLoginSuccess] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Super Admin Management State
+  const [newAdminEmailInput, setNewAdminEmailInput] = useState('');
+  const [adminAddMsg, setAdminAddMsg] = useState<{ text: string; success: boolean } | null>(null);
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+
+  const handleAddAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminEmailInput.trim()) return;
+    setIsAddingAdmin(true);
+    setAdminAddMsg(null);
+    try {
+      const res = await addAdminByEmail(newAdminEmailInput.trim());
+      setAdminAddMsg({ text: res.message, success: res.success });
+      if (res.success) {
+        setNewAdminEmailInput('');
+      }
+    } catch (err: any) {
+      setAdminAddMsg({ text: err.message || 'Lỗi thêm admin', success: false });
+    } finally {
+      setIsAddingAdmin(false);
+    }
+  };
 
   // Song Add/Edit Modal State
   const [isSongModalOpen, setIsSongModalOpen] = useState(false);
@@ -983,6 +1007,77 @@ export const AdminPageView: React.FC = () => {
       {/* TAB 2: QUẢN LÝ THÀNH VIÊN */}
       {activeAdminTab === 'members' && (
         <div className="space-y-4">
+          {/* Card: Thêm Quản Trị Viên Toàn Quyền (Super Admin) */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-500/15 via-purple-900/30 to-[#170f23] border border-amber-500/30 shadow-xl space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-tight flex items-center gap-2">
+                    <span>Thêm Admin Toàn Quyền (Super Admin)</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500 text-black uppercase">
+                      Quyền Cao Nhất
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-white/60">
+                    Cấp toàn quyền như admin chính cho bất kỳ email nào (quản lý bài hát, duyệt nạp tiền, phân quyền).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form thêm Admin bằng Email */}
+            <form onSubmit={handleAddAdmin} className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="email"
+                required
+                value={newAdminEmailInput}
+                onChange={(e) => setNewAdminEmailInput(e.target.value)}
+                placeholder="Nhập email tài khoản muốn cấp quyền Admin (VD: admin2@xuanken.vn)"
+                className="flex-1 bg-black/40 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-white/40 focus:outline-none focus:border-amber-400 font-mono"
+              />
+              <button
+                type="submit"
+                disabled={isAddingAdmin}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-amber-950/40 active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{isAddingAdmin ? 'Đang cấp quyền...' : 'Cấp Quyền Admin Toàn Quyền'}</span>
+              </button>
+            </form>
+
+            {adminAddMsg && (
+              <div
+                className={`p-3 rounded-xl border flex items-center gap-2 text-xs ${
+                  adminAddMsg.success
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-red-500/10 border-red-500/30 text-red-300'
+                }`}
+              >
+                {adminAddMsg.success ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                <span>{adminAddMsg.text}</span>
+              </div>
+            )}
+
+            {/* Hướng Dẫn Chi Tiết 2 Cách Thêm Admin */}
+            <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-[11px] text-white/70 space-y-1.5 leading-relaxed">
+              <p className="font-bold text-white flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>2 Cách để thêm Admin toàn quyền như admin chính:</span>
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-white/60 pl-1">
+                <li>
+                  <strong className="text-white">Cách 1 (Nhanh nhất trên web):</strong> Nhập email vào ô trên và bấm <span className="text-amber-300 font-semibold">"Cấp Quyền Admin Toàn Quyền"</span>, hoặc bấm trực tiếp nút vai trò <span className="text-purple-300 font-semibold">"user / admin"</span> tại danh sách bên dưới.
+                </li>
+                <li>
+                  <strong className="text-white">Cách 2 (Cố định vĩnh viễn trong code):</strong> Mở file <code className="text-amber-300 font-mono bg-black/40 px-1 py-0.5 rounded">src/context/MusicContext.tsx</code>, thêm email vào mảng <code className="text-amber-300 font-mono bg-black/40 px-1 py-0.5 rounded">PRIMARY_ADMIN_EMAILS</code> (đã có sẵn <code className="text-white font-mono">admin@xuanken.vn</code> và <code className="text-white font-mono">phamthikimthanh.qy@gmail.com</code>). Khi đăng nhập, tài khoản này luôn luôn là Super Admin toàn quyền.
+                </li>
+              </ul>
+            </div>
+          </div>
+
           {members.length === 0 ? (
             <div className="p-12 text-center rounded-2xl border border-dashed border-white/20 bg-white/5">
               <Users className="w-12 h-12 text-white/30 mx-auto mb-3" />
@@ -1228,6 +1323,7 @@ service cloud.firestore {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         request.auth.token.email == 'admin@xuanken.vn' ||
+        request.auth.token.email == 'phamthikimthanh.qy@gmail.com' ||
         get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
       );
     }
@@ -1356,6 +1452,7 @@ service cloud.firestore {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         request.auth.token.email == 'admin@xuanken.vn' ||
+        request.auth.token.email == 'phamthikimthanh.qy@gmail.com' ||
         get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
       );
     }
@@ -1440,11 +1537,11 @@ service cloud.firestore {
                         rules: {
                           admins: {
                             ".read": "auth != null",
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
                           },
                           songs: {
                             ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
                             "$songId": {
                               "playCount": {
                                 ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
@@ -1452,46 +1549,46 @@ service cloud.firestore {
                             }
                           },
                           members: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
                             "$userId": {
-                              ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
-                              ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn' || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
+                              ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                              ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
                             }
                           },
                           purchases: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
                             "$purchaseId": {
-                              ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
-                              ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn') : (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn'))"
+                              ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                              ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')) : (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')))"
                             }
                           },
                           playlists: {
                             ".read": true,
                             "$playlistId": {
-                              ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+                              ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
                             }
                           },
                           vouchers: {
                             ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
                           },
                           site_settings: {
                             ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
                           },
                           weekly_plays: {
                             ".read": true,
                             ".write": "auth != null"
                           },
                           song_reports: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
                             "$reportId": {
                               ".write": true
                             }
                           },
                           exclusive_albums: {
                             ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
                           },
                           chat_messages: {
                             ".read": true,
@@ -1528,11 +1625,11 @@ service cloud.firestore {
   "rules": {
     "admins": {
       ".read": "auth != null",
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
     },
     "songs": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
       "$songId": {
         "playCount": {
           ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
@@ -1541,14 +1638,14 @@ service cloud.firestore {
     },
     "exclusive_albums": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
     },
     "chat_messages": {
       ".read": true,
       ".write": true
     },
     "members": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
     },
     "_system_ping": {
       ".read": true,

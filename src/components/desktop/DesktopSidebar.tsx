@@ -23,6 +23,13 @@ export const DesktopSidebar: React.FC = () => {
     setIsProfileModalOpen,
   } = useMusic();
 
+  // Safety redirect: If a non-admin or guest is on admin tab, redirect to discover
+  React.useEffect(() => {
+    if (!isAdmin && activeDesktopTab === 'admin') {
+      setActiveDesktopTab('discover');
+    }
+  }, [isAdmin, activeDesktopTab, setActiveDesktopTab]);
+
   // Navigation Items
   // 1: Thay radio trực tuyến thành Album Nhạc Hay
   // 2: Thêm phần Chat Box
@@ -33,7 +40,7 @@ export const DesktopSidebar: React.FC = () => {
     { id: 'albums', label: 'Album Nhạc Hay', icon: <Disc3 className="w-5 h-5 text-purple-400" /> },
     { id: 'chat', label: 'Chat Box', icon: <MessageSquare className="w-5 h-5 text-sky-400" />, isLive: true },
     { id: 'store', label: 'Cửa Hàng Nhạc', icon: <ShoppingBag className="w-5 h-5" /> },
-    { id: 'admin', label: 'Admin Quản Trị', icon: <ShieldCheck className="w-5 h-5" /> },
+    ...(isAdmin ? [{ id: 'admin' as ActiveDesktopTab, label: 'Admin Quản Trị', icon: <ShieldCheck className="w-5 h-5 text-amber-400" /> }] : []),
     ...(currentUser ? [{ id: 'library' as ActiveDesktopTab, label: 'Thư Viện Của Tôi', icon: <FolderHeart className="w-5 h-5" /> }] : []),
   ];
 

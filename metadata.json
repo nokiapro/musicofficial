@@ -1,5 +1,6 @@
 {
   "name": "XuanKen Music Official",
-  "description": "Nền tảng nghe nhạc trực tuyến XuanKen Music
+  "description": "Nền tảng nghe nhạc trực tuyến XuanKen Music",
+  "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
