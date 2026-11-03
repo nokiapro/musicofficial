@@ -9,12 +9,18 @@ import {
   Clock,
   Waves,
   BellOff,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ThemeId } from '../../types/music';
 
 export const DesktopHeader: React.FC = () => {
   const {
+    canGoBack,
+    canGoForward,
+    navigateBack,
+    navigateForward,
     songs,
     searchQuery,
     setSearchQuery,
@@ -89,8 +95,35 @@ export const DesktopHeader: React.FC = () => {
       className="h-16 px-8 grid grid-cols-[1fr_minmax(280px,580px)_1fr] items-center gap-4 border-b backdrop-blur-md sticky top-0 z-30 select-none transition-colors duration-200"
       style={{ backgroundColor: 'var(--bg-header)', borderColor: 'var(--border-color)' }}
     >
-      {/* Left spacer to perfectly balance the right side controls */}
-      <div className="hidden lg:block" />
+      {/* Left: Folder / Page Navigation Arrows (Requirement 3: 2 mũi tên tiến lùi folder) */}
+      <div className="flex items-center gap-2.5">
+        <button
+          onClick={navigateBack}
+          disabled={!canGoBack}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            canGoBack
+              ? 'bg-white/10 hover:bg-white/20 text-white cursor-pointer active:scale-95 shadow-sm'
+              : 'bg-white/5 text-white/25 cursor-not-allowed opacity-50'
+          }`}
+          title="Quay lại (Folder / Album / Trang trước)"
+          aria-label="Quay lại"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <button
+          onClick={navigateForward}
+          disabled={!canGoForward}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            canGoForward
+              ? 'bg-white/10 hover:bg-white/20 text-white cursor-pointer active:scale-95 shadow-sm'
+              : 'bg-white/5 text-white/25 cursor-not-allowed opacity-50'
+          }`}
+          title="Tiến tới (Folder / Album / Trang sau)"
+          aria-label="Tiến tới"
+        >
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
 
       {/* Center: Clean Search Bar (Item 5: Căn giữa khung tìm kiếm) */}
       <div className="relative w-full max-w-xl mx-auto">

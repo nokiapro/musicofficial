@@ -329,13 +329,30 @@ export const MusicService = {
 
   // Members Management
   async fetchMembers(): Promise<AppUser[]> {
+    const applyLocalBalanceOverrides = (arr: AppUser[]): AppUser[] => {
+      return arr.map((m) => {
+        if (!m || !m.uid) return m;
+        try {
+          const localBal = localStorage.getItem(`xuanken_member_balance_${m.uid}`);
+          if (localBal !== null) {
+            const num = parseInt(localBal, 10);
+            if (!isNaN(num)) {
+              return { ...m, balance: num };
+            }
+          }
+        } catch (e) {}
+        return m;
+      });
+    };
+
     try {
       const dbRef = ref(rtdb);
       const snapshot = await get(child(dbRef, 'members'));
       if (snapshot.exists()) {
         const data = snapshot.val();
-        const membersArray: AppUser[] = Object.values(data);
+        let membersArray: AppUser[] = Object.values(data);
         if (membersArray.length > 0) {
+          membersArray = applyLocalBalanceOverrides(membersArray);
           localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(membersArray));
           return membersArray;
         }
@@ -352,7 +369,7 @@ export const MusicService = {
       const colRef = collection(db, 'members');
       const docsSnap = await getDocs(colRef);
       if (!docsSnap.empty) {
-        const membersArray: AppUser[] = [];
+        let membersArray: AppUser[] = [];
         docsSnap.forEach((d: any) => {
           const val = d.data();
           if (val && val.email) {
@@ -370,6 +387,7 @@ export const MusicService = {
           }
         });
         if (membersArray.length > 0) {
+          membersArray = applyLocalBalanceOverrides(membersArray);
           localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(membersArray));
           return membersArray;
         }
@@ -383,19 +401,25 @@ export const MusicService = {
       try {
         const parsed = JSON.parse(localCached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return applyLocalBalanceOverrides(parsed);
         }
       } catch (e) {}
     }
 
     // Default member if authenticated
     if (auth.currentUser) {
-      const isPrimaryAdmin = auth.currentUser.email?.toLowerCase().trim() === 'admin@xuanken.vn';
+      const isPrimaryAdmin = auth.currentUser.email?.toLowerCase().trim() === 'admin@xuanken.vn' ||
+                             auth.currentUser.email?.toLowerCase().trim() === 'phamthikimthanh.qy@gmail.com';
+      let bal = 500000;
+      try {
+        const stored = localStorage.getItem(`xuanken_member_balance_${auth.currentUser.uid}`);
+        if (stored !== null) bal = parseInt(stored, 10) || 500000;
+      } catch (e) {}
       const fallbackMember: AppUser = {
         uid: auth.currentUser.uid,
-        email: auth.currentUser.email || 'admin@xuanken.vn',
+        email: auth.currentUser.email || (isPrimaryAdmin ? 'admin@xuanken.vn' : 'user@xuanken.vn'),
         displayName: auth.currentUser.displayName || (isPrimaryAdmin ? 'Admin XuanKen' : 'Thành Viên'),
-        balance: 500000,
+        balance: bal,
         purchasedSongIds: [],
         blockedSongIds: [],
         role: isPrimaryAdmin ? 'admin' : 'user',
@@ -409,10 +433,29 @@ export const MusicService = {
 
   async saveMembers(members: AppUser[]): Promise<{ success: boolean; error?: string }> {
     const cleanMembers = cleanForFirebase(members) || [];
+    // Ensure every member balance is individually preserved in local storage
+    cleanMembers.forEach((m: AppUser) => {
+      if (m && m.uid && typeof m.balance === 'number') {
+        try {
+          localStorage.setItem(`xuanken_member_balance_${m.uid}`, m.balance.toString());
+        } catch (e) {}
+      }
+    });
     localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(cleanMembers));
     let success = false;
     let lastError = '';
 
+    // Save each member individually to RTDB first (matches child rule)
+    for (const m of cleanMembers) {
+      if (m && m.uid) {
+        try {
+          await set(ref(rtdb, `members/${m.uid}`), m);
+          success = true;
+        } catch (e) {}
+      }
+    }
+
+    // Also attempt bulk save to members node
     try {
       const membersRef = ref(rtdb, 'members');
       const map: Record<string, AppUser> = {};
@@ -425,20 +468,21 @@ export const MusicService = {
       success = true;
     } catch (err: any) {
       lastError = err?.message || String(err);
-      console.error('Firebase saveMembers error:', err);
     }
 
+    // Save to Cloud Firestore
     try {
       for (const m of cleanMembers) {
         if (m && m.uid) {
           await setDoc(doc(db, 'members', m.uid), m, { merge: true });
-          const isUserAdmin = m.role === 'admin' || (m.email && m.email.toLowerCase().trim() === 'admin@xuanken.vn');
+          const isUserAdmin = m.role === 'admin' ||
+            (m.email && (m.email.toLowerCase().trim() === 'admin@xuanken.vn' || m.email.toLowerCase().trim() === 'phamthikimthanh.qy@gmail.com'));
           if (isUserAdmin) {
             try {
               await set(ref(rtdb, `admins/${m.uid}`), { email: m.email, role: 'admin', setAt: new Date().toISOString() });
               await setDoc(doc(db, 'admins', m.uid), { email: m.email, role: 'admin', setAt: new Date().toISOString() }, { merge: true });
             } catch (e) {}
-          } else if (m.email && m.email.toLowerCase().trim() !== 'admin@xuanken.vn') {
+          } else if (m.email && m.email.toLowerCase().trim() !== 'admin@xuanken.vn' && m.email.toLowerCase().trim() !== 'phamthikimthanh.qy@gmail.com') {
             try {
               await set(ref(rtdb, `admins/${m.uid}`), null);
               await deleteDoc(doc(db, 'admins', m.uid));
@@ -456,6 +500,27 @@ export const MusicService = {
 
   async upsertMember(member: AppUser): Promise<{ success: boolean; error?: string }> {
     const clean = cleanForFirebase(member);
+    if (clean && clean.uid && typeof clean.balance === 'number') {
+      try {
+        localStorage.setItem(`xuanken_member_balance_${clean.uid}`, clean.balance.toString());
+      } catch (e) {}
+    }
+
+    // Keep cached members list up to date
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY_MEMBERS);
+      if (cached) {
+        const list: AppUser[] = JSON.parse(cached);
+        const idx = list.findIndex((m) => m.uid === member.uid);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...clean };
+        } else {
+          list.push(clean);
+        }
+        localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(list));
+      }
+    } catch (e) {}
+
     let success = false;
     let lastError = '';
 
@@ -470,13 +535,14 @@ export const MusicService = {
 
     try {
       await setDoc(doc(db, 'members', member.uid), clean, { merge: true });
-      const isUserAdmin = member.role === 'admin' || (member.email && member.email.toLowerCase().trim() === 'admin@xuanken.vn');
+      const isUserAdmin = member.role === 'admin' ||
+        (member.email && (member.email.toLowerCase().trim() === 'admin@xuanken.vn' || member.email.toLowerCase().trim() === 'phamthikimthanh.qy@gmail.com'));
       if (isUserAdmin) {
         try {
           await set(ref(rtdb, `admins/${member.uid}`), { email: member.email, role: 'admin', setAt: new Date().toISOString() });
           await setDoc(doc(db, 'admins', member.uid), { email: member.email, role: 'admin', setAt: new Date().toISOString() }, { merge: true });
         } catch (e) {}
-      } else if (member.email && member.email.toLowerCase().trim() !== 'admin@xuanken.vn') {
+      } else if (member.email && member.email.toLowerCase().trim() !== 'admin@xuanken.vn' && member.email.toLowerCase().trim() !== 'phamthikimthanh.qy@gmail.com') {
         try {
           await set(ref(rtdb, `admins/${member.uid}`), null);
           await deleteDoc(doc(db, 'admins', member.uid));

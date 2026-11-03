@@ -4,7 +4,6 @@ import {
   Play,
   Pause,
   Shuffle,
-  ArrowLeft,
   Music2,
   Share2,
   FileText,
@@ -106,20 +105,6 @@ export const CuratedAlbumsView: React.FC = () => {
 
     return (
       <div className="space-y-6 pb-24 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
-        {/* Top Back Controls */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => {
-              setSelectedAlbum(null);
-              setActiveSongMenuId(null);
-            }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại Album Nhạc Hay</span>
-          </button>
-        </div>
-
         {/* Album Detail Layout */}
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start relative">
           {/* CỘT TRÁI (Sticky): Đĩa tròn quay 360 độ + Thông tin + Nút phát */}

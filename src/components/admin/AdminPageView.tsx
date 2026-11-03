@@ -1550,6 +1550,7 @@ service cloud.firestore {
                           },
                           members: {
                             ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
                             "$userId": {
                               ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
                               ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"

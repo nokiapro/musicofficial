@@ -34,6 +34,10 @@ interface MusicContextType {
   purchasedSongIds: string[];
   theme: ThemeId;
   activeDesktopTab: ActiveDesktopTab;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  navigateBack: () => void;
+  navigateForward: () => void;
   activeMobileTab: ActiveMobileTab;
   isLyricsOpen: boolean;
   isQueueDrawerOpen: boolean;
@@ -256,7 +260,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return 'purple';
     }
   });
-  const [activeDesktopTab, setActiveDesktopTab] = useState<ActiveDesktopTab>('discover');
+  const [activeDesktopTab, setActiveDesktopTabState] = useState<ActiveDesktopTab>('discover');
+  const [tabHistory, setTabHistory] = useState<ActiveDesktopTab[]>(['discover']);
+  const [tabHistoryIndex, setTabHistoryIndex] = useState<number>(0);
+
+  const setActiveDesktopTab = (newTab: ActiveDesktopTab) => {
+    setActiveDesktopTabState(newTab);
+    setTabHistory((prev) => {
+      const upToCurrent = prev.slice(0, tabHistoryIndex + 1);
+      if (upToCurrent.length > 0 && upToCurrent[upToCurrent.length - 1] === newTab) {
+        return upToCurrent;
+      }
+      const updated = [...upToCurrent, newTab];
+      setTabHistoryIndex(updated.length - 1);
+      return updated;
+    });
+  };
   const [activeMobileTab, setActiveMobileTab] = useState<ActiveMobileTab>('discover');
   const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
   const [isQueueDrawerOpen, setIsQueueDrawerOpen] = useState<boolean>(false);
@@ -349,6 +368,29 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Exclusive / Curated Albums (Album Nhạc Hay - Strict Isolation)
   const [exclusiveAlbums, setExclusiveAlbums] = useState<ExclusiveAlbum[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<ExclusiveAlbum | null>(null);
+
+  const canGoBack = Boolean(selectedAlbum) || tabHistoryIndex > 0;
+  const canGoForward = tabHistoryIndex < tabHistory.length - 1;
+
+  const navigateBack = () => {
+    if (selectedAlbum) {
+      setSelectedAlbum(null);
+      return;
+    }
+    if (tabHistoryIndex > 0) {
+      const newIdx = tabHistoryIndex - 1;
+      setTabHistoryIndex(newIdx);
+      setActiveDesktopTabState(tabHistory[newIdx]);
+    }
+  };
+
+  const navigateForward = () => {
+    if (tabHistoryIndex < tabHistory.length - 1) {
+      const newIdx = tabHistoryIndex + 1;
+      setTabHistoryIndex(newIdx);
+      setActiveDesktopTabState(tabHistory[newIdx]);
+    }
+  };
 
   // Community Chat Messages
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -459,11 +501,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         if (!currentMember) {
           const determinedRole: 'admin' | 'user' = isPrimaryAdmin ? 'admin' : 'user';
+          let startingBal = siteSettings?.defaultStartingBalance ?? 500000;
+          try {
+            const localSaved = localStorage.getItem(`xuanken_member_balance_${fbUser.uid}`);
+            if (localSaved !== null) {
+              const num = parseInt(localSaved, 10);
+              if (!isNaN(num)) startingBal = num;
+            }
+          } catch (e) {}
           currentMember = {
             uid: fbUser.uid,
             email: fbUser.email || 'user@xuanken.vn',
             displayName: fbUser.displayName || fbUser.email?.split('@')[0] || (determinedRole === 'admin' ? 'Admin XuanKen' : 'Thành viên'),
-            balance: siteSettings?.defaultStartingBalance ?? 500000,
+            balance: startingBal,
             purchasedSongIds: [],
             blockedSongIds: [],
             role: determinedRole,
@@ -472,14 +522,27 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const updated = [...allMembers, currentMember];
           setMembers(updated);
           await MusicService.saveMembers(updated);
-        } else if (isPrimaryAdmin && currentMember.role !== 'admin') {
-          currentMember = {
-            ...currentMember,
-            role: 'admin',
-            email: fbUser.email || currentMember.email,
-          };
-          await MusicService.upsertMember(currentMember);
-          setMembers((prev) => prev.map((m) => (m.uid === currentMember!.uid ? currentMember! : m)));
+        } else {
+          if (isPrimaryAdmin && currentMember.role !== 'admin') {
+            currentMember = {
+              ...currentMember,
+              role: 'admin',
+              email: fbUser.email || currentMember.email,
+            };
+            await MusicService.upsertMember(currentMember);
+          }
+          // Restore any updated balance stored by admin
+          try {
+            const storedBal = localStorage.getItem(`xuanken_member_balance_${currentMember.uid}`);
+            if (storedBal !== null) {
+              const num = parseInt(storedBal, 10);
+              if (!isNaN(num)) {
+                currentMember.balance = num;
+              }
+            }
+          } catch (e) {}
+          const mergedList = allMembers.map((m) => (m.uid === currentMember!.uid ? currentMember! : m));
+          setMembers(mergedList);
         }
 
         // Restore user settings and states from Firebase (Requirement 23)
@@ -1579,16 +1642,28 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateMemberBalance = async (uid: string, newBalance: number) => {
+    try {
+      localStorage.setItem(`xuanken_member_balance_${uid}`, newBalance.toString());
+    } catch (e) {}
     const updated = members.map((m) => (m.uid === uid ? { ...m, balance: newBalance } : m));
     setMembers(updated);
     if (currentUser?.uid === uid) {
       setCurrentUser({ ...currentUser, balance: newBalance });
       setUserBalance(newBalance);
     }
+    const targetMember = updated.find((m) => m.uid === uid);
+    if (targetMember) {
+      await MusicService.upsertMember(targetMember);
+    }
     await MusicService.saveMembers(updated);
   };
 
   const updateMember = async (uid: string, data: { displayName?: string; role?: 'admin' | 'user'; balance?: number }) => {
+    if (data.balance !== undefined) {
+      try {
+        localStorage.setItem(`xuanken_member_balance_${uid}`, data.balance.toString());
+      } catch (e) {}
+    }
     const updated = members.map((m) => {
       if (m.uid === uid) {
         return {
@@ -1609,6 +1684,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setUserBalance(data.balance);
         }
       }
+    }
+    const targetMember = updated.find((m) => m.uid === uid);
+    if (targetMember) {
+      await MusicService.upsertMember(targetMember);
     }
     await MusicService.saveMembers(updated);
   };
@@ -2228,6 +2307,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setSongToBuy,
         setSelectedLrcSong,
         setActiveDesktopTab,
+        canGoBack,
+        canGoForward,
+        navigateBack,
+        navigateForward,
         setActiveMobileTab,
         loginWithEmail,
         registerWithEmail,

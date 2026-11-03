@@ -508,3 +508,134 @@ input, textarea, select, button {
   background: transparent !important;
   filter: none !important;
 }
+
+/* =========================================================================
+   MODAL & POPUP ANIMATIONS (PC & MOBILE)
+   ========================================================================= */
+
+@keyframes modalBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalBackdropOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalScaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalScaleOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+}
+
+@keyframes bottomSheetUp {
+  0% {
+    opacity: 0.6;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bottomSheetDown {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0.6;
+    transform: translateY(100%);
+  }
+}
+
+@keyframes popupZoomIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes drawerSlideInRight {
+  0% {
+    opacity: 0.5;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-modal-backdrop,
+.animate-in.fade-in {
+  animation: modalBackdropIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.animate-out.fade-out {
+  animation: modalBackdropOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.animate-modal-in,
+.animate-in.zoom-in-95 {
+  animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+.animate-sheet-up,
+.slide-in-from-bottom,
+.animate-in.slide-in-from-bottom {
+  animation: bottomSheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+.animate-sheet-down,
+.slide-out-to-bottom,
+.animate-out.slide-out-to-bottom {
+  animation: bottomSheetDown 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+.animate-popup-in,
+.animate-in.zoom-in {
+  animation: popupZoomIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+.animate-drawer-right,
+.slide-in-from-right,
+.animate-in.slide-in-from-right {
+  animation: drawerSlideInRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
