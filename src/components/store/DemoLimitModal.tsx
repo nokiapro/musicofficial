@@ -68,7 +68,7 @@ export const DemoLimitModal: React.FC = () => {
       return;
     }
 
-    const result = buySong(targetSong, finalPrice);
+    const result = buySong(targetSong, finalPrice, appliedVoucher?.code);
     if (result.success) {
       handleClose();
     }

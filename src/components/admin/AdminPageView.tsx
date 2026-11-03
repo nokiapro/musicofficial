@@ -1496,6 +1496,10 @@ service cloud.firestore {
                           chat_messages: {
                             ".read": true,
                             ".write": true
+                          },
+                          _system_ping: {
+                            ".read": true,
+                            ".write": true
                           }
                         }
                       },
@@ -1504,7 +1508,7 @@ service cloud.firestore {
                     )
                   )
                 }
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95"
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95 cursor-pointer"
               >
                 {copiedRuleFile === 'database.rules.json' ? (
                   <>
@@ -1545,6 +1549,10 @@ service cloud.firestore {
     },
     "members": {
       ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
+    },
+    "_system_ping": {
+      ".read": true,
+      ".write": true
     }
   }
 }`}

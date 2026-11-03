@@ -2,7 +2,7 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <script>
       (function () {
         try {
@@ -37,7 +37,6 @@
             });
           } catch (e) {}
         } catch (err) {}
-
         window.addEventListener('error', function(event) {
           if (event) {
             var filename = event.filename || '';
@@ -49,7 +48,6 @@
             }
           }
         }, true);
-
         window.addEventListener('unhandledrejection', function(event) {
           if (event && event.reason) {
             var msg = String(event.reason.message || event.reason);
@@ -62,15 +60,15 @@
         }, true);
       })();
     </script>
-    <title>XuanKen Music - Quản Trị & Phát Nhạc Độc Quyền</title>
-    <meta name="description" content="Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music" />
-    <meta property="og:title" content="XuanKen Music" />
-    <meta property="og:description" content="Trình phát & Cửa hàng âm nhạc trực tuyến XuanKen Music" />
+    <title>XuanKen Music - Quản Trị & Phát Nhạc Bản Quyền</title>
+    <meta name="description" content="Nền tảng nghe nhạc trực tuyến XuanKen Music Official" />
+    <meta property="og:title" content="XuanKen Music Official" />
+    <meta property="og:description" content="Nền tảng nghe nhạc trực tuyến XuanKen Music Official" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#170f23" />
-    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

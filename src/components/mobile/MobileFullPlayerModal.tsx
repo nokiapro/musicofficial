@@ -430,7 +430,7 @@ export const MobileFullPlayerModal: React.FC = () => {
               <div className="relative w-[min(80vw,305px)] h-[min(80vw,305px)] aspect-square rounded-full shadow-2xl relative border-2 border-white/10 flex items-center justify-center overflow-hidden">
                 <div
                   style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
-                  className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slow shadow-inner relative"
+                  className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slower shadow-inner relative"
                 >
                   {currentSong.coverImage ? (
                     <img

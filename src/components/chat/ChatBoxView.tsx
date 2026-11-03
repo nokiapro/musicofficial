@@ -128,7 +128,15 @@ export const ChatBoxView: React.FC = () => {
     return `${hours}:${mins}`;
   };
 
-  const pinnedMessages = chatMessages.filter((m) => m.isPinned);
+  // Deduplicate messages by ID to prevent displaying 2 messages on send (Requirement 9)
+  const uniqueMessagesMap = new Map<string, ChatMessage>();
+  chatMessages.forEach((m) => {
+    if (m && m.id) {
+      uniqueMessagesMap.set(m.id, m);
+    }
+  });
+  const displayMessages = Array.from(uniqueMessagesMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+  const pinnedMessages = displayMessages.filter((m) => m.isPinned);
 
   return (
     <div className="flex flex-col h-[calc(100vh-170px)] sm:h-[calc(100vh-150px)] max-w-5xl mx-auto rounded-3xl bg-zinc-900/60 border border-white/10 backdrop-blur-md overflow-hidden shadow-2xl select-none font-['Roboto_Condensed']">
@@ -193,14 +201,14 @@ export const ChatBoxView: React.FC = () => {
 
       {/* Messages Stream Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {chatMessages.length === 0 ? (
+        {displayMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-white/40 space-y-2 py-12">
             <MessageSquare className="w-12 h-12 stroke-[1.2]" />
             <p className="text-sm font-bold text-white/60">Chưa có tin nhắn nào</p>
             <p className="text-xs">Hãy là người đầu tiên gửi tin nhắn chào mọi người nhé!</p>
           </div>
         ) : (
-          chatMessages.map((msg) => {
+          displayMessages.map((msg) => {
             const isMe = currentUser?.uid && msg.userId === currentUser.uid;
             const isMsgAdmin = msg.userRole === 'admin';
 

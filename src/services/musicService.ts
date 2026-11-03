@@ -1,6 +1,6 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
 import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
-import { rtdb, db } from './firebase';
+import { rtdb, db, auth } from './firebase';
 import { Song, AppUser, Playlist, Voucher, SiteSettings, RewindStats, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
 import { SONGS_DATABASE } from '../data/songs';
 
@@ -335,22 +335,73 @@ export const MusicService = {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const membersArray: AppUser[] = Object.values(data);
-        localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(membersArray));
-        return membersArray;
+        if (membersArray.length > 0) {
+          localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(membersArray));
+          return membersArray;
+        }
       }
     } catch (err: any) {
-      // Permission denied is expected for non-admin/unauthenticated guests; fallback gracefully
       const isPermDenied = err?.message?.toLowerCase().includes('permission_denied') || err?.message?.toLowerCase().includes('permission denied');
       if (!isPermDenied) {
         console.warn('Firebase members fetch notice:', err);
       }
     }
 
+    // Attempt Firestore fallback for members
+    try {
+      const colRef = collection(db, 'members');
+      const docsSnap = await getDocs(colRef);
+      if (!docsSnap.empty) {
+        const membersArray: AppUser[] = [];
+        docsSnap.forEach((d: any) => {
+          const val = d.data();
+          if (val && val.email) {
+            membersArray.push({
+              uid: val.uid || d.id,
+              email: val.email,
+              displayName: val.displayName || val.email.split('@')[0],
+              avatarUrl: val.avatarUrl || '',
+              balance: typeof val.balance === 'number' ? val.balance : 500000,
+              purchasedSongIds: Array.isArray(val.purchasedSongIds) ? val.purchasedSongIds : [],
+              blockedSongIds: Array.isArray(val.blockedSongIds) ? val.blockedSongIds : [],
+              role: val.role || 'user',
+              createdAt: val.createdAt || new Date().toLocaleDateString('vi-VN'),
+            });
+          }
+        });
+        if (membersArray.length > 0) {
+          localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(membersArray));
+          return membersArray;
+        }
+      }
+    } catch (err) {
+      console.warn('Firestore fallback fetchMembers notice:', err);
+    }
+
     const localCached = localStorage.getItem(STORAGE_KEY_MEMBERS);
     if (localCached) {
       try {
-        return JSON.parse(localCached);
+        const parsed = JSON.parse(localCached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       } catch (e) {}
+    }
+
+    // Default member if authenticated
+    if (auth.currentUser) {
+      const isPrimaryAdmin = auth.currentUser.email?.toLowerCase().trim() === 'admin@xuanken.vn';
+      const fallbackMember: AppUser = {
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email || 'admin@xuanken.vn',
+        displayName: auth.currentUser.displayName || (isPrimaryAdmin ? 'Admin XuanKen' : 'Thành Viên'),
+        balance: 500000,
+        purchasedSongIds: [],
+        blockedSongIds: [],
+        role: isPrimaryAdmin ? 'admin' : 'user',
+        createdAt: new Date().toLocaleDateString('vi-VN'),
+      };
+      return [fallbackMember];
     }
 
     return [];
@@ -1339,14 +1390,20 @@ export const MusicService = {
             let list: ChatMessage[] = [];
             if (Array.isArray(val)) {
               list = val.filter(Boolean);
-            } else if (typeof val === 'object') {
+            } else if (typeof val === 'object' && val !== null) {
               list = Object.values(val);
             }
-            if (list.length > 0) {
-              list.sort((a, b) => a.timestamp - b.timestamp);
-              localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(list));
-              onUpdate(list);
+            const seen = new Set<string>();
+            const uniqueList: ChatMessage[] = [];
+            for (const m of list) {
+              if (m && m.id && !seen.has(m.id)) {
+                seen.add(m.id);
+                uniqueList.push(m);
+              }
             }
+            uniqueList.sort((a, b) => a.timestamp - b.timestamp);
+            localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(uniqueList));
+            onUpdate(uniqueList);
           }
         },
         () => {}

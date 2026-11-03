@@ -137,22 +137,20 @@ export const DesktopPlayerBar: React.FC = () => {
     >
       {/* Left: Song Info + Vinyl CD + Full Title with Dynamic Hugging Heart (Requirement 8) */}
       <div className="flex items-center gap-3.5 max-w-[340px] shrink-0">
-        {/* Spinning Vinyl Cover */}
-        <div className="relative w-14 h-14 rounded-full bg-zinc-900 border-2 border-zinc-700 p-0.5 flex items-center justify-center shrink-0 shadow-lg overflow-hidden">
+        {/* Static Cover (Standing Still, No Rotation) */}
+        <div className="relative w-14 h-14 rounded-2xl bg-zinc-900 border border-white/15 p-0.5 flex items-center justify-center shrink-0 shadow-lg overflow-hidden">
           {currentSong?.coverImage ? (
             <img
               src={currentSong.coverImage}
               alt={currentSong.title}
-              className={`w-full h-full object-cover rounded-full animate-spin-slow ${!isPlaying ? 'paused' : ''}`}
+              className="w-full h-full object-cover rounded-xl"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
           ) : null}
           <div
-            className={`w-full h-full rounded-full bg-gradient-to-tr ${
+            className={`w-full h-full rounded-xl bg-gradient-to-tr ${
               currentSong?.coverGradient || 'from-purple-600 to-indigo-800'
-            } flex items-center justify-center overflow-hidden animate-spin-slow ${
-              !isPlaying ? 'paused' : ''
-            } ${currentSong?.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+            } flex items-center justify-center overflow-hidden ${currentSong?.coverImage ? 'absolute inset-0 -z-10' : ''}`}
           />
         </div>
 

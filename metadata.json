@@ -1,6 +1,5 @@
 {
-  "name": "XuanKen Music - Quản Trị & Phát Nhạc Độc Quyền",
-  "description": "Nền tảng nghe nhạc trực tuyến XuanKen Music với hệ thống quản lý album nhạc hay, bài hát độc quyền và bảng xếp hạng.",
-  "requestFramePermissions": [],
+  "name": "XuanKen Music Official",
+  "description": "Nền tảng nghe nhạc trực tuyến XuanKen Music
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

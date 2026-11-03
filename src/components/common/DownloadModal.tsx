@@ -9,6 +9,7 @@ export const DownloadModal: React.FC = () => {
     songToDownload,
     downloadSong,
     theme,
+    exclusiveAlbums,
   } = useMusic();
 
   const [downloadingFormat, setDownloadingFormat] = useState<'MP3' | 'WAV' | null>(null);
@@ -16,13 +17,19 @@ export const DownloadModal: React.FC = () => {
 
   if (!isDownloadModalOpen || !songToDownload) return null;
 
+  const isAlbumSong = Boolean(
+    songToDownload.isAlbumTrack ||
+    (exclusiveAlbums && exclusiveAlbums.some((a) => (a.songs || []).some((s) => s.id === songToDownload.id))) ||
+    (songToDownload.album && songToDownload.album.toLowerCase().includes('album'))
+  );
+
   const handleDownload = async (format: 'MP3' | 'WAV') => {
     setDownloadingFormat(format);
     setDownloadMsg(null);
     try {
       const res = await downloadSong(songToDownload, format);
       if (res.success) {
-        setDownloadMsg({ isError: false, text: `✅ Đang tải bài hát định dạng ${format} về thiết bị!` });
+        setDownloadMsg({ isError: false, text: `✅ Đang tải bài hát ${isAlbumSong ? '128kbps' : format} về thiết bị!` });
       } else {
         setDownloadMsg({ isError: true, text: `⚠️ ${res.message || 'Lỗi khi tải file nhạc'}` });
       }
@@ -59,7 +66,9 @@ export const DownloadModal: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Tải Nhạc Về Máy</h2>
-              <p className="text-[11px] text-white/50">Chọn định dạng âm thanh chất lượng cao để tải về</p>
+              <p className="text-[11px] text-white/50">
+                {isAlbumSong ? 'Tải bài hát từ Album Nhạc Hay (128kbps)' : 'Chọn định dạng âm thanh chất lượng cao để tải về'}
+              </p>
             </div>
           </div>
           <button
@@ -89,57 +98,84 @@ export const DownloadModal: React.FC = () => {
             <h3 className="text-sm font-bold text-white truncate">{songToDownload.title}</h3>
             <p className="text-xs text-white/60 truncate mt-0.5">{songToDownload.artists}</p>
             <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              Đã mua bản quyền
+              {isAlbumSong ? 'Album Nhạc Hay (128kbps)' : 'Đã mua bản quyền'}
             </span>
           </div>
         </div>
 
         {/* Download Options */}
         <div className="space-y-3">
-          <button
-            onClick={() => handleDownload('MP3')}
-            disabled={downloadingFormat !== null}
-            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/30 to-blue-500/10 hover:from-blue-600/50 hover:to-blue-500/20 border border-blue-500/40 text-left transition-all group active:scale-[0.98] disabled:opacity-50"
-          >
-            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center font-black text-xs shrink-0">
-                MP3
+          {isAlbumSong ? (
+            /* Requirement 8: Album songs only have 128kbps option, no 320kbps or WAV */
+            <button
+              onClick={() => handleDownload('MP3')}
+              disabled={downloadingFormat !== null}
+              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-purple-600/30 to-purple-500/10 hover:from-purple-600/50 hover:to-purple-500/20 border border-purple-500/40 text-left transition-all group active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center font-black text-xs shrink-0">
+                  128k
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors truncate">
+                    Tải Bản MP3 (128kbps)
+                  </p>
+                  <p className="text-[11px] text-white/50 truncate">Định dạng 128kbps tiêu chuẩn của Album</p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-white group-hover:text-blue-300 transition-colors truncate">
-                  Tải Bản MP3 (320kbps)
-                </p>
-                <p className="text-[11px] text-white/50 truncate">Dung lượng nhẹ, tương thích mọi thiết bị di động</p>
+              <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-xs shadow-md shrink-0 whitespace-nowrap">
+                <Download className="w-3.5 h-3.5 shrink-0" />
+                <span className="whitespace-nowrap">{downloadingFormat === 'MP3' ? 'Đang tải...' : 'Tải 128kbps'}</span>
               </div>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shrink-0 whitespace-nowrap">
-              <Download className="w-3.5 h-3.5 shrink-0" />
-              <span className="whitespace-nowrap">{downloadingFormat === 'MP3' ? 'Đang tải...' : 'Tải MP3'}</span>
-            </div>
-          </button>
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => handleDownload('MP3')}
+                disabled={downloadingFormat !== null}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/30 to-blue-500/10 hover:from-blue-600/50 hover:to-blue-500/20 border border-blue-500/40 text-left transition-all group active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center font-black text-xs shrink-0">
+                    MP3
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white group-hover:text-blue-300 transition-colors truncate">
+                      Tải Bản MP3 (320kbps)
+                    </p>
+                    <p className="text-[11px] text-white/50 truncate">Dung lượng nhẹ, tương thích mọi thiết bị di động</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shrink-0 whitespace-nowrap">
+                  <Download className="w-3.5 h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{downloadingFormat === 'MP3' ? 'Đang tải...' : 'Tải MP3'}</span>
+                </div>
+              </button>
 
-          <button
-            onClick={() => handleDownload('WAV')}
-            disabled={downloadingFormat !== null}
-            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-amber-600/30 to-amber-500/10 hover:from-amber-600/50 hover:to-amber-500/20 border border-amber-500/40 text-left transition-all group active:scale-[0.98] disabled:opacity-50"
-          >
-            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-xs shrink-0">
-                WAV
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1.5 truncate">
-                  <span>Tải Bản WAV</span>
-                  <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
-                </p>
-                <p className="text-[11px] text-white/50 truncate">Chất lượng âm thanh chuẩn phòng thu, chi tiết sắc nét</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shrink-0 whitespace-nowrap">
-              <Download className="w-3.5 h-3.5 shrink-0" />
-              <span className="whitespace-nowrap">{downloadingFormat === 'WAV' ? 'Đang tải...' : 'Tải WAV'}</span>
-            </div>
-          </button>
+              <button
+                onClick={() => handleDownload('WAV')}
+                disabled={downloadingFormat !== null}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-amber-600/30 to-amber-500/10 hover:from-amber-600/50 hover:to-amber-500/20 border border-amber-500/40 text-left transition-all group active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-xs shrink-0">
+                    WAV
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1.5 truncate">
+                      <span>Tải Bản WAV</span>
+                      <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                    </p>
+                    <p className="text-[11px] text-white/50 truncate">Chất lượng âm thanh chuẩn phòng thu, chi tiết sắc nét</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shrink-0 whitespace-nowrap">
+                  <Download className="w-3.5 h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{downloadingFormat === 'WAV' ? 'Đang tải...' : 'Tải WAV'}</span>
+                </div>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Feedback message */}

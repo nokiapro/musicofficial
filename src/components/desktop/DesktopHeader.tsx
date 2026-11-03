@@ -31,6 +31,9 @@ export const DesktopHeader: React.FC = () => {
     currentUser,
     setIsLoginModalOpen,
     setIsProfileModalOpen,
+    allSearchableSongs,
+    exclusiveAlbums,
+    playAlbumTrack,
   } = useMusic();
 
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -52,8 +55,9 @@ export const DesktopHeader: React.FC = () => {
     };
   }, [isSettingsOpen]);
 
+  // Requirement 3: Bao gồm tất cả các bài hát đang có trong web luôn kể cả các bài hát trong album nhạc hay
   const searchResults = searchQuery.trim()
-    ? songs.filter(
+    ? (allSearchableSongs || songs).filter(
         (s) =>
           s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.artists.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -132,7 +136,16 @@ export const DesktopHeader: React.FC = () => {
                     <div
                       key={song.id}
                       onClick={() => {
-                        playSong(song);
+                        if (song.isAlbumTrack) {
+                          const foundAlbum = exclusiveAlbums.find((a) => a.id === song.albumId || a.title === song.album);
+                          if (foundAlbum) {
+                            playAlbumTrack(song as any, foundAlbum);
+                          } else {
+                            playSong(song);
+                          }
+                        } else {
+                          playSong(song);
+                        }
                         setIsSearchFocused(false);
                       }}
                       className="flex items-center justify-between p-2 rounded-xl hover:bg-white/10 cursor-pointer group transition-colors"
@@ -157,7 +170,9 @@ export const DesktopHeader: React.FC = () => {
                         </div>
                         <div className="truncate">
                           <p className="text-sm font-semibold text-white truncate group-hover:text-[#c273ed] transition-colors">{song.title}</p>
-                          <p className="text-xs text-white/60 truncate">{song.artists}</p>
+                          <p className="text-xs text-white/60 truncate">
+                            {song.artists} {song.isAlbumTrack ? `• Album: ${song.album}` : ''}
+                          </p>
                         </div>
                       </div>
 

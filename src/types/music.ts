@@ -32,6 +32,8 @@ export interface Song {
   wavUrl?: string;  // Link nhạc WAV Lossless
   rankChange?: 'up' | 'down' | 'same';
   rankChangeValue?: number;
+  isAlbumTrack?: boolean;
+  albumId?: string;
 }
 
 export interface AppUser {
@@ -42,6 +44,7 @@ export interface AppUser {
   balance: number; // Số dư ví VNĐ
   purchasedSongIds: string[];
   blockedSongIds?: string[]; // Danh sách bài hát bị chặn
+  usedVoucherCodes?: string[]; // Danh sách mã voucher đã dùng
   role: 'admin' | 'user';
   createdAt: string;
 }

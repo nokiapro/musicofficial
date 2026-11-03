@@ -67,6 +67,9 @@ export const MobileAppLayout: React.FC = () => {
     toggleShuffle,
     searchQuery,
     theme,
+    allSearchableSongs,
+    exclusiveAlbums,
+    playAlbumTrack,
   } = useMusic();
 
   const [librarySubTab, setLibrarySubTab] = useState<'liked' | 'playlists' | 'purchased'>('liked');
@@ -76,9 +79,10 @@ export const MobileAppLayout: React.FC = () => {
   const [menuPositionMap, setMenuPositionMap] = useState<Record<string, 'down' | 'up'>>({});
   const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
 
-  // Search filtering
+  // Search filtering across all songs and album tracks (Requirement 3)
+  const baseSearchPool = searchQuery.trim() ? (allSearchableSongs || songs) : songs;
   const filteredSongs = searchQuery.trim()
-    ? songs.filter(
+    ? baseSearchPool.filter(
         (s) =>
           s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.artists.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -86,22 +90,40 @@ export const MobileAppLayout: React.FC = () => {
       )
     : songs;
 
+  // Requirement 14: Hiển thị theo vần ABC ở mobile
+  const sortedDiscoverSongs = [...filteredSongs].sort((a, b) =>
+    a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' })
+  );
+
   const handlePlayInOrder = () => {
-    const listToPlay = filteredSongs.length > 0 ? filteredSongs : songs;
+    const listToPlay = sortedDiscoverSongs.length > 0 ? sortedDiscoverSongs : songs;
     if (listToPlay.length === 0) return;
     setPlaybackSource('Danh sách bài hát');
     if (isShuffle) toggleShuffle();
-    playSong(listToPlay[0]);
+    if (listToPlay[0].isAlbumTrack) {
+      const found = exclusiveAlbums.find((a) => a.id === listToPlay[0].albumId || a.title === listToPlay[0].album);
+      if (found) playAlbumTrack(listToPlay[0] as any, found);
+      else playSong(listToPlay[0]);
+    } else {
+      playSong(listToPlay[0]);
+    }
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
-    const listToPlay = filteredSongs.length > 0 ? filteredSongs : songs;
+    const listToPlay = sortedDiscoverSongs.length > 0 ? sortedDiscoverSongs : songs;
     if (listToPlay.length === 0) return;
     setPlaybackSource('Danh sách bài hát');
     if (!isShuffle) toggleShuffle();
     const randomIndex = Math.floor(Math.random() * listToPlay.length);
-    playSong(listToPlay[randomIndex]);
+    const chosen = listToPlay[randomIndex];
+    if (chosen.isAlbumTrack) {
+      const found = exclusiveAlbums.find((a) => a.id === chosen.albumId || a.title === chosen.album);
+      if (found) playAlbumTrack(chosen as any, found);
+      else playSong(chosen);
+    } else {
+      playSong(chosen);
+    }
     setIsPlayMenuOpen(false);
   };
 
@@ -126,15 +148,15 @@ export const MobileAppLayout: React.FC = () => {
   const [likedPage, setLikedPage] = useState(1);
   const [purchasedPage, setPurchasedPage] = useState(1);
 
-  const totalSongs = filteredSongs.length;
-  const purchasedCount = filteredSongs.filter((s) => isSongPurchased(s.id)).length;
+  const totalSongs = sortedDiscoverSongs.length;
+  const purchasedCount = sortedDiscoverSongs.filter((s) => isSongPurchased(s.id)).length;
   const unpurchasedCount = Math.max(0, totalSongs - purchasedCount);
 
   const likedSongs = songs.filter((s) => likedSongIds.includes(s.id));
   const ownedSongs = songs.filter((s) => isSongPurchased(s.id));
 
-  const totalDiscoverPages = Math.max(1, Math.ceil(filteredSongs.length / PAGE_SIZE));
-  const paginatedDiscoverSongs = filteredSongs.slice((discoverPage - 1) * PAGE_SIZE, discoverPage * PAGE_SIZE);
+  const totalDiscoverPages = Math.max(1, Math.ceil(sortedDiscoverSongs.length / PAGE_SIZE));
+  const paginatedDiscoverSongs = sortedDiscoverSongs.slice((discoverPage - 1) * PAGE_SIZE, discoverPage * PAGE_SIZE);
 
   const totalStorePages = Math.max(1, Math.ceil(songs.length / PAGE_SIZE));
   const paginatedStoreSongs = songs.slice((storePage - 1) * PAGE_SIZE, storePage * PAGE_SIZE);
@@ -275,9 +297,15 @@ export const MobileAppLayout: React.FC = () => {
                   <div
                     key={song.id}
                     onClick={() => {
-                      setPlaybackSource('Bài hát gợi ý');
-                      if (isCurrent) togglePlay();
-                      else playSong(song);
+                      if (song.isAlbumTrack) {
+                        const found = exclusiveAlbums.find((a) => a.id === song.albumId || a.title === song.album);
+                        if (found) playAlbumTrack(song as any, found);
+                        else playSong(song);
+                      } else {
+                        setPlaybackSource('Danh sách bài hát');
+                        if (isCurrent) togglePlay();
+                        else playSong(song);
+                      }
                     }}
                     className={`relative p-2.5 rounded-2xl border transition-colors cursor-pointer flex items-center justify-between gap-2.5 ${
                       isCurrent
@@ -288,7 +316,7 @@ export const MobileAppLayout: React.FC = () => {
                     {/* Left Info: STT, Cover, Title, Artist */}
                     <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
                       <span className="w-5 text-center text-xs font-bold text-white/40 font-mono">
-                        {song.stt || (discoverPage - 1) * PAGE_SIZE + idx + 1}
+                        {(discoverPage - 1) * PAGE_SIZE + idx + 1}
                       </span>
 
                       <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow bg-zinc-900 border border-white/10">

@@ -36,6 +36,7 @@ interface MusicContextType {
   sleepTimerMinutes: number | null;
   sleepTimerRemainingSeconds: number | null;
   searchQuery: string;
+  allSearchableSongs: Song[];
   playbackSource: string;
   setPlaybackSource: (source: string) => void;
   viewMode: 'auto' | 'pc' | 'mobile';
@@ -92,7 +93,7 @@ interface MusicContextType {
 
   // Store & Wallet
   isSongPurchased: (songId: string) => boolean;
-  buySong: (song: Song, priceOverride?: number) => { success: boolean; message: string };
+  buySong: (song: Song, priceOverride?: number, voucherCodeApplied?: string) => { success: boolean; message: string };
   topUpBalance: (amount: number) => void;
 
   // Admin CRUD for Songs & Members
@@ -753,6 +754,57 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // All Searchable Songs across standard songs catalog and curated albums (Requirement 3)
+  const allSearchableSongs: Song[] = [
+    ...songs,
+    ...exclusiveAlbums.flatMap((album) =>
+      (album.songs || []).map((s, idx) => ({
+        id: s.id,
+        stt: s.stt || idx + 1,
+        title: s.title,
+        artists: s.artists,
+        duration: s.duration || 210,
+        audioFormat: 'MP3' as const,
+        coverImage: s.coverImage || album.coverImage,
+        coverGradient: 'from-purple-900 to-indigo-950',
+        album: album.title,
+        price: 0,
+        isPurchased: true,
+        demoUrl: s.demoUrl || s.mp3Url || s.wavUrl,
+        mp3Url: s.mp3Url,
+        wavUrl: s.wavUrl,
+        lyrics: s.lyrics || [],
+        lrcRaw: s.lrcRaw,
+        plays: `${(s.playCount || 0).toLocaleString('vi-VN')} lượt nghe`,
+        playCount: s.playCount || 0,
+        isAlbumTrack: true,
+        albumId: album.id,
+      }))
+    ),
+  ];
+
+  // Screen WakeLock & Background Playback Recovery (Requirement 1)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const realTime = audioEngine.getCurrentTime();
+        if (realTime >= 0) {
+          setCurrentTime(realTime);
+        }
+        if (isPlaying) {
+          audioEngine.acquireWakeLock();
+          if (audioEngine.isAudioPaused()) {
+            audioEngine.resume().catch(() => {
+              setIsPlaying(false);
+            });
+          }
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isPlaying]);
+
   // Playback timer & 60-second Demo cutoff
   useEffect(() => {
     if (isPlaying && currentSong) {
@@ -769,12 +821,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       timerRef.current = window.setInterval(() => {
         const audioEngineTime = audioEngine.getCurrentTime();
+        const isAudioPaused = audioEngine.isAudioPaused();
+
+        // If audio element is paused in background or locked screen, don't run timer ahead artificially
+        if (isAudioPaused) {
+          return;
+        }
+
         setCurrentTime((prev) => {
           const purchased = isSongPurchased(currentSong.id);
-          // High-precision smooth time
-          const nextTime = audioEngineTime > 0 && Math.abs(audioEngineTime - prev) < 5
-            ? audioEngineTime
-            : prev + 0.1;
+          // High-precision sync with audio element
+          const nextTime = audioEngineTime >= 0 ? audioEngineTime : prev + 0.1;
 
           // Requirement 2: Demo 60s limitation - at yellow dot, pop up buy song modal
           if (!purchased && nextTime >= 60) {
@@ -1313,7 +1370,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearQueue = () => setQueue([]);
 
   // Store Buy Song
-  const buySong = (song: Song, priceOverride?: number): { success: boolean; message: string } => {
+  const buySong = (song: Song, priceOverride?: number, voucherCodeApplied?: string): { success: boolean; message: string } => {
     if (purchasedSongIds.includes(song.id)) {
       return { success: true, message: 'Bạn đã sở hữu bài hát này!' };
     }
@@ -1331,10 +1388,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setPurchasedSongIds(newPurchased);
 
     if (currentUser) {
+      const updatedUsedCodes = voucherCodeApplied
+        ? Array.from(new Set([...(currentUser.usedVoucherCodes || []), voucherCodeApplied.trim().toUpperCase()]))
+        : (currentUser.usedVoucherCodes || []);
+
       const updatedUser: AppUser = {
         ...currentUser,
         balance: newBalance,
         purchasedSongIds: newPurchased,
+        usedVoucherCodes: updatedUsedCodes,
       };
       setCurrentUser(updatedUser);
       MusicService.upsertMember(updatedUser);
@@ -1707,6 +1769,16 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // 6. Vouchers Handlers
   const applyVoucher = (code: string, currentPrice: number) => {
     const cleanCode = code.trim().toUpperCase();
+    const usedVouchers: string[] = currentUser?.usedVoucherCodes || [];
+    if (usedVouchers.includes(cleanCode)) {
+      return {
+        success: false,
+        discountAmount: 0,
+        finalPrice: currentPrice,
+        message: 'Bạn đã dùng voucher này rồi',
+      };
+    }
+
     const found = vouchers.find((v) => v.code.toUpperCase() === cleanCode && v.isActive);
     if (!found) {
       return {
@@ -1960,10 +2032,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     handleSetPlaybackSource(`Album: ${album.title}`);
     setActivePlaylistSongs(albumAsSongs);
+    activePlaylistSongsRef.current = albumAsSongs;
 
     const target = albumAsSongs.find((s) => s.id === track.id) || albumAsSongs[0];
     if (target) {
       if (shuffle) {
+        setIsShuffle(true);
+        isShuffleRef.current = true;
         const remaining = albumAsSongs.filter((s) => s.id !== target.id);
         const shuffled = [...remaining].sort(() => Math.random() - 0.5);
         setQueue(shuffled);
@@ -1977,8 +2052,21 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Re-fetch members whenever admin role or current user is established (Requirement 11)
+  useEffect(() => {
+    if (isAdmin || currentUser) {
+      MusicService.fetchMembers().then((loadedMembers) => {
+        if (loadedMembers && loadedMembers.length > 0) {
+          setMembers(loadedMembers);
+        } else if (currentUser) {
+          setMembers([currentUser]);
+        }
+      });
+    }
+  }, [isAdmin, currentUser]);
+
   // -------------------------------------------------------------
-  // Community Chat Box Methods
+  // Community Chat Box Methods (Requirement 9: Deduplicate to prevent double-message)
   // -------------------------------------------------------------
   const sendChatMessage = async (content: string, sharedSong?: ChatMessage['sharedSong']) => {
     const senderName = currentUser?.displayName || 'Khách Vô Danh';
@@ -1995,7 +2083,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       timestamp: Date.now(),
       sharedSong,
     });
-    setChatMessages((prev) => [...prev, newMsg]);
+
+    setChatMessages((prev) => {
+      if (prev.some((m) => m.id === newMsg.id)) return prev;
+      return [...prev, newMsg];
+    });
   };
 
   const deleteChatMessage = async (id: string) => {
@@ -2041,6 +2133,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         sleepTimerMinutes,
         sleepTimerRemainingSeconds,
         searchQuery,
+        allSearchableSongs,
         viewMode,
         effectiveIsMobile,
         currentUser,

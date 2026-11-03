@@ -358,7 +358,24 @@ input, button, textarea, select, table, span, label {
 }
 
 .animate-spin-slow {
-  animation: spinSlow 12s linear infinite;
+  animation: spinSlow 14s linear infinite;
+}
+
+.animate-spin-slower {
+  animation: spinSlow 28s linear infinite;
+}
+
+/* iOS Safari Zoom Prevention on Inputs and Textareas */
+@media screen and (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+input, textarea, select, button {
+  touch-action: manipulation;
 }
 
 .paused {

@@ -69,13 +69,13 @@
     },
     "users": {
       "$userId": {
-        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')",
+        ".read": true,
         ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || auth.token.email === 'admin@xuanken.vn')"
       }
     },
     "_system_ping": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     }
   }
 }

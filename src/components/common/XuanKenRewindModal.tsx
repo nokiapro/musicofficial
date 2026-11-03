@@ -3,7 +3,7 @@ import { X, Trophy, Clock, Play, Headphones, Sparkles, Award } from 'lucide-reac
 import { useMusic } from '../../context/MusicContext';
 
 export const XuanKenRewindModal: React.FC = () => {
-  const { isRewindModalOpen, setIsRewindModalOpen, rewindStats, songs, playSong } = useMusic();
+  const { isRewindModalOpen, setIsRewindModalOpen, rewindStats, songs, playSong, theme } = useMusic();
 
   if (!isRewindModalOpen) return null;
 
@@ -53,7 +53,7 @@ export const XuanKenRewindModal: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 select-none">
+    <div data-theme={theme} className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 select-none font-['Roboto_Condensed']">
       <div className="w-full max-w-lg bg-gradient-to-b from-[#2b1044] via-[#1a0a2a] to-[#0f051a] border border-purple-500/30 rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-6 text-white max-h-[90vh] flex flex-col relative animate-in zoom-in-95 duration-200">
         {/* Decorative Top Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />

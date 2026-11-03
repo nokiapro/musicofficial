@@ -15,11 +15,62 @@ export class AudioEngine {
   private playbackRate: number = 1.0;
   private crossfadeDuration: number = 0; // In seconds
   private currentUrl: string | null = null;
+  private wakeLock: any = null;
   private onEndedCallback: (() => void) | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.initAudioElement();
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            if (this.isPlaying && this.audioElement && this.audioElement.paused) {
+              this.audioElement.play().catch(() => {});
+            }
+            if (this.isPlaying) {
+              this.acquireWakeLock();
+            }
+          }
+        });
+      }
+    }
+  }
+
+  public async acquireWakeLock() {
+    if (typeof navigator !== 'undefined' && 'wakeLock' in navigator && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      try {
+        if (!this.wakeLock) {
+          this.wakeLock = await (navigator as any).wakeLock.request('screen');
+          this.wakeLock.addEventListener('release', () => {
+            this.wakeLock = null;
+          });
+        }
+      } catch (e) {}
+    }
+  }
+
+  public releaseWakeLock() {
+    if (this.wakeLock) {
+      try {
+        this.wakeLock.release().catch(() => {});
+      } catch (e) {}
+      this.wakeLock = null;
+    }
+  }
+
+  public isAudioPaused(): boolean {
+    return this.audioElement ? this.audioElement.paused : true;
+  }
+
+  public async resume(): Promise<void> {
+    if (this.audioElement) {
+      this.isPlaying = true;
+      this.audioElement.volume = this.isMuted ? 0 : this.volume;
+      this.acquireWakeLock();
+      return this.audioElement.play().catch((err) => {
+        this.isPlaying = false;
+        throw err;
+      });
     }
   }
 
@@ -27,6 +78,11 @@ export class AudioEngine {
     if (!this.audioElement) {
       this.audioElement = new Audio();
       this.audioElement.preload = 'auto';
+      (this.audioElement as any).playsInline = true;
+      try {
+        this.audioElement.setAttribute('playsinline', 'true');
+        this.audioElement.setAttribute('webkit-playsinline', 'true');
+      } catch (e) {}
       // Disable browser auto-gain or pitch distortion
       this.audioElement.preservesPitch = true;
       this.audioElement.volume = this.isMuted ? 0 : this.volume;
@@ -34,6 +90,7 @@ export class AudioEngine {
 
       this.audioElement.addEventListener('ended', () => {
         this.isPlaying = false;
+        this.releaseWakeLock();
         if (this.onEndedCallback) {
           this.onEndedCallback();
         }
@@ -109,6 +166,7 @@ export class AudioEngine {
         .play()
         .then(() => {
           this.isPlaying = true;
+          this.acquireWakeLock();
         })
         .catch((err) => {
           console.warn('Playback play request notice:', err);
@@ -126,6 +184,7 @@ export class AudioEngine {
         .play()
         .then(() => {
           this.isPlaying = true;
+          this.acquireWakeLock();
         })
         .catch(() => {
           this.isPlaying = false;
@@ -141,6 +200,7 @@ export class AudioEngine {
 
   public pause() {
     this.isPlaying = false;
+    this.releaseWakeLock();
     if (this.audioElement) {
       this.audioElement.pause();
       this.audioElement.volume = this.isMuted ? 0 : this.volume;
