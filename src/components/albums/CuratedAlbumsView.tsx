@@ -4,7 +4,6 @@ import {
   Play,
   Pause,
   Shuffle,
-  Music2,
   Share2,
   FileText,
   Heart,
@@ -32,7 +31,6 @@ export const CuratedAlbumsView: React.FC = () => {
     openDownloadModal,
     openShareModal,
     isShuffle,
-    toggleShuffle,
     playlists,
   } = useMusic();
 
