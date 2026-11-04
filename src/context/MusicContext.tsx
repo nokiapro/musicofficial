@@ -724,8 +724,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
   const isSongPurchased = (songId: string): boolean => {
-    // Album tracks inside exclusive albums are full quality and free to play
-    if (exclusiveAlbums.some((a) => (a.songs || []).some((s) => s.id === songId))) {
+    // Current song is album track -> always full quality and free to play
+    if (currentSongRef.current?.id === songId && currentSongRef.current?.isAlbumTrack) {
+      return true;
+    }
+    // Album tracks inside exclusive albums are full quality and free to play for everyone
+    if (exclusiveAlbums.some((a) => (a.songs || []).some((s) => s.id === songId || (s as any)._id === songId))) {
       return true;
     }
     return purchasedSongIds.includes(songId);
@@ -892,8 +896,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const activeUrl = resolveAudioUrl(currentSong, songFormat, activePurchased);
 
       audioEngine.playUrl(activeUrl, (dur) => {
-        // Keep full song duration; never overwrite with shorter demo metadata
-        if ((!currentSong.duration || currentSong.duration <= 0) && dur > 60) {
+        if (dur > 0) {
           setDuration(dur);
         }
       });
@@ -912,8 +915,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // High-precision sync with audio element
           const nextTime = audioEngineTime >= 0 ? audioEngineTime : prev + 0.1;
 
-          // Requirement 2: Demo 60s limitation - at yellow dot, pop up buy song modal
-          if (!purchased && nextTime >= 60) {
+          // Requirement 2 & 6: Demo 60s limitation - at yellow dot, pop up buy song modal
+          // NEVER cut off album tracks (album tracks are 100% free for everyone)
+          if (!currentSong.isAlbumTrack && !purchased && nextTime >= 60) {
             audioEngine.pause();
             setIsPlaying(false);
             setSongToBuy(currentSong);
@@ -922,7 +926,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return 60;
           }
 
-          if (duration > 0 && nextTime >= duration) {
+          // Requirement 9: Only end song when audio has actually ended!
+          if (audioEngine.isEnded()) {
             handleSongEnd();
             return 0;
           }
@@ -1037,6 +1042,45 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
+    // Requirement 6: If current song is an album track, stay strictly inside this album!
+    if (currentSongItem?.isAlbumTrack && currentSongItem.albumId) {
+      const album = exclusiveAlbums.find((a) => a.id === currentSongItem.albumId);
+      const albumSongs = activePlaylistSongsRef.current.length > 0 && activePlaylistSongsRef.current.every((s) => s.albumId === currentSongItem.albumId)
+        ? activePlaylistSongsRef.current
+        : (album ? (album.songs || []).map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album.id, album: album.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song)) : []);
+
+      if (albumSongs.length > 0) {
+        if (currentRepMode === 'one') {
+          setCurrentTime(0);
+          seekTo(0);
+          playSong(currentSongItem, undefined, true);
+          return;
+        }
+
+        if (isShuffleActive) {
+          const pool = albumSongs.filter((s) => s.id !== currentSongItem.id);
+          const chosen = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : albumSongs[0];
+          playSong(chosen);
+          return;
+        }
+
+        const curIdx = albumSongs.findIndex((s) => s.id === currentSongItem.id);
+        if (curIdx !== -1 && curIdx + 1 < albumSongs.length) {
+          playSong(albumSongs[curIdx + 1]);
+          return;
+        }
+
+        if (currentRepMode === 'all') {
+          playSong(albumSongs[0]);
+          return;
+        }
+
+        setIsPlaying(false);
+        seekTo(0);
+        return;
+      }
+    }
+
     const poolSource = activePlaylistSongsRef.current.length > 0 ? activePlaylistSongsRef.current : songsRef.current;
     const activePool = poolSource.filter((s) => !blocked.includes(s.id));
 
@@ -1116,7 +1160,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     audioEngine.playUrl(
       activeUrl,
       (dur) => {
-        if ((!song.duration || song.duration <= 0) && dur > 60) {
+        if (dur > 0) {
           setDuration(dur);
         }
       },
@@ -1138,7 +1182,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const seekTo = (seconds: number) => {
     if (!currentSong) return;
     const purchased = isSongPurchased(currentSong.id);
-    if (!purchased && seconds >= 60) {
+    if (!currentSong.isAlbumTrack && !purchased && seconds >= 60) {
       setCurrentTime(60);
       audioEngine.seek(60);
       audioEngine.pause();
@@ -1158,6 +1202,29 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const isShuffleActive = isShuffleRef.current;
     const blocked = blockedSongIdsRef.current;
     const currentSongItem = currentSongRef.current;
+
+    // Requirement 6: If current song is an album track, stay strictly inside this album!
+    if (currentSongItem?.isAlbumTrack && currentSongItem.albumId) {
+      const album = exclusiveAlbums.find((a) => a.id === currentSongItem.albumId);
+      const albumSongs = activePlaylistSongsRef.current.length > 0 && activePlaylistSongsRef.current.every((s) => s.albumId === currentSongItem.albumId)
+        ? activePlaylistSongsRef.current
+        : (album ? (album.songs || []).map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album.id, album: album.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song)) : []);
+
+      if (albumSongs.length > 0) {
+        if (isShuffleActive) {
+          const pool = albumSongs.filter((s) => s.id !== currentSongItem.id);
+          const chosen = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : albumSongs[0];
+          playSong(chosen);
+          return;
+        }
+
+        const curIdx = albumSongs.findIndex((s) => s.id === currentSongItem.id);
+        const nextIdx = curIdx !== -1 && curIdx + 1 < albumSongs.length ? curIdx + 1 : 0;
+        playSong(albumSongs[nextIdx]);
+        return;
+      }
+    }
+
     const poolSource = activePlaylistSongsRef.current.length > 0 ? activePlaylistSongsRef.current : songsRef.current;
     const activePool = poolSource.filter((s) => !blocked.includes(s.id));
 
@@ -1200,6 +1267,21 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const isShuffleActive = isShuffleRef.current;
     const blocked = blockedSongIdsRef.current;
     const currentSongItem = currentSongRef.current;
+
+    // Requirement 6: If current song is an album track, stay strictly inside this album!
+    if (currentSongItem?.isAlbumTrack && currentSongItem.albumId) {
+      const album = exclusiveAlbums.find((a) => a.id === currentSongItem.albumId);
+      const albumSongs = activePlaylistSongsRef.current.length > 0 && activePlaylistSongsRef.current.every((s) => s.albumId === currentSongItem.albumId)
+        ? activePlaylistSongsRef.current
+        : (album ? (album.songs || []).map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album.id, album: album.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song)) : []);
+
+      if (albumSongs.length > 0) {
+        const curIdx = albumSongs.findIndex((s) => s.id === currentSongItem.id);
+        const prevIdx = curIdx > 0 ? curIdx - 1 : albumSongs.length - 1;
+        playSong(albumSongs[prevIdx]);
+        return;
+      }
+    }
     const poolSource = activePlaylistSongsRef.current.length > 0 ? activePlaylistSongsRef.current : songsRef.current;
     const activePool = poolSource.filter((s) => !blocked.includes(s.id));
 

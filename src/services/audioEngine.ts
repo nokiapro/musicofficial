@@ -62,12 +62,17 @@ export class AudioEngine {
     return this.audioElement ? this.audioElement.paused : true;
   }
 
+  public isEnded(): boolean {
+    return this.audioElement ? this.audioElement.ended : false;
+  }
+
   public async resume(): Promise<void> {
     if (this.audioElement) {
       this.isPlaying = true;
       this.audioElement.volume = this.isMuted ? 0 : this.volume;
       this.acquireWakeLock();
       return this.audioElement.play().catch((err) => {
+        if (err?.name === 'AbortError') return;
         this.isPlaying = false;
         throw err;
       });
@@ -169,6 +174,7 @@ export class AudioEngine {
           this.acquireWakeLock();
         })
         .catch((err) => {
+          if (err?.name === 'AbortError') return;
           console.warn('Playback play request notice:', err);
           this.isPlaying = false;
         });
@@ -186,7 +192,8 @@ export class AudioEngine {
           this.isPlaying = true;
           this.acquireWakeLock();
         })
-        .catch(() => {
+        .catch((err) => {
+          if (err?.name === 'AbortError') return;
           this.isPlaying = false;
         });
     }

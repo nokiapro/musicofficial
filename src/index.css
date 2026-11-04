@@ -276,7 +276,17 @@ html, body {
   box-shadow: 0 0 10px var(--color-accent, rgba(155, 77, 224, 0.5));
 }
 
+/* Vinyl Spin Animations */
 @keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
   from {
     transform: rotate(0deg);
   }
@@ -287,6 +297,275 @@ html, body {
 
 .animate-spin-slow {
   animation: spinSlow 12s linear infinite;
+}
+
+.animate-spin-slower {
+  animation: spinSlow 20s linear infinite;
+}
+
+/* Soundwave jumping bar animations for cover corners & lyrics */
+@keyframes soundwave1 {
+  0%, 100% {
+    height: 4px;
+  }
+  50% {
+    height: 18px;
+  }
+}
+
+@keyframes soundwave2 {
+  0%, 100% {
+    height: 16px;
+  }
+  50% {
+    height: 6px;
+  }
+}
+
+@keyframes soundwave3 {
+  0%, 100% {
+    height: 7px;
+  }
+  50% {
+    height: 20px;
+  }
+}
+
+@keyframes soundwave4 {
+  0%, 100% {
+    height: 14px;
+  }
+  50% {
+    height: 5px;
+  }
+}
+
+.animate-soundwave-1 {
+  display: inline-block;
+  min-height: 4px;
+  animation: soundwave1 0.9s ease-in-out infinite;
+}
+
+.animate-soundwave-2 {
+  display: inline-block;
+  min-height: 4px;
+  animation: soundwave2 0.75s ease-in-out infinite 0.15s;
+}
+
+.animate-soundwave-3 {
+  display: inline-block;
+  min-height: 4px;
+  animation: soundwave3 1.05s ease-in-out infinite 0.3s;
+}
+
+.animate-soundwave-4 {
+  display: inline-block;
+  min-height: 4px;
+  animation: soundwave4 0.85s ease-in-out infinite 0.2s;
+}
+
+/* Splash Screen Styling & Animations from music6.xuanken.name.vn */
+.hint-logo {
+  width: 140px;
+  height: 140px;
+  margin-bottom: 30px;
+  animation: logoFloat 2.5s ease-in-out infinite;
+  position: relative;
+}
+.hint-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+}
+.hint-logo::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  animation: pulseRing 2s linear infinite;
+}
+@media (max-width: 640px) {
+  .hint-logo {
+    width: 110px;
+    height: 110px;
+    margin-bottom: 24px;
+  }
+}
+@keyframes pulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+@keyframes logoFloat {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes titleGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes heartBeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.28);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  75% {
+    transform: scale(1.22);
+  }
+}
+
+/* Active Lyric Line Highlighting - Crisp Yellow without shadow */
+.lyric-line.active {
+  color: #ffdb00 !important;
+  font-weight: 800 !important;
+  text-shadow: none !important;
+}
+
+/* Modal Open/Close Animations (Requirement 7) - Balanced 260ms duration */
+@keyframes modalBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalContentIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalSlideUpIn {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-backdrop-animate {
+  animation: modalBackdropIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-content-animate {
+  animation: modalContentIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-slide-animate {
+  animation: modalSlideUpIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Universal Tailwind-animate support for modals (Requirement 7) */
+.animate-in {
+  animation-duration: 0.26s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: modalBackdropIn;
+}
+
+.zoom-in-95,
+.animate-in.zoom-in-95 {
+  animation-name: modalContentIn;
+}
+
+.slide-in-from-bottom {
+  animation-name: modalSlideUpIn;
+}
+
+.animate-out {
+  animation-duration: 0.22s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-out {
+  animation-name: modalFadeOut;
+}
+
+.zoom-out-95 {
+  animation-name: modalContentOut;
+}
+
+.slide-out-to-bottom {
+  animation-name: modalSlideDownOut;
+}
+
+@keyframes modalSlideDownOut {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalContentOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
 }
 
 /* Custom Scrollbars */
