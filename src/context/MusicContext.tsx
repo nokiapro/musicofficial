@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
+import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage, RewindStats } from '../types/music';
 import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
 import { MusicService } from '../services/musicService';
@@ -197,6 +197,12 @@ interface MusicContextType {
   seedDefaultAlbums: () => Promise<{ success: boolean; error?: string }>;
   syncExclusiveAlbumsToFirebase: () => Promise<{ success: boolean; rtdb: boolean; firestore: boolean; error?: string }>;
   playAlbumTrack: (track: AlbumSong, album: ExclusiveAlbum, shuffle?: boolean) => void;
+  playCustomPool: (poolList: Song[], sourceName: string, shuffleMode?: boolean, startSong?: Song) => void;
+
+  // XuanKen Rewind
+  isRewindModalOpen: boolean;
+  setIsRewindModalOpen: (open: boolean) => void;
+  rewindStats: RewindStats;
 
   // Community Chat Box
   chatMessages: ChatMessage[];
@@ -215,6 +221,15 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   defaultStartingBalance: 500000,
   defaultSongPrice: 20000,
   minListenDurationSeconds: 5,
+};
+
+export const DEFAULT_REWIND_STATS: RewindStats = {
+  totalSeconds: 0,
+  totalPlays: 0,
+  songPlays: {},
+  artistPlays: {},
+  favoriteGenre: 'Việt Nam, V-Pop',
+  lastUpdated: new Date().toISOString(),
 };
 
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -282,6 +297,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState<boolean>(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isRewindModalOpen, setIsRewindModalOpen] = useState<boolean>(false);
+  const [rewindStats, setRewindStats] = useState<RewindStats>(() => {
+    try {
+      const local = localStorage.getItem('xuanken_music_rewind_v1');
+      if (local) return { ...DEFAULT_REWIND_STATS, ...JSON.parse(local) };
+    } catch (e) {}
+    return DEFAULT_REWIND_STATS;
+  });
   const [songToBuy, setSongToBuy] = useState<Song | null>(null);
   const [selectedLrcSong, setSelectedLrcSong] = useState<Song | null>(null);
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
@@ -933,6 +956,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               MusicService.saveWeeklyPlays(currentWeekKey, updated);
               return updated;
             });
+
+            // Update XuanKen Rewind stats
+            setRewindStats((prev) => {
+              const currentPlays = prev?.songPlays?.[currentSong.id] || 0;
+              const artistPlays = prev?.artistPlays?.[currentSong.artists] || 0;
+              const updated: RewindStats = {
+                totalSeconds: (prev?.totalSeconds || 0) + (currentSong.duration || 210),
+                totalPlays: (prev?.totalPlays || 0) + 1,
+                songPlays: { ...(prev?.songPlays || {}), [currentSong.id]: currentPlays + 1 },
+                artistPlays: { ...(prev?.artistPlays || {}), [currentSong.artists]: artistPlays + 1 },
+                favoriteGenre: currentSong.genre || prev?.favoriteGenre || 'Việt Nam, V-Pop',
+                lastUpdated: new Date().toISOString(),
+              };
+              MusicService.saveRewindStats(updated, currentUser?.uid);
+              return updated;
+            });
           }
 
           return nextTime;
@@ -1284,10 +1323,24 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleShuffle = () => {
     setIsShuffle((prev) => {
       const next = !prev;
-      if (next && songs.length > 0) {
-        const unblocked = songs.filter((s) => s.id !== currentSong?.id && !blockedSongIds.includes(s.id));
-        const shuffled = [...unblocked].sort(() => Math.random() - 0.5);
+      isShuffleRef.current = next;
+      const poolSource = activePlaylistSongsRef.current.length > 0 ? activePlaylistSongsRef.current : songsRef.current;
+      const blocked = blockedSongIdsRef.current;
+      const unblocked = poolSource.filter((s) => !blocked.includes(s.id));
+
+      if (next && unblocked.length > 0) {
+        const remaining = unblocked.filter((s) => s.id !== currentSongRef.current?.id);
+        const shuffled = [...remaining].sort(() => Math.random() - 0.5);
         setQueue(shuffled);
+      } else if (!next && unblocked.length > 0) {
+        const currentItem = currentSongRef.current;
+        const curIdx = currentItem ? unblocked.findIndex((s) => s.id === currentItem.id) : -1;
+        if (curIdx !== -1) {
+          const ordered = [...unblocked.slice(curIdx + 1), ...unblocked.slice(0, curIdx)];
+          setQueue(ordered);
+        } else {
+          setQueue(unblocked.slice(1));
+        }
       }
       return next;
     });
@@ -1802,30 +1855,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const handleSetPlaybackSource = (source: string) => {
     setPlaybackSource(source);
-    if (!playlists.some((p) => p.name === source)) {
-      setActivePlaylistSongs([]);
-      activePlaylistSongsRef.current = [];
+  };
+
+  const playCustomPool = (poolList: Song[], sourceName: string, shuffleMode: boolean = false, startSong?: Song) => {
+    const blocked = blockedSongIdsRef.current;
+    const unblocked = poolList.filter((s) => !blocked.includes(s.id));
+    if (unblocked.length === 0) return;
+
+    setPlaybackSource(sourceName);
+    setActivePlaylistSongs(unblocked);
+    activePlaylistSongsRef.current = unblocked;
+
+    let target: Song;
+    if (startSong && unblocked.some((s) => s.id === startSong.id)) {
+      target = startSong;
+    } else if (shuffleMode) {
+      const randIdx = Math.floor(Math.random() * unblocked.length);
+      target = unblocked[randIdx];
+    } else {
+      target = unblocked[0];
     }
+
+    if (shuffleMode) {
+      setIsShuffle(true);
+      isShuffleRef.current = true;
+      const remaining = unblocked.filter((s) => s.id !== target.id);
+      const shuffled = [...remaining].sort(() => Math.random() - 0.5);
+      setQueue(shuffled);
+    } else {
+      setIsShuffle(false);
+      isShuffleRef.current = false;
+      const idx = unblocked.findIndex((s) => s.id === target.id);
+      const inOrderQueue = idx !== -1 ? [...unblocked.slice(idx + 1), ...unblocked.slice(0, idx)] : unblocked.slice(1);
+      setQueue(inOrderQueue);
+    }
+
+    playSong(target);
   };
 
   const playPlaylist = (playlist: Playlist, mode: 'order' | 'shuffle' = 'order') => {
-    const pSongs = songs.filter((s) => playlist.songIds.includes(s.id) && !blockedSongIds.includes(s.id));
+    const targetIds = Array.isArray(playlist?.songIds) ? playlist.songIds : [];
+    const pool = (allSearchableSongs && allSearchableSongs.length > 0) ? allSearchableSongs : songs;
+    const pSongs = pool.filter((s) => targetIds.includes(s.id) && !blockedSongIds.includes(s.id));
     if (pSongs.length > 0) {
-      setPlaybackSource(playlist.name);
-      setActivePlaylistSongs(pSongs);
-      activePlaylistSongsRef.current = pSongs;
-      if (mode === 'shuffle') {
-        setIsShuffle(true);
-        isShuffleRef.current = true;
-        const shuffled = [...pSongs].sort(() => Math.random() - 0.5);
-        setQueue(shuffled.slice(1));
-        playSong(shuffled[0]);
-      } else {
-        setIsShuffle(false);
-        isShuffleRef.current = false;
-        setQueue(pSongs.slice(1));
-        playSong(pSongs[0]);
-      }
+      playCustomPool(pSongs, playlist.name, mode === 'shuffle', pSongs[0]);
     }
   };
 
@@ -2082,13 +2155,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const playAlbumTrack = (track: AlbumSong, album: ExclusiveAlbum, shuffle: boolean = false) => {
     // Strictly convert album tracks for isolated playback without altering the global songs catalog
-    const albumSongsList = Array.isArray(album.songs) ? album.songs : [];
+    const albumSongsList = Array.isArray(album?.songs) ? album.songs : [];
     const albumAsSongs: Song[] = albumSongsList.map((s, idx) => ({
       id: s.id,
       stt: s.stt || idx + 1,
       title: s.title,
-      artists: s.artists,
-      duration: s.duration,
+      artists: s.artists || album.artist || 'XuanKen Official',
+      duration: s.duration && s.duration > 0 ? s.duration : 210,
       audioFormat: s.audioFormat || 'MP3',
       coverImage: s.coverImage || album.coverImage,
       coverGradient: 'from-purple-900 to-indigo-950',
@@ -2102,6 +2175,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       lrcRaw: s.lrcRaw,
       plays: `${(s.playCount || 0).toLocaleString('vi-VN')} lượt nghe`,
       playCount: s.playCount || 0,
+      isAlbumTrack: true,
+      albumId: album.id,
     }));
 
     handleSetPlaybackSource(`Album: ${album.title}`);
@@ -2118,6 +2193,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setQueue(shuffled);
         playSong(target);
       } else {
+        setIsShuffle(false);
+        isShuffleRef.current = false;
         const idx = albumAsSongs.findIndex((s) => s.id === target.id);
         const customQueue = idx !== -1 ? [...albumAsSongs.slice(idx + 1), ...albumAsSongs.slice(0, idx)] : albumAsSongs.slice(1);
         setQueue(customQueue);
@@ -2332,6 +2409,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         seedDefaultAlbums,
         syncExclusiveAlbumsToFirebase,
         playAlbumTrack,
+        playCustomPool,
+
+        // XuanKen Rewind
+        isRewindModalOpen,
+        setIsRewindModalOpen,
+        rewindStats,
+
         chatMessages,
         sendChatMessage,
         deleteChatMessage,

@@ -35,6 +35,7 @@ export const DesktopWeeklyTopPage: React.FC = () => {
     setPlaybackSource,
     playlists,
     openAddToPlaylistModal,
+    playCustomPool,
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
@@ -68,18 +69,13 @@ export const DesktopWeeklyTopPage: React.FC = () => {
 
   const handlePlayInOrder = () => {
     if (weeklyRankedSongs.length === 0) return;
-    setPlaybackSource('Nghe nhiều nhất tuần');
-    if (isShuffle) toggleShuffle();
-    playSong(weeklyRankedSongs[0]);
+    playCustomPool(weeklyRankedSongs, 'Top Tuần', false, weeklyRankedSongs[0]);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     if (weeklyRankedSongs.length === 0) return;
-    setPlaybackSource('Nghe nhiều nhất tuần');
-    if (!isShuffle) toggleShuffle();
-    const randomIndex = Math.floor(Math.random() * weeklyRankedSongs.length);
-    playSong(weeklyRankedSongs[randomIndex]);
+    playCustomPool(weeklyRankedSongs, 'Top Tuần', true);
     setIsPlayMenuOpen(false);
   };
 
@@ -341,7 +337,7 @@ export const DesktopWeeklyTopPage: React.FC = () => {
                             <span>Xem lyric</span>
                           </button>
 
-                          {playlists.some((p) => p.songIds.includes(song.id)) ? (
+                          {playlists.some((p) => Array.isArray(p.songIds) && p.songIds.includes(song.id)) ? (
                             <button
                               onClick={() => {
                                 openAddToPlaylistModal(song);

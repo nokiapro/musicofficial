@@ -21,20 +21,20 @@ export const XuanKenRewindModal: React.FC = () => {
       : `${seconds} giây`;
 
   // Calculate top songs accurately from rewindStats.songPlays
-  const songPlaysList = Object.entries(rewindStats.songPlays || {})
-    .filter(([_, count]) => count > 0)
+  const songPlaysList = Object.entries(rewindStats?.songPlays || {})
+    .filter(([_, count]) => Number(count) > 0)
     .map(([id, count]) => {
       const song = songs.find((s) => s.id === id);
-      return { id, count, song };
+      return { id, count: Number(count), song };
     })
-    .filter((item) => item.song)
+    .filter((item): item is { id: string; count: number; song: (typeof songs)[0] } => Boolean(item.song))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
   // Calculate top artist accurately from rewindStats.artistPlays
-  const topArtistEntry = Object.entries(rewindStats.artistPlays || {})
-    .filter(([_, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1])[0];
+  const topArtistEntry = Object.entries(rewindStats?.artistPlays || {})
+    .filter(([_, count]) => Number(count) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))[0];
   const topArtist = topArtistEntry ? topArtistEntry[0] : (songs[0]?.artists || 'XuanKen Official');
 
   // Badge calculation
@@ -180,7 +180,7 @@ export const XuanKenRewindModal: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-purple-300 font-semibold">{item.count} lượt</span>
+                        <span className="text-[10px] text-purple-300 font-semibold">{String(item.count)} lượt</span>
                         <div className="w-7 h-7 rounded-full bg-[#9b4de0] text-white flex items-center justify-center shadow-md">
                           <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
                         </div>

@@ -13,6 +13,7 @@ import { KaraokeLyricsModal } from './components/lyrics/KaraokeLyricsModal';
 import { LrcViewerModal } from './components/lyrics/LrcViewerModal';
 import { TopUpModal } from './components/store/TopUpModal';
 import { DemoLimitModal } from './components/store/DemoLimitModal';
+import { XuanKenRewindModal } from './components/common/XuanKenRewindModal';
 
 function MainMusicApp() {
   const { effectiveIsMobile, theme } = useMusic();
@@ -36,6 +37,7 @@ function MainMusicApp() {
       <LrcViewerModal />
       <TopUpModal />
       <DemoLimitModal />
+      <XuanKenRewindModal />
     </div>
   );
 }

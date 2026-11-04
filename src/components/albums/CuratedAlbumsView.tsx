@@ -150,7 +150,7 @@ export const CuratedAlbumsView: React.FC = () => {
                     if (isCurrentAlbumActive) {
                       togglePlay();
                     } else {
-                      playAlbumTrack(albumSongsList[0], selectedAlbum);
+                      playAlbumTrack(albumSongsList[0], selectedAlbum, false);
                     }
                   }}
                   style={{ backgroundColor: 'var(--color-accent)' }}
@@ -181,17 +181,14 @@ export const CuratedAlbumsView: React.FC = () => {
                     <Heart className={`w-4 h-4 ${isAlbumLiked ? 'fill-current' : ''}`} />
                   </button>
 
-                  {/* Requirement 2: Sáng đèn khi random trong album này, và chỉ random trong album này */}
+                  {/* Sáng đèn khi random trong album này, và chỉ random trong album này */}
                   <button
                     disabled={albumSongsList.length === 0}
                     onClick={() => {
                       if (albumSongsList.length === 0) return;
-                      if (isCurrentAlbumActive) {
-                        toggleShuffle();
-                      } else {
-                        const randIdx = Math.floor(Math.random() * albumSongsList.length);
-                        playAlbumTrack(albumSongsList[randIdx], selectedAlbum, true);
-                      }
+                      // Always pick a random track within this album and keep playback inside this album
+                      const randIdx = Math.floor(Math.random() * albumSongsList.length);
+                      playAlbumTrack(albumSongsList[randIdx], selectedAlbum, true);
                     }}
                     style={
                       isAlbumShuffleActive
@@ -267,7 +264,7 @@ export const CuratedAlbumsView: React.FC = () => {
                     const isLiked = likedSongIds.includes(song.id);
                     const songObj = convertAlbumSongToSong(song, selectedAlbum);
                     const isMenuOpen = activeSongMenuId === song.id;
-                    const isAlreadyInPlaylist = playlists.some((p) => p.songIds.includes(song.id));
+                    const isAlreadyInPlaylist = playlists.some((p) => Array.isArray(p.songIds) && p.songIds.includes(song.id));
 
                     return (
                       <div

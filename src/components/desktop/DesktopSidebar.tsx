@@ -21,6 +21,7 @@ export const DesktopSidebar: React.FC = () => {
     currentUser,
     isAdmin,
     setIsProfileModalOpen,
+    setSelectedAlbum,
   } = useMusic();
 
   // Safety redirect: If a non-admin is on admin tab, or guest is on chat/library tab, redirect to discover
@@ -80,7 +81,12 @@ export const DesktopSidebar: React.FC = () => {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveDesktopTab(item.id)}
+                  onClick={() => {
+                    setActiveDesktopTab(item.id);
+                    if (item.id === 'albums') {
+                      setSelectedAlbum(null);
+                    }
+                  }}
                   style={isActive ? { backgroundColor: 'var(--color-accent)' } : undefined}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                     isActive

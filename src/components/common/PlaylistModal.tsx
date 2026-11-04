@@ -129,7 +129,8 @@ export const PlaylistModal: React.FC = () => {
           ) : (
             <div className="space-y-1.5">
               {playlists.map((pl) => {
-                const isAlreadyIn = pl.songIds.includes(songForPlaylistModal.id);
+                const plSongIds = Array.isArray(pl.songIds) ? pl.songIds : [];
+                const isAlreadyIn = plSongIds.includes(songForPlaylistModal.id);
                 return (
                   <div
                     key={pl.id}
@@ -142,7 +143,7 @@ export const PlaylistModal: React.FC = () => {
                   >
                     <div className="min-w-0 flex-1 pr-2">
                       <p className="text-xs font-bold text-white truncate">{pl.name}</p>
-                      <p className="text-[10px] text-white/50">{pl.songIds.length} bài hát</p>
+                      <p className="text-[10px] text-white/50">{plSongIds.length} bài hát</p>
                     </div>
 
                     <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold transition-colors ${

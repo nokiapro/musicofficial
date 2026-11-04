@@ -64,7 +64,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
   const isPurchased = isSongPurchased(song.id);
   const currentFormat = songFormatMap[song.id] || preferredAudioFormat;
   const isBlocked = isSongBlocked(song.id);
-  const isAlreadyInPlaylist = playlists.some((p) => p.songIds.includes(song.id));
+  const isAlreadyInPlaylist = playlists.some((p) => Array.isArray(p.songIds) && p.songIds.includes(song.id));
 
   const handleAnimatedClose = () => {
     setIsClosing(true);

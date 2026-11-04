@@ -33,6 +33,7 @@ export const MobileProfileView: React.FC = () => {
     setActiveMobileTab,
     logout,
     updateUserProfile,
+    setIsRewindModalOpen,
   } = useMusic();
 
   const [displayNameInput, setDisplayNameInput] = useState(currentUser?.displayName || '');
@@ -398,7 +399,7 @@ export const MobileProfileView: React.FC = () => {
           {/* Nối nhạc mượt mà (Crossfade - Requirement 5) */}
           <div
             onClick={() => setIsAudioSettingsModalOpen(true)}
-            className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
+            className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5"
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
@@ -412,6 +413,28 @@ export const MobileProfileView: React.FC = () => {
                   </span>
                 </p>
                 <p className="text-[10px] text-white/50">Hòa trộn âm thanh êm ái khi chuyển bài</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/40" />
+          </div>
+
+          {/* XuanKen Rewind 2026 */}
+          <div
+            onClick={() => setIsRewindModalOpen(true)}
+            className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white flex items-center justify-center shadow-md">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>XuanKen Rewind 2026</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-gradient-to-r from-amber-500/40 to-rose-500/40 text-amber-200 border border-amber-500/30 font-bold uppercase">
+                    HOT
+                  </span>
+                </p>
+                <p className="text-[10px] text-white/50">Nhìn lại hành trình âm nhạc của bạn</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-white/40" />

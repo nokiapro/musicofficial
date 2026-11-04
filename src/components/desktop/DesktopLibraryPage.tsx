@@ -32,6 +32,7 @@ export const DesktopLibraryPage: React.FC = () => {
     isShuffle,
     toggleShuffle,
     setPlaybackSource,
+    playCustomPool,
   } = useMusic();
 
   // Requirement 9: Xóa mục Lịch sử đi -> chỉ còn Yêu thích, Playlists, Đã mua
@@ -108,18 +109,13 @@ export const DesktopLibraryPage: React.FC = () => {
 
   const handlePlayInOrder = () => {
     if (librarySongs.length === 0) return;
-    setPlaybackSource('Thư viện cá nhân');
-    if (isShuffle) toggleShuffle();
-    playSong(librarySongs[0]);
+    playCustomPool(librarySongs, 'Thư viện của tôi', false, librarySongs[0]);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     if (librarySongs.length === 0) return;
-    setPlaybackSource('Thư viện cá nhân');
-    if (!isShuffle) toggleShuffle();
-    const randomIndex = Math.floor(Math.random() * librarySongs.length);
-    playSong(librarySongs[randomIndex]);
+    playCustomPool(librarySongs, 'Thư viện của tôi', true);
     setIsPlayMenuOpen(false);
   };
 
@@ -430,7 +426,7 @@ export const DesktopLibraryPage: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {userPlaylists.map((pl, idx) => {
-                      const count = pl.songIds.length;
+                      const count = Array.isArray(pl.songIds) ? pl.songIds.length : 0;
                       return (
                         <tr key={pl.id} className="hover:bg-white/5 transition-colors group">
                           <td className="py-3.5 px-4 text-center font-mono text-white/40 font-bold">

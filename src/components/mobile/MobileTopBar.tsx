@@ -18,6 +18,7 @@ export const MobileTopBar: React.FC = () => {
     crossfadeDuration,
     setCrossfadeDuration,
     currentUser,
+    setSelectedAlbum,
   } = useMusic();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -279,7 +280,10 @@ export const MobileTopBar: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveMobileTab('albums')}
+          onClick={() => {
+            setActiveMobileTab('albums');
+            setSelectedAlbum(null);
+          }}
           className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
             activeMobileTab === 'albums'
               ? 'bg-[#9b4de0] text-white shadow-sm'

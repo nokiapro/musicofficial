@@ -68,6 +68,7 @@ export const MobileAppLayout: React.FC = () => {
     allSearchableSongs,
     exclusiveAlbums,
     playAlbumTrack,
+    playCustomPool,
   } = useMusic();
 
   const [librarySubTab, setLibrarySubTab] = useState<'liked' | 'playlists' | 'purchased'>('liked');
@@ -102,32 +103,14 @@ export const MobileAppLayout: React.FC = () => {
   const handlePlayInOrder = () => {
     const listToPlay = sortedDiscoverSongs.length > 0 ? sortedDiscoverSongs : songs;
     if (listToPlay.length === 0) return;
-    setPlaybackSource('Danh sách bài hát');
-    if (isShuffle) toggleShuffle();
-    if (listToPlay[0].isAlbumTrack) {
-      const found = exclusiveAlbums.find((a) => a.id === listToPlay[0].albumId || a.title === listToPlay[0].album);
-      if (found) playAlbumTrack(listToPlay[0] as any, found);
-      else playSong(listToPlay[0]);
-    } else {
-      playSong(listToPlay[0]);
-    }
+    playCustomPool(listToPlay, 'Danh sách bài hát', false, listToPlay[0]);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     const listToPlay = sortedDiscoverSongs.length > 0 ? sortedDiscoverSongs : songs;
     if (listToPlay.length === 0) return;
-    setPlaybackSource('Danh sách bài hát');
-    if (!isShuffle) toggleShuffle();
-    const randomIndex = Math.floor(Math.random() * listToPlay.length);
-    const chosen = listToPlay[randomIndex];
-    if (chosen.isAlbumTrack) {
-      const found = exclusiveAlbums.find((a) => a.id === chosen.albumId || a.title === chosen.album);
-      if (found) playAlbumTrack(chosen as any, found);
-      else playSong(chosen);
-    } else {
-      playSong(chosen);
-    }
+    playCustomPool(listToPlay, 'Danh sách bài hát', true);
     setIsPlayMenuOpen(false);
   };
 
@@ -412,7 +395,7 @@ export const MobileAppLayout: React.FC = () => {
                             </button>
 
                             {/* 3. Thêm vào playlist / Đã thêm vào playlist (Requirement 6) */}
-                            {playlists.some((pl) => pl.songIds.includes(song.id)) ? (
+                            {playlists.some((pl) => Array.isArray(pl.songIds) && pl.songIds.includes(song.id)) ? (
                               <button
                                 onClick={() => {
                                   openAddToPlaylistModal(song);
@@ -963,13 +946,13 @@ export const MobileAppLayout: React.FC = () => {
                     >
                       <div className="truncate min-w-0 flex-1">
                         <h4 className="text-xs font-bold text-white truncate">{pl.name}</h4>
-                        <p className="text-[10px] text-white/50">{pl.songIds.length} bài hát</p>
+                        <p className="text-[10px] text-white/50">{Array.isArray(pl.songIds) ? pl.songIds.length : 0} bài hát</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {/* Requirement 3: Phát theo thứ tự và phát random */}
                         <button
                           onClick={() => playPlaylist(pl, 'order')}
-                          disabled={pl.songIds.length === 0}
+                          disabled={!Array.isArray(pl.songIds) || pl.songIds.length === 0}
                           className="px-2.5 py-1 rounded-lg bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-[10px] flex items-center gap-1 disabled:opacity-30 active:scale-95 transition-all shadow-sm cursor-pointer"
                           title="Phát theo thứ tự"
                         >
@@ -978,7 +961,7 @@ export const MobileAppLayout: React.FC = () => {
                         </button>
                         <button
                           onClick={() => playPlaylist(pl, 'shuffle')}
-                          disabled={pl.songIds.length === 0}
+                          disabled={!Array.isArray(pl.songIds) || pl.songIds.length === 0}
                           className="px-2.5 py-1 rounded-lg bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/40 text-[#c273ed] hover:text-white font-bold text-[10px] flex items-center gap-1 disabled:opacity-30 active:scale-95 transition-all shadow-sm cursor-pointer"
                           title="Phát ngẫu nhiên"
                         >

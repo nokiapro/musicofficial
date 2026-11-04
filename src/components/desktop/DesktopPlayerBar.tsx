@@ -132,11 +132,11 @@ export const DesktopPlayerBar: React.FC = () => {
 
   return (
     <footer
-      className="h-24 px-6 border-t text-white flex items-center justify-between select-none z-30 sticky bottom-0 transition-colors duration-200"
+      className="h-24 px-6 border-t text-white grid grid-cols-[280px_1fr_280px] xl:grid-cols-[320px_1fr_320px] items-center select-none z-30 sticky bottom-0 transition-colors duration-200"
       style={{ backgroundColor: 'var(--bg-player)', borderColor: 'var(--border-color)' }}
     >
-      {/* Left: Song Info + Vinyl CD + Full Title with Dynamic Hugging Heart (Requirement 8) */}
-      <div className="flex items-center gap-3.5 max-w-[340px] shrink-0">
+      {/* Left: Song Info + Vinyl CD + Full Title with Dynamic Hugging Heart */}
+      <div className="flex items-center gap-3.5 w-full min-w-0 pr-2">
         {/* Static Cover (Standing Still, No Rotation) */}
         <div className="relative w-14 h-14 rounded-2xl bg-zinc-900 border border-white/15 p-0.5 flex items-center justify-center shrink-0 shadow-lg overflow-hidden">
           {currentSong?.coverImage ? (
@@ -154,9 +154,9 @@ export const DesktopPlayerBar: React.FC = () => {
           />
         </div>
 
-        {/* Dynamic Hugging Song Info & Heart: moves closer or farther based on title width */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="min-w-0 max-w-[200px]">
+        {/* Dynamic Hugging Song Info & Heart */}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="min-w-0 flex-1">
             {currentSong ? (
               <>
                 <p
@@ -165,7 +165,7 @@ export const DesktopPlayerBar: React.FC = () => {
                 >
                   {currentSong.title}
                 </p>
-                <p className="text-xs text-white/60 hover:text-white cursor-pointer mt-0.5 truncate">
+                <p className="text-xs text-white/60 hover:text-white cursor-pointer mt-0.5 truncate" title={currentSong.artists}>
                   {currentSong.artists}
                 </p>
               </>
@@ -193,7 +193,7 @@ export const DesktopPlayerBar: React.FC = () => {
       </div>
 
       {/* Center: Playback Controls & Scrubber with glass-track and glass-fill */}
-      <div className="flex-1 max-w-2xl px-6 flex flex-col items-center gap-1.5">
+      <div className="w-full max-w-2xl px-4 mx-auto flex flex-col items-center gap-1.5">
         {/* Buttons Row - Requirement 4: Active state glows icon only, without button background box */}
         <div className="flex items-center gap-5">
           <button
@@ -286,7 +286,7 @@ export const DesktopPlayerBar: React.FC = () => {
       </div>
 
       {/* Right: Microphone icon, Volume with glass-track & glass-fill, Queue Drawer */}
-      <div className="flex items-center justify-end gap-3 w-80 shrink-0">
+      <div className="flex items-center justify-end gap-3 w-full shrink-0">
         <button
           onClick={() => setIsLyricsOpen(true)}
           className="p-2.5 rounded-full hover:bg-white/10 text-white/70 hover:text-[#c273ed] transition-colors"

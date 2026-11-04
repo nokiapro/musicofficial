@@ -43,6 +43,7 @@ export const DesktopSongListView: React.FC = () => {
     toggleShuffle,
     setPlaybackSource,
     playlists,
+    playCustomPool,
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
@@ -137,18 +138,13 @@ export const DesktopSongListView: React.FC = () => {
 
   const handlePlayInOrder = () => {
     if (sortedSongs.length === 0) return;
-    setPlaybackSource('Danh sách bài hát');
-    if (isShuffle) toggleShuffle();
-    playSong(sortedSongs[0]);
+    playCustomPool(sortedSongs, 'Danh sách bài hát', false, sortedSongs[0]);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     if (sortedSongs.length === 0) return;
-    setPlaybackSource('Danh sách bài hát');
-    if (!isShuffle) toggleShuffle();
-    const randomIndex = Math.floor(Math.random() * sortedSongs.length);
-    playSong(sortedSongs[randomIndex]);
+    playCustomPool(sortedSongs, 'Danh sách bài hát', true);
     setIsPlayMenuOpen(false);
   };
 
@@ -481,7 +477,7 @@ export const DesktopSongListView: React.FC = () => {
                 <span>{isTargetLiked ? 'Bỏ tim bài hát' : 'Tim bài hát'}</span>
               </button>
 
-              {playlists.some((p) => p.songIds.includes(targetSong.id)) ? (
+              {playlists.some((p) => Array.isArray(p.songIds) && p.songIds.includes(targetSong.id)) ? (
                 <button
                   onClick={() => {
                     openAddToPlaylistModal(targetSong);

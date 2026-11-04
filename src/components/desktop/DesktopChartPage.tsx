@@ -37,6 +37,7 @@ export const DesktopChartPage: React.FC = () => {
     setPlaybackSource,
     playlists,
     openAddToPlaylistModal,
+    playCustomPool,
   } = useMusic();
 
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
@@ -90,18 +91,13 @@ export const DesktopChartPage: React.FC = () => {
 
   const handlePlayInOrder = () => {
     if (rankedSongs.length === 0) return;
-    setPlaybackSource('#xuankenchart');
-    if (isShuffle) toggleShuffle();
-    playSong(rankedSongs[0]);
+    playCustomPool(rankedSongs, '#xuankenchart', false, rankedSongs[0]);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     if (rankedSongs.length === 0) return;
-    setPlaybackSource('#xuankenchart');
-    if (!isShuffle) toggleShuffle();
-    const randomIndex = Math.floor(Math.random() * rankedSongs.length);
-    playSong(rankedSongs[randomIndex]);
+    playCustomPool(rankedSongs, '#xuankenchart', true);
     setIsPlayMenuOpen(false);
   };
 
@@ -439,7 +435,7 @@ export const DesktopChartPage: React.FC = () => {
                         <span>Xem lyric</span>
                       </button>
 
-                      {playlists.some((p) => p.songIds.includes(song.id)) ? (
+                      {playlists.some((p) => Array.isArray(p.songIds) && p.songIds.includes(song.id)) ? (
                         <button
                           onClick={() => {
                             openAddToPlaylistModal(song);
