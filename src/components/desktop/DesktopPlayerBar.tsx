@@ -154,9 +154,9 @@ export const DesktopPlayerBar: React.FC = () => {
           />
         </div>
 
-        {/* Dynamic Hugging Song Info & Heart */}
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="min-w-0 flex-1">
+        {/* Dynamic Hugging Song Info & Heart - hugs title and flexes with text */}
+        <div className="inline-flex items-center gap-2.5 min-w-0 max-w-[210px] xl:max-w-[250px]">
+          <div className="min-w-0 shrink truncate">
             {currentSong ? (
               <>
                 <p
@@ -181,7 +181,7 @@ export const DesktopPlayerBar: React.FC = () => {
           {currentSong && (
             <button
               onClick={() => toggleLike(currentSong.id)}
-              className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-red-400 active:scale-90 transition-all shrink-0"
+              className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-red-400 active:scale-90 transition-all shrink-0 cursor-pointer"
               title={isLiked ? 'Bỏ thích' : 'Thêm vào yêu thích'}
             >
               <Heart

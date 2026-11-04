@@ -39,8 +39,6 @@ export const DesktopSongListView: React.FC = () => {
     songFormatMap,
     setSongAudioFormat,
     openDownloadModal,
-    isShuffle,
-    toggleShuffle,
     setPlaybackSource,
     playlists,
     playCustomPool,

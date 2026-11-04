@@ -9,6 +9,7 @@ import {
   LogIn,
   LogOut,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 
@@ -36,6 +37,7 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingAvatar, setIsSavingAvatar] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
@@ -44,7 +46,8 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
-      alert('Vui lòng chọn ảnh kích thước dưới 3MB');
+      setErrorMsg('Vui lòng chọn ảnh kích thước dưới 3MB');
+      setTimeout(() => setErrorMsg(null), 3000);
       return;
     }
     const reader = new FileReader();
@@ -129,6 +132,14 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
           <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-2 animate-in fade-in shadow">
             <Check className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{successMsg}</span>
+          </div>
+        )}
+
+        {/* Error toast */}
+        {errorMsg && (
+          <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 font-bold text-xs flex items-center gap-2 animate-in fade-in shadow">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{errorMsg}</span>
           </div>
         )}
 

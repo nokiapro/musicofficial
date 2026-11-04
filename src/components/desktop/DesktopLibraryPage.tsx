@@ -29,9 +29,6 @@ export const DesktopLibraryPage: React.FC = () => {
     openShareModal,
     currentUser,
     setIsLoginModalOpen,
-    isShuffle,
-    toggleShuffle,
-    setPlaybackSource,
     playCustomPool,
   } = useMusic();
 

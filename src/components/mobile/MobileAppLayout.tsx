@@ -61,8 +61,6 @@ export const MobileAppLayout: React.FC = () => {
     currentUser,
     setIsLoginModalOpen,
     setPlaybackSource,
-    isShuffle,
-    toggleShuffle,
     searchQuery,
     theme,
     allSearchableSongs,
@@ -657,7 +655,7 @@ export const MobileAppLayout: React.FC = () => {
                         {rank === 1 ? <Crown className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> : rank}
                       </div>
 
-                      <div className="w-9 h-9 rounded-lg overflow-hidden bg-purple-900/40 shrink-0">
+                      <div className="w-9 h-9 rounded-lg overflow-hidden bg-purple-900/40 shrink-0 relative">
                         {song.coverImage ? (
                           <img src={song.coverImage} alt={song.title} className="w-full h-full object-cover" />
                         ) : (

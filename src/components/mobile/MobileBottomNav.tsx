@@ -94,9 +94,8 @@ export const MobileBottomNav: React.FC = () => {
       }}
     >
       <div
-        className={`grid ${
-          isAdmin ? 'grid-cols-6' : 'grid-cols-5'
-        } items-center h-14 max-w-md mx-auto`}
+        className="grid items-center h-14 max-w-md mx-auto"
+        style={{ gridTemplateColumns: `repeat(${navConfigs.length}, minmax(0, 1fr))` }}
       >
         {navConfigs.map((item) => {
           const isActive = activeMobileTab === item.id;

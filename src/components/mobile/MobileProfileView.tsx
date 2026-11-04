@@ -13,6 +13,7 @@ import {
   Palette,
   Clock,
   Waves,
+  AlertCircle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 
@@ -42,6 +43,7 @@ export const MobileProfileView: React.FC = () => {
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingAvatar, setIsSavingAvatar] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -51,7 +53,8 @@ export const MobileProfileView: React.FC = () => {
     if (!file) return;
 
     if (file.size > 3 * 1024 * 1024) {
-      alert('Vui lòng chọn ảnh có kích thước dưới 3MB');
+      setErrorMsg('Vui lòng chọn ảnh có kích thước dưới 3MB');
+      setTimeout(() => setErrorMsg(null), 3000);
       return;
     }
 
@@ -120,6 +123,14 @@ export const MobileProfileView: React.FC = () => {
         <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-2 animate-in fade-in shadow-lg">
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {/* Error Notification Toast */}
+      {errorMsg && (
+        <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 font-bold text-xs flex items-center gap-2 animate-in fade-in shadow-lg">
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
 

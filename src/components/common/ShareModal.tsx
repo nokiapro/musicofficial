@@ -37,11 +37,19 @@ export const ShareModal: React.FC = () => {
   };
 
   const handleShareFacebook = () => {
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+    try {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      handleCopy();
+    }
   };
 
   const handleShareTelegram = () => {
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Nghe "${songToShare.title}" trên XuanKen Music`)}`, '_blank');
+    try {
+      window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Nghe "${songToShare.title}" trên XuanKen Music`)}`, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      handleCopy();
+    }
   };
 
   return (

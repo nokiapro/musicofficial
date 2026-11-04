@@ -24,6 +24,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { MobilePlayerActionSheet } from './MobilePlayerActionSheet';
 import { cleanLyricText } from '../../utils/lyricUtils';
+import { SoundWaveIcon } from '../common/SoundWaveIcon';
 
 export const MobileFullPlayerModal: React.FC = () => {
   const {
@@ -339,7 +340,7 @@ export const MobileFullPlayerModal: React.FC = () => {
               <div className="w-full max-w-sm mx-auto p-5 rounded-3xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] shadow-2xl backdrop-blur-md space-y-4">
                 {/* Top Row: Cover + Title, Artist, Real-time Likes, Real-time Listens */}
                 <div className="flex items-center gap-3.5">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-zinc-900 shrink-0 shadow-lg">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-zinc-900 shrink-0 shadow-lg relative">
                     {currentSong.coverImage ? (
                       <img
                         src={currentSong.coverImage}
@@ -351,6 +352,13 @@ export const MobileFullPlayerModal: React.FC = () => {
                       <div className="w-full h-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center font-bold text-xs text-white/60">
                         XK
                       </div>
+                    )}
+                    {isPlaying && (
+                      <SoundWaveIcon
+                        isPlaying={isPlaying}
+                        size="xs"
+                        className="absolute bottom-1 right-1 z-20"
+                      />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -427,9 +435,20 @@ export const MobileFullPlayerModal: React.FC = () => {
 
             {/* SLIDE 2 (CENTER): ẢNH BÌA (ĐĨA XOAY) (Requirement 4: ở giữa là ảnh bìa) */}
             <div className="w-1/3 h-full flex flex-col items-center justify-center px-4 py-2 overflow-hidden">
-              <div className="relative w-[min(80vw,305px)] h-[min(80vw,305px)] aspect-square rounded-full shadow-2xl relative border-2 border-white/10 flex items-center justify-center overflow-hidden">
+              <div
+                onClick={togglePlay}
+                className="relative w-[min(78vw,310px)] h-[min(78vw,310px)] aspect-square rounded-full shadow-[0_15px_50px_rgba(0,0,0,0.8)] border-4 border-white/15 flex items-center justify-center p-2 bg-zinc-950 cursor-pointer select-none"
+              >
+                {/* Outer vinyl grooved rings */}
+                <div className="absolute inset-1 rounded-full border border-zinc-800 pointer-events-none" />
+                <div className="absolute inset-2.5 rounded-full border border-white/5 pointer-events-none" />
+
+                {/* Spinning Vinyl Disc */}
                 <div
-                  style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+                  style={{
+                    animation: 'spinSlow 20s linear infinite',
+                    animationPlayState: isPlaying ? 'running' : 'paused',
+                  }}
                   className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slower shadow-inner relative"
                 >
                   {currentSong.coverImage ? (
@@ -442,6 +461,9 @@ export const MobileFullPlayerModal: React.FC = () => {
                   ) : (
                     <Disc3 className="w-24 h-24 text-white/70" />
                   )}
+
+                  {/* Specular light sheen for vinyl spin effect */}
+                  <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.25)_90deg,transparent_180deg,rgba(255,255,255,0.25)_270deg,transparent_360deg)] pointer-events-none opacity-60" />
                 </div>
               </div>
             </div>
@@ -488,9 +510,9 @@ export const MobileFullPlayerModal: React.FC = () => {
                             key={`mob-line-${idx}-${line.time}`}
                             onClick={() => seekTo(line.time)}
                             style={{ height: '48px' }}
-                            className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-base sm:text-lg leading-snug truncate ${
+                            className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-base sm:text-lg leading-snug truncate transition-colors duration-200 ${
                               isCurrent
-                                ? 'active font-bold'
+                                ? 'active font-extrabold text-[#ffdb00]'
                                 : dist === 1
                                 ? 'adjacent font-semibold text-white/80'
                                 : 'font-semibold text-white/40'
@@ -638,14 +660,23 @@ export const MobileFullPlayerModal: React.FC = () => {
             <FolderPlus className="w-5 h-5" />
           </button>
 
-          {/* 3: Quality Badge in Center: 320 Kbps or WAV */}
-          <button
-            onClick={() => setShowQualitySheet(true)}
-            className="px-3.5 py-1 rounded-full bg-[var(--bg-surface-hover)] hover:opacity-90 border border-[var(--border-color)] text-[11px] font-bold text-[var(--text-primary)] tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
-            title="Chọn chất lượng âm thanh: 320 Kbps hoặc WAV Lossless"
-          >
-            {currentFormat === 'WAV' ? 'WAV' : '320 Kbps'}
-          </button>
+          {/* 3: Quality Badge in Center: 320 Kbps or WAV, or dimmed 128 Kbps for album tracks (Requirement 6) */}
+          {currentSong.isAlbumTrack ? (
+            <div
+              className="px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-white/40 tracking-wider shadow-sm select-none cursor-default opacity-50"
+              title="Nhạc Album phát ở 128 Kbps tiêu chuẩn"
+            >
+              128 Kbps
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowQualitySheet(true)}
+              className="px-3.5 py-1 rounded-full bg-[var(--bg-surface-hover)] hover:opacity-90 border border-[var(--border-color)] text-[11px] font-bold text-[var(--text-primary)] tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
+              title="Chọn chất lượng âm thanh: 320 Kbps hoặc WAV Lossless"
+            >
+              {currentFormat === 'WAV' ? 'WAV' : '320 Kbps'}
+            </button>
+          )}
 
           {/* 4: Download icon */}
           <button

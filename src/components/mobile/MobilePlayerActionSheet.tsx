@@ -259,28 +259,34 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
                 <p className="text-[10px] text-[var(--text-secondary)]">Chọn phát định dạng MP3 hay WAV</p>
               </div>
             </div>
-            <div className="flex items-center p-1 rounded-xl bg-black/25 border border-[var(--border-color)] text-xs font-bold">
-              <button
-                onClick={() => handleFormatChange('MP3')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                  currentFormat === 'MP3'
-                    ? 'bg-blue-600 text-white shadow font-black'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                MP3
-              </button>
-              <button
-                onClick={() => handleFormatChange('WAV')}
-                className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                  currentFormat === 'WAV'
-                    ? 'bg-amber-600 text-white shadow font-black'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                WAV
-              </button>
-            </div>
+            {song.isAlbumTrack ? (
+              <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-white/40 opacity-50">
+                128 Kbps (Cố định)
+              </div>
+            ) : (
+              <div className="flex items-center p-1 rounded-xl bg-black/25 border border-[var(--border-color)] text-xs font-bold">
+                <button
+                  onClick={() => handleFormatChange('MP3')}
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                    currentFormat === 'MP3'
+                      ? 'bg-blue-600 text-white shadow font-black'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  MP3
+                </button>
+                <button
+                  onClick={() => handleFormatChange('WAV')}
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                    currentFormat === 'WAV'
+                      ? 'bg-amber-600 text-white shadow font-black'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  WAV
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 4. Chia sẻ bài hát */}
