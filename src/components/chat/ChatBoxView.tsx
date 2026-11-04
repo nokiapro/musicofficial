@@ -6,15 +6,9 @@ import {
   Trash2,
   Share2,
   Play,
-  Pause,
   Music,
-  Smile,
-  ShieldAlert,
-  Users,
-  Sparkles,
   X,
   Radio,
-  Check,
   Lock,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
@@ -29,7 +23,6 @@ export const ChatBoxView: React.FC = () => {
     currentUser,
     isAdmin,
     currentSong,
-    isPlaying,
     playSong,
     songs,
     exclusiveAlbums,
@@ -38,7 +31,6 @@ export const ChatBoxView: React.FC = () => {
   } = useMusic();
 
   const [inputContent, setInputContent] = useState('');
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isSongSelectorOpen, setIsSongSelectorOpen] = useState(false);
   const [attachedSong, setAttachedSong] = useState<ChatMessage['sharedSong'] | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -65,7 +57,6 @@ export const ChatBoxView: React.FC = () => {
       await sendChatMessage(inputContent.trim(), attachedSong || undefined);
       setInputContent('');
       setAttachedSong(null);
-      setIsEmojiPickerOpen(false);
     } catch (err) {
       console.error(err);
     } finally {

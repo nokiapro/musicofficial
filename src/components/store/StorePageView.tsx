@@ -20,8 +20,6 @@ export const StorePageView: React.FC = () => {
     isPlaying,
     playSong,
     togglePlay,
-    userBalance,
-    setIsTopUpModalOpen,
     setSongToBuy,
     setIsDemoLimitModalOpen,
     setSelectedLrcSong,

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { cleanLyricText } from '../../utils/lyricUtils';
+import { SoundWaveIcon } from '../common/SoundWaveIcon';
 
 export const KaraokeLyricsModal: React.FC = () => {
   const {
@@ -187,25 +188,13 @@ export const KaraokeLyricsModal: React.FC = () => {
               <Music className="w-20 h-20 text-white/50" />
             </div>
 
-            {/* White animated jumping audio wave, NO background box, NO text */}
-            <div className="absolute bottom-3 left-3 flex items-end gap-1 h-4 pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              <span
-                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
-                className="w-1 rounded-full bg-white animate-soundwave-1"
-              />
-              <span
-                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
-                className="w-1 rounded-full bg-white animate-soundwave-2"
-              />
-              <span
-                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
-                className="w-1 rounded-full bg-white animate-soundwave-3"
-              />
-              <span
-                style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
-                className="w-1 rounded-full bg-white animate-soundwave-4"
-              />
-            </div>
+            {/* White animated jumping audio wave at corner of cover image (no black background) */}
+            <SoundWaveIcon
+              isPlaying={isPlaying}
+              size="lg"
+              className="absolute bottom-3 left-3 z-20"
+              withBackground={false}
+            />
           </div>
         </div>
 
@@ -245,9 +234,9 @@ export const KaraokeLyricsModal: React.FC = () => {
                       key={`line-${idx}-${line.time}`}
                       onClick={() => seekTo(line.time)}
                       style={{ height: `${LINE_HEIGHT}px` }}
-                      className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-xl sm:text-2xl md:text-3xl leading-snug truncate ${
+                      className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-xl sm:text-2xl md:text-3xl leading-snug truncate transition-colors duration-200 ${
                         isCurrent
-                          ? 'active font-bold'
+                          ? 'active font-extrabold text-[#ffdb00]'
                           : dist === 1
                           ? 'adjacent font-semibold text-white/80 hover:text-white'
                           : 'font-semibold text-white/40 hover:text-white/80'
