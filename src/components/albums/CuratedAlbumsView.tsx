@@ -35,8 +35,19 @@ export const CuratedAlbumsView: React.FC = () => {
   } = useMusic();
 
   const [activeSongMenuId, setActiveSongMenuId] = useState<string | null>(null);
+  const [activeAlbumMenuId, setActiveAlbumMenuId] = useState<string | null>(null);
+  const [likedAlbumIds, setLikedAlbumIds] = useState<string[]>(() => {
+    try {
+      const s = localStorage.getItem('xuanken_liked_albums');
+      return s ? JSON.parse(s) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [albumToast, setAlbumToast] = useState<string | null>(null);
   const [isAlbumLiked, setIsAlbumLiked] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const albumMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Close 3-dots popup on click outside (PC & Mobile - Requirement 7)
   useEffect(() => {
@@ -44,8 +55,11 @@ export const CuratedAlbumsView: React.FC = () => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setActiveSongMenuId(null);
       }
+      if (albumMenuRef.current && !albumMenuRef.current.contains(e.target as Node)) {
+        setActiveAlbumMenuId(null);
+      }
     };
-    if (activeSongMenuId) {
+    if (activeSongMenuId || activeAlbumMenuId) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
     }
@@ -53,7 +67,7 @@ export const CuratedAlbumsView: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [activeSongMenuId]);
+  }, [activeSongMenuId, activeAlbumMenuId]);
 
   // Convert AlbumSong to Song object for global handlers
   const convertAlbumSongToSong = (song: AlbumSong, album: ExclusiveAlbum): Song => ({
@@ -83,7 +97,16 @@ export const CuratedAlbumsView: React.FC = () => {
 
   // If viewing a single album
   if (selectedAlbum) {
-    const albumSongsList = Array.isArray(selectedAlbum.songs) ? selectedAlbum.songs : [];
+    const rawSongsList = Array.isArray(selectedAlbum.songs) ? selectedAlbum.songs : [];
+    // Requirement 15: danh sách bài hát trong album nhạc trẻ hay được sắp xếp theo vần ABC
+    const isNhacTreAlbum =
+      selectedAlbum.title.toLowerCase().includes('nhạc trẻ') ||
+      (selectedAlbum.genre && selectedAlbum.genre.toLowerCase().includes('nhạc trẻ')) ||
+      selectedAlbum.title.toLowerCase().includes('tuyển tập');
+    const albumSongsList = isNhacTreAlbum
+      ? [...rawSongsList].sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+      : rawSongsList;
+
     const totalDurationSecs = albumSongsList.reduce((acc, s) => acc + (s.duration || 0), 0);
     const totalHours = Math.floor(totalDurationSecs / 3600);
     const totalMins = Math.floor((totalDurationSecs % 3600) / 60);
@@ -552,46 +575,121 @@ export const CuratedAlbumsView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Right Actions: Quick Play or View Album */}
-                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {/* Right Actions: 3 Vertical Dots Menu (Yêu Cầu 6: bỏ icon play và xem chi tiết, thay bằng 3 gạch dọc) */}
+                  <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => {
-                        const sList = Array.isArray(album.songs) ? album.songs : [];
-                        if (sList.length > 0) {
-                          playAlbumTrack(sList[0], album);
-                        } else {
-                          setSelectedAlbum(album);
-                        }
-                      }}
-                      disabled={songCount === 0}
-                      style={{ backgroundColor: 'var(--color-accent)' }}
-                      className="px-3.5 py-2 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shadow-md hover:opacity-90 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
-                      title="Phát album này"
+                      type="button"
+                      onClick={() => setActiveAlbumMenuId((prev) => (prev === album.id ? null : album.id))}
+                      className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+                      title="Tùy chọn album"
                     >
-                      {isAlbumPlaying ? (
-                        <>
-                          <Pause className="w-3.5 h-3.5 fill-current" />
-                          <span className="hidden sm:inline">Tạm dừng</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                          <span className="hidden sm:inline">Phát Album</span>
-                        </>
-                      )}
+                      <MoreVertical className="w-5 h-5" />
                     </button>
 
-                    <button
-                      onClick={() => setSelectedAlbum(album)}
-                      className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 hover:text-white font-bold text-xs transition-colors cursor-pointer"
-                    >
-                      Xem chi tiết
-                    </button>
+                    {/* Dropdown Menu */}
+                    {activeAlbumMenuId === album.id && (
+                      <div
+                        ref={albumMenuRef}
+                        className="absolute right-0 top-full mt-1 w-52 rounded-2xl bg-zinc-900 border border-white/15 p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 select-none text-xs"
+                      >
+                        {/* 1. Chạy theo thứ tự */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const sList = Array.isArray(album.songs) ? album.songs : [];
+                            if (sList.length > 0) {
+                              playAlbumTrack(sList[0], album, false);
+                            }
+                            setActiveAlbumMenuId(null);
+                          }}
+                          disabled={songCount === 0}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-white/10 text-white font-semibold transition-colors disabled:opacity-40 cursor-pointer"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current text-[#c273ed]" />
+                          <span>Chạy theo thứ tự</span>
+                        </button>
+
+                        {/* 2. Chạy random */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const sList = Array.isArray(album.songs) ? album.songs : [];
+                            if (sList.length > 0) {
+                              const randIdx = Math.floor(Math.random() * sList.length);
+                              playAlbumTrack(sList[randIdx], album, true);
+                            }
+                            setActiveAlbumMenuId(null);
+                          }}
+                          disabled={songCount === 0}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-white/10 text-white font-semibold transition-colors disabled:opacity-40 cursor-pointer"
+                        >
+                          <Shuffle className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Chạy random</span>
+                        </button>
+
+                        {/* 3. Tim album */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const isLiked = likedAlbumIds.includes(album.id);
+                            const updated = isLiked
+                              ? likedAlbumIds.filter((id) => id !== album.id)
+                              : [...likedAlbumIds, album.id];
+                            setLikedAlbumIds(updated);
+                            try {
+                              localStorage.setItem('xuanken_liked_albums', JSON.stringify(updated));
+                            } catch (e) {}
+                            setAlbumToast(
+                              isLiked ? `Đã bỏ tim album "${album.title}"` : `Đã thả tim album "${album.title}"! ❤️`
+                            );
+                            setTimeout(() => setAlbumToast(null), 2500);
+                            setActiveAlbumMenuId(null);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-white/10 text-white font-semibold transition-colors cursor-pointer"
+                        >
+                          <Heart
+                            className={`w-3.5 h-3.5 ${
+                              likedAlbumIds.includes(album.id)
+                                ? 'text-red-500 fill-red-500'
+                                : 'text-red-400'
+                            }`}
+                          />
+                          <span>{likedAlbumIds.includes(album.id) ? 'Đã thích album' : 'Tim album'}</span>
+                        </button>
+
+                        {/* 4. Chia sẻ album */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const shareUrl = `${window.location.origin}?album=${encodeURIComponent(album.id)}`;
+                            if (navigator.clipboard) {
+                              navigator.clipboard.writeText(shareUrl).then(() => {
+                                setAlbumToast(`Đã sao chép liên kết album "${album.title}"!`);
+                                setTimeout(() => setAlbumToast(null), 2500);
+                              });
+                            }
+                            setActiveAlbumMenuId(null);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-white/10 text-white font-semibold transition-colors cursor-pointer"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-sky-400" />
+                          <span>Chia sẻ album</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Album Toast notification */}
+      {albumToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-zinc-900 border border-white/20 text-white font-bold text-xs shadow-2xl animate-in fade-in zoom-in-95 flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-emerald-400" />
+          <span>{albumToast}</span>
         </div>
       )}
     </div>

@@ -51,12 +51,12 @@ export const MobileMiniPlayer: React.FC = () => {
         {/* Left: Rounded Square Cover with Sliding Vinyl Disc behind it (Matching Screenshot 3) */}
         <div className="flex items-center gap-3 truncate flex-1 min-w-0">
           <div className="relative flex items-center shrink-0 pr-3">
-            {/* The Vinyl Disc sliding out from behind the cover with luminous spinning ring */}
+            {/* The Vinyl Disc sliding out from behind the cover without drop shadows */}
             <div
-              className={`absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-950 border-2 transition-all duration-500 ease-out z-0 overflow-hidden ${
+              className={`absolute left-0.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-950 border-2 transition-all duration-500 ease-out z-0 overflow-hidden ${
                 isPlaying
-                  ? 'translate-x-5 border-[var(--color-accent)] ring-1 ring-white/50 shadow-[0_0_12px_var(--color-accent)]'
-                  : 'translate-x-1.5 border-zinc-700/80 shadow-md'
+                  ? 'translate-x-6 border-[var(--color-accent)] ring-1 ring-white/40'
+                  : 'translate-x-0 border-zinc-800'
               }`}
             >
               <div
@@ -65,10 +65,10 @@ export const MobileMiniPlayer: React.FC = () => {
               >
                 {/* Rotating specular light sheen for visible spinning vinyl effect */}
                 <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.45)_90deg,transparent_180deg,rgba(255,255,255,0.45)_270deg,transparent_360deg)] pointer-events-none opacity-80" />
-                {/* Glowing light ring to clearly distinguish the spinning disc */}
-                <div className="absolute inset-0.5 rounded-full border border-white/60 shadow-[0_0_6px_rgba(255,255,255,0.8)] pointer-events-none" />
+                {/* Light ring without drop shadow */}
+                <div className="absolute inset-0.5 rounded-full border border-white/60 pointer-events-none" />
                 <div className="absolute inset-1.5 rounded-full border border-zinc-700" />
-                <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border border-white/60 shadow-sm flex items-center justify-center">
+                <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border border-white/60 flex items-center justify-center">
                   <div className="w-1 h-1 rounded-full bg-zinc-950" />
                 </div>
               </div>

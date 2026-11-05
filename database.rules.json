@@ -52,7 +52,7 @@
         ".write": true
       }
     },
-    "rewind_stats": {
+    "banned_chat_members": {
       ".read": true,
       ".write": "auth != null"
     },

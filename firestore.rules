@@ -84,7 +84,7 @@ service cloud.firestore {
           (
             incoming().diff(existing()).affectedKeys().hasOnly([
               'displayName', 'avatarUrl', 'theme', 'crossfadeDuration',
-              'preferredAudioFormat', 'likedSongIds', 'blockedSongIds', 'rewindStats'
+              'preferredAudioFormat', 'likedSongIds', 'blockedSongIds'
             ]) &&
             incoming().role == existing().role &&
             incoming().balance == existing().balance

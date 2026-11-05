@@ -20,7 +20,6 @@ import { AudioSettingsModal } from './components/common/AudioSettingsModal';
 import { SleepTimerModal } from './components/common/SleepTimerModal';
 import { ThemeSelectorModal } from './components/common/ThemeSelectorModal';
 import { LoginModal } from './components/auth/LoginModal';
-import { XuanKenRewindModal } from './components/common/XuanKenRewindModal';
 
 const MainAppContent: React.FC = () => {
   const { effectiveIsMobile, theme } = useMusic();
@@ -50,7 +49,6 @@ const MainAppContent: React.FC = () => {
       <SleepTimerModal />
       <ThemeSelectorModal />
       <LoginModal />
-      <XuanKenRewindModal />
     </div>
   );
 };

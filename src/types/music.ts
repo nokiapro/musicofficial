@@ -124,6 +124,7 @@ export interface ChatMessage {
     albumTitle?: string;
   };
   isPinned?: boolean;
+  isEdited?: boolean;
 }
 
 export interface Playlist {
@@ -144,15 +145,6 @@ export interface Voucher {
   minSpend?: number;
   description: string;
   isActive: boolean;
-}
-
-export interface RewindStats {
-  totalSeconds: number;
-  totalPlays: number;
-  songPlays: Record<string, number>;
-  artistPlays: Record<string, number>;
-  favoriteGenre?: string;
-  lastUpdated: string;
 }
 
 export interface WeeklyTopData {

@@ -233,8 +233,7 @@ export const KaraokeLyricsModal: React.FC = () => {
                     <div
                       key={`line-${idx}-${line.time}`}
                       onClick={() => seekTo(line.time)}
-                      style={{ height: `${LINE_HEIGHT}px` }}
-                      className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-xl sm:text-2xl md:text-3xl leading-snug truncate transition-colors duration-200 ${
+                      className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-xl sm:text-2xl md:text-3xl leading-relaxed transition-colors duration-200 py-1.5 ${
                         isCurrent
                           ? 'active font-extrabold text-[#ffdb00]'
                           : dist === 1
@@ -243,7 +242,7 @@ export const KaraokeLyricsModal: React.FC = () => {
                       }`}
                       title="Bấm để phát từ câu hát này"
                     >
-                      <span className="truncate w-full">{displayText}</span>
+                      <span className="w-full whitespace-normal break-words">{displayText}</span>
                     </div>
                   );
                 })}

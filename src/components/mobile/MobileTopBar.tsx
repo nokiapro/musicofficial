@@ -19,6 +19,10 @@ export const MobileTopBar: React.FC = () => {
     setCrossfadeDuration,
     currentUser,
     setSelectedAlbum,
+    currentSong,
+    isPlaying,
+    togglePlay,
+    setIsMobileFullPlayerOpen,
   } = useMusic();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -295,18 +299,53 @@ export const MobileTopBar: React.FC = () => {
         </button>
 
         {currentUser && (
-          <button
-            onClick={() => setActiveMobileTab('chat')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
-              activeMobileTab === 'chat'
-                ? 'bg-[#0284c7] text-white shadow-sm'
-                : 'bg-white/5 text-white/70 hover:text-white'
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Chat Box</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => setActiveMobileTab('chat')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
+                activeMobileTab === 'chat'
+                  ? 'bg-[#0284c7] text-white shadow-sm'
+                  : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Chat Box</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            </button>
+
+            {/* Requirement 8: khi vào chat box thì mini player chỉ còn 1 cái đĩa quay nằm cạnh tab chat box trên cùng */}
+            {activeMobileTab === 'chat' && currentSong && (
+              <div
+                onClick={() => setIsMobileFullPlayerOpen(true)}
+                className="flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 cursor-pointer active:scale-95 transition-all animate-in zoom-in-95 duration-200"
+                title={`Đang phát: ${currentSong.title} - Bấm để mở trình phát`}
+              >
+                <div
+                  style={{
+                    animation: 'spinSlow 12s linear infinite',
+                    animationPlayState: isPlaying ? 'running' : 'paused',
+                  }}
+                  className="w-6 h-6 rounded-full bg-zinc-950 border border-white/40 flex items-center justify-center overflow-hidden shrink-0 shadow-sm"
+                >
+                  {currentSong.coverImage ? (
+                    <img
+                      src={currentSong.coverImage}
+                      alt={currentSong.title}
+                      className="w-full h-full object-cover rounded-full"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <Disc3 className="w-3.5 h-3.5 text-white/80" />
+                  )}
+                </div>
+                <span className="text-[10px] font-bold text-white max-w-[70px] truncate leading-none">
+                  {currentSong.title}
+                </span>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

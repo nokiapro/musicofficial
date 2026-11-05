@@ -28,7 +28,6 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
     setIsTopUpModalOpen,
     logout,
     theme,
-    setIsRewindModalOpen,
   } = useMusic();
 
   const [displayNameInput, setDisplayNameInput] = useState(currentUser?.displayName || '');
@@ -319,21 +318,6 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
                 </button>
               </div>
             </form>
-
-            {/* XuanKen Rewind button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  setIsRewindModalOpen(true);
-                }}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 text-white font-bold text-xs flex items-center justify-center gap-2 border border-purple-500/30 transition-all shadow-sm cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-purple-400" />
-                <span>Nhìn Lại Âm Nhạc (XuanKen Rewind 2026)</span>
-              </button>
-            </div>
 
             {/* Logout button */}
             <div className="pt-1">

@@ -1,7 +1,7 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
 import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { rtdb, db, auth } from './firebase';
-import { Song, AppUser, Playlist, Voucher, SiteSettings, RewindStats, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
+import { Song, AppUser, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
 import { SONGS_DATABASE } from '../data/songs';
 
 const STORAGE_KEY_SONGS = 'xuanken_music_songs_v3';
@@ -1000,82 +1000,7 @@ export const MusicService = {
     }
   },
 
-  // -------------------------------------------------------------
-  // XuanKen Rewind Sync across Android, iOS & PC (Requirement 2)
-  // -------------------------------------------------------------
-  async fetchRewindStats(uid?: string): Promise<RewindStats | null> {
-    if (!uid) {
-      try {
-        const saved = localStorage.getItem('xuanken_music_rewind_v1');
-        if (saved) return JSON.parse(saved);
-      } catch (e) {}
-      return null;
-    }
-    const key = `users/${uid}/rewind`;
-    try {
-      const snapshot = await get(ref(rtdb, key));
-      if (snapshot.exists()) {
-        const val = snapshot.val();
-        if (val) {
-          localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(val));
-          return val;
-        }
-      }
-    } catch (e: any) {
-      const isPermDenied = e?.message?.toLowerCase().includes('permission_denied') || e?.message?.toLowerCase().includes('permission denied');
-      if (!isPermDenied) {
-        console.warn('Rewind stats fetch notice:', e);
-      }
-    }
-    try {
-      const saved = localStorage.getItem('xuanken_music_rewind_v1');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return null;
-  },
 
-  async saveRewindStats(stats: RewindStats, uid?: string): Promise<void> {
-    const clean = cleanForFirebase(stats);
-    try {
-      localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(clean));
-    } catch (e) {}
-    if (!uid) return;
-    try {
-      const key = `users/${uid}/rewind`;
-      await set(ref(rtdb, key), clean);
-      await update(ref(rtdb, `members/${uid}`), { rewindStats: clean });
-    } catch (e) {
-      console.warn('Rewind stats save notice:', e);
-    }
-  },
-
-  subscribeToRewindStats(onUpdate: (stats: RewindStats) => void, uid?: string): () => void {
-    if (!uid) return () => {};
-    const key = `users/${uid}/rewind`;
-    try {
-      const rtdbRef = ref(rtdb, key);
-      return onValue(
-        rtdbRef,
-        (snapshot: any) => {
-          if (snapshot.exists()) {
-            const data = snapshot.val();
-            if (data) {
-              localStorage.setItem('xuanken_music_rewind_v1', JSON.stringify(data));
-              onUpdate(data);
-            }
-          }
-        },
-        (err: any) => {
-          const isPermDenied = err?.message?.toLowerCase().includes('permission_denied') || err?.message?.toLowerCase().includes('permission denied');
-          if (!isPermDenied) {
-            console.warn('Rewind RTDB listener notice:', err);
-          }
-        }
-      );
-    } catch (e) {
-      return () => {};
-    }
-  },
 
   // -------------------------------------------------------------
   // Audio Format Settings (MP3 / WAV) Sync (Requirement 5)
@@ -1443,6 +1368,66 @@ export const MusicService = {
     } catch (e) {}
   },
 
+  async editChatMessage(id: string, newContent: string): Promise<void> {
+    try {
+      const current = await this.fetchChatMessages();
+      const updated = current.map((m) => (m.id === id ? { ...m, content: newContent, isEdited: true } : m));
+      localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(updated));
+    } catch (e) {}
+
+    try {
+      await update(ref(rtdb, `chat_messages/${id}`), { content: newContent, isEdited: true });
+    } catch (e) {}
+  },
+
+  async fetchBannedUsers(): Promise<Record<string, { bannedUntil: number | null; bannedAt: number; userName: string }>> {
+    try {
+      const snapshot = await get(ref(rtdb, 'banned_chat_members'));
+      if (snapshot.exists()) {
+        const val = snapshot.val() || {};
+        localStorage.setItem('xuanken_banned_chat_members', JSON.stringify(val));
+        return val;
+      }
+    } catch (e) {}
+    try {
+      const local = localStorage.getItem('xuanken_banned_chat_members');
+      if (local) return JSON.parse(local);
+    } catch (e) {}
+    return {};
+  },
+
+  async banChatMember(userId: string, userName: string, durationMinutes: number | null): Promise<void> {
+    const bannedAt = Date.now();
+    const bannedUntil = durationMinutes ? bannedAt + durationMinutes * 60 * 1000 : null;
+    const data = { bannedUntil, bannedAt, userName };
+
+    try {
+      const local = localStorage.getItem('xuanken_banned_chat_members');
+      const map = local ? JSON.parse(local) : {};
+      map[userId] = data;
+      localStorage.setItem('xuanken_banned_chat_members', JSON.stringify(map));
+    } catch (e) {}
+
+    try {
+      await set(ref(rtdb, `banned_chat_members/${userId}`), data);
+    } catch (e) {}
+  },
+
+  async unbanChatMember(userId: string): Promise<void> {
+    try {
+      const local = localStorage.getItem('xuanken_banned_chat_members');
+      if (local) {
+        const map = JSON.parse(local);
+        delete map[userId];
+        localStorage.setItem('xuanken_banned_chat_members', JSON.stringify(map));
+      }
+    } catch (e) {}
+
+    try {
+      await set(ref(rtdb, `banned_chat_members/${userId}`), null);
+    } catch (e) {}
+  },
+
   subscribeToChatMessages(onUpdate: (messages: ChatMessage[]) => void): () => void {
     try {
       const chatRef = ref(rtdb, 'chat_messages');
@@ -1481,12 +1466,12 @@ export const MusicService = {
 export const DEFAULT_EXCLUSIVE_ALBUMS: ExclusiveAlbum[] = [
   {
     id: 'alb-xk-01',
-    title: 'Tuyển Tập Tuyệt Phẩm XuanKen',
+    title: 'Album Nhạc Trẻ Hay',
     artist: 'XuanKen Official',
     coverImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
-    description: 'Album tuyển chọn những ca khúc độc quyền mang đậm phong cách ballad và pop hiện đại từ XuanKen Music.',
+    description: 'Tuyển tập những ca khúc nhạc trẻ hay nhất được yêu thích từ XuanKen Music.',
     releaseYear: '2026',
-    genre: 'V-Pop / Ballad',
+    genre: 'Nhạc Trẻ / V-Pop',
     createdAt: new Date().toISOString(),
     songs: [
       {

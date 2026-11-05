@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage, RewindStats } from '../types/music';
+import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
 import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
 import { MusicService } from '../services/musicService';
@@ -199,16 +199,15 @@ interface MusicContextType {
   playAlbumTrack: (track: AlbumSong, album: ExclusiveAlbum, shuffle?: boolean) => void;
   playCustomPool: (poolList: Song[], sourceName: string, shuffleMode?: boolean, startSong?: Song) => void;
 
-  // XuanKen Rewind
-  isRewindModalOpen: boolean;
-  setIsRewindModalOpen: (open: boolean) => void;
-  rewindStats: RewindStats;
-
   // Community Chat Box
   chatMessages: ChatMessage[];
   sendChatMessage: (content: string, sharedSong?: ChatMessage['sharedSong']) => Promise<void>;
+  editChatMessage: (id: string, newContent: string) => Promise<void>;
   deleteChatMessage: (id: string) => Promise<void>;
   togglePinChatMessage: (id: string, isPinned: boolean) => Promise<void>;
+  banChatMember: (userId: string, userName: string, durationMinutes: number | null) => Promise<void>;
+  unbanChatMember: (userId: string) => Promise<void>;
+  bannedMembers: Record<string, { bannedUntil: number | null; bannedAt: number; userName: string }>;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -221,15 +220,6 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   defaultStartingBalance: 500000,
   defaultSongPrice: 20000,
   minListenDurationSeconds: 5,
-};
-
-export const DEFAULT_REWIND_STATS: RewindStats = {
-  totalSeconds: 0,
-  totalPlays: 0,
-  songPlays: {},
-  artistPlays: {},
-  favoriteGenre: 'Việt Nam, V-Pop',
-  lastUpdated: new Date().toISOString(),
 };
 
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -297,14 +287,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState<boolean>(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
-  const [isRewindModalOpen, setIsRewindModalOpen] = useState<boolean>(false);
-  const [rewindStats, setRewindStats] = useState<RewindStats>(() => {
-    try {
-      const local = localStorage.getItem('xuanken_music_rewind_v1');
-      if (local) return { ...DEFAULT_REWIND_STATS, ...JSON.parse(local) };
-    } catch (e) {}
-    return DEFAULT_REWIND_STATS;
-  });
+  const [bannedMembers, setBannedMembers] = useState<Record<string, { bannedUntil: number | null; bannedAt: number; userName: string }>>({});
   const [songToBuy, setSongToBuy] = useState<Song | null>(null);
   const [selectedLrcSong, setSelectedLrcSong] = useState<Song | null>(null);
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
@@ -959,22 +942,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 [currentSong.id]: (prevWeekly[currentSong.id] || 0) + 1,
               };
               MusicService.saveWeeklyPlays(currentWeekKey, updated);
-              return updated;
-            });
-
-            // Update XuanKen Rewind stats
-            setRewindStats((prev) => {
-              const currentPlays = prev?.songPlays?.[currentSong.id] || 0;
-              const artistPlays = prev?.artistPlays?.[currentSong.artists] || 0;
-              const updated: RewindStats = {
-                totalSeconds: (prev?.totalSeconds || 0) + (currentSong.duration || 210),
-                totalPlays: (prev?.totalPlays || 0) + 1,
-                songPlays: { ...(prev?.songPlays || {}), [currentSong.id]: currentPlays + 1 },
-                artistPlays: { ...(prev?.artistPlays || {}), [currentSong.artists]: artistPlays + 1 },
-                favoriteGenre: currentSong.genre || prev?.favoriteGenre || 'Việt Nam, V-Pop',
-                lastUpdated: new Date().toISOString(),
-              };
-              MusicService.saveRewindStats(updated, currentUser?.uid);
               return updated;
             });
           }
@@ -2332,9 +2299,40 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setChatMessages((prev) => prev.filter((m) => m.id !== id));
   };
 
+  const editChatMessage = async (id: string, newContent: string) => {
+    await MusicService.editChatMessage(id, newContent);
+    setChatMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: newContent, isEdited: true } : m)));
+  };
+
   const togglePinChatMessage = async (id: string, isPinned: boolean) => {
     await MusicService.togglePinChatMessage(id, isPinned);
     setChatMessages((prev) => prev.map((m) => (m.id === id ? { ...m, isPinned } : m)));
+  };
+
+  // Load banned members on mount
+  useEffect(() => {
+    MusicService.fetchBannedUsers().then((map) => {
+      if (map) setBannedMembers(map);
+    });
+  }, []);
+
+  const banChatMember = async (userId: string, userName: string, durationMinutes: number | null) => {
+    await MusicService.banChatMember(userId, userName, durationMinutes);
+    const bannedAt = Date.now();
+    const bannedUntil = durationMinutes ? bannedAt + durationMinutes * 60 * 1000 : null;
+    setBannedMembers((prev) => ({
+      ...prev,
+      [userId]: { bannedUntil, bannedAt, userName },
+    }));
+  };
+
+  const unbanChatMember = async (userId: string) => {
+    await MusicService.unbanChatMember(userId);
+    setBannedMembers((prev) => {
+      const copy = { ...prev };
+      delete copy[userId];
+      return copy;
+    });
   };
 
   return (
@@ -2493,15 +2491,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playAlbumTrack,
         playCustomPool,
 
-        // XuanKen Rewind
-        isRewindModalOpen,
-        setIsRewindModalOpen,
-        rewindStats,
-
         chatMessages,
         sendChatMessage,
+        editChatMessage,
         deleteChatMessage,
         togglePinChatMessage,
+        banChatMember,
+        unbanChatMember,
+        bannedMembers,
       }}
     >
       {children}

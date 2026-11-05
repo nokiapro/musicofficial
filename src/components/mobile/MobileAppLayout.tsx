@@ -498,24 +498,6 @@ export const MobileAppLayout: React.FC = () => {
       case 'store':
         return (
           <div className="space-y-3 px-3 pb-32 pt-2 select-none">
-            {/* Wallet Balance Banner */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950 via-[#23143c] to-[#120822] border border-white/10 flex items-center justify-between shadow-lg">
-              <div>
-                <p className="text-[10px] font-bold uppercase text-[#c273ed]">Cửa Hàng XuanKen</p>
-                <p className="text-sm font-bold text-white">Mua Nhạc Bản Quyền Full</p>
-                <p className="text-[11px] text-amber-300 font-bold mt-0.5 whitespace-nowrap">
-                  Số dư ví: <span className="whitespace-nowrap">{userBalance.toLocaleString('vi-VN')}&nbsp;đ</span>
-                </p>
-              </div>
-              <button
-                onClick={() => setIsTopUpModalOpen(true)}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-all active:scale-95 flex items-center gap-1 shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="whitespace-nowrap">Nạp ví</span>
-              </button>
-            </div>
-
             {/* Songs in Store */}
             <div className="space-y-2">
               {paginatedStoreSongs.map((song) => {
@@ -1149,8 +1131,8 @@ export const MobileAppLayout: React.FC = () => {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto no-scrollbar">{renderTabContent()}</main>
 
-        {/* Mini Player */}
-        <MobileMiniPlayer />
+        {/* Mini Player: Hide bottom player when in chat box (Item 8) */}
+        {activeMobileTab !== 'chat' && <MobileMiniPlayer />}
 
         {/* Bottom Tab Navigation */}
         <MobileBottomNav />

@@ -179,76 +179,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
             )}
           </button>
 
-          {/* 2. Tùy chỉnh giao diện (Đổi màu theme trực tiếp + nút xem tất cả) */}
-          <div className="p-3 rounded-2xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  style={{ backgroundColor: 'var(--color-accent)', color: '#ffffff' }}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0"
-                >
-                  <Palette className="w-4 h-4" />
-                </div>
-                <div className="text-left">
-                  <p className="text-xs font-bold text-[var(--text-primary)]">Chủ đề giao diện</p>
-                  <p className="text-[10px] text-[var(--text-secondary)]">Đang dùng: <span className="capitalize font-semibold text-[var(--color-accent)]">{theme}</span></p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  onClose();
-                  setIsThemeModalOpen(true);
-                }}
-                style={{ color: 'var(--color-accent)' }}
-                className="text-[11px] font-bold hover:underline cursor-pointer"
-              >
-                Xem tất cả 17 theme
-              </button>
-            </div>
-
-            {/* Quick theme swatches */}
-            <div className="grid grid-cols-4 sm:grid-cols-4 gap-1.5 pt-1">
-              {[
-                { id: 'purple' as const, name: 'Tím', bg: '#170f23', accent: '#9b4de0' },
-                { id: 'zma' as const, name: 'ZMA', bg: '#100a20', accent: '#e5ac25' },
-                { id: 'dark' as const, name: 'Tối', bg: '#121212', accent: '#8b5cf6' },
-                { id: 'blue' as const, name: 'Xanh Biển', bg: '#061d33', accent: '#06b6d4' },
-                { id: 'green' as const, name: 'Xanh Lá', bg: '#062117', accent: '#10b981' },
-                { id: 'red' as const, name: 'Đỏ', bg: '#280b11', accent: '#e11d48' },
-                { id: 'gold' as const, name: 'Hoàng Gia', bg: '#1f1807', accent: '#eab308' },
-                { id: 'light' as const, name: 'Sáng', bg: '#ffffff', accent: '#7c3aed' },
-              ].map((t) => {
-                const isSelected = theme === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      setTheme(t.id);
-                      showToast(`Đã đổi theme: ${t.name}`);
-                    }}
-                    style={
-                      isSelected
-                        ? { borderColor: t.accent, boxShadow: `0 0 0 1.5px ${t.accent}` }
-                        : undefined
-                    }
-                    className={`flex items-center gap-1.5 p-1.5 rounded-xl border text-[10px] font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-[var(--border-color)]'
-                        : 'border-[var(--border-color)] hover:border-[var(--color-accent)]'
-                    }`}
-                  >
-                    <span
-                      style={{ backgroundColor: t.accent }}
-                      className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm"
-                    />
-                    <span className="truncate text-[var(--text-primary)]">{t.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3. Chất lượng nhạc MP3 hay WAV */}
+          {/* 2. Chất lượng nhạc MP3 hay WAV */}
           <div className="p-3 rounded-2xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">

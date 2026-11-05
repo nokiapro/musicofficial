@@ -353,13 +353,6 @@ export const MobileFullPlayerModal: React.FC = () => {
                         XK
                       </div>
                     )}
-                    {isPlaying && (
-                      <SoundWaveIcon
-                        isPlaying={isPlaying}
-                        size="xs"
-                        className="absolute bottom-1 right-1 z-20"
-                      />
-                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-base font-black text-[var(--text-primary)] truncate leading-snug">
@@ -433,15 +426,14 @@ export const MobileFullPlayerModal: React.FC = () => {
               </div>
             </div>
 
-            {/* SLIDE 2 (CENTER): ẢNH BÌA (ĐĨA XOAY) (Requirement 4: ở giữa là ảnh bìa) */}
+            {/* SLIDE 2 (CENTER): ẢNH BÌA (ĐĨA XOAY) - Viền mỏng bao quanh theo Yêu Cầu 5 */}
             <div className="w-1/3 h-full flex flex-col items-center justify-center px-4 py-2 overflow-hidden">
               <div
                 onClick={togglePlay}
-                className="relative w-[min(78vw,310px)] h-[min(78vw,310px)] aspect-square rounded-full shadow-[0_15px_50px_rgba(0,0,0,0.8)] border-4 border-white/15 flex items-center justify-center p-2 bg-zinc-950 cursor-pointer select-none"
+                className="relative w-[min(78vw,310px)] h-[min(78vw,310px)] aspect-square rounded-full shadow-[0_15px_50px_rgba(0,0,0,0.8)] border border-white/20 flex items-center justify-center p-1 bg-zinc-950 cursor-pointer select-none"
               >
-                {/* Outer vinyl grooved rings */}
-                <div className="absolute inset-1 rounded-full border border-zinc-800 pointer-events-none" />
-                <div className="absolute inset-2.5 rounded-full border border-white/5 pointer-events-none" />
+                {/* Thin outer subtle ring */}
+                <div className="absolute inset-1 rounded-full border border-white/10 pointer-events-none" />
 
                 {/* Spinning Vinyl Disc */}
                 <div
@@ -468,10 +460,10 @@ export const MobileFullPlayerModal: React.FC = () => {
               </div>
             </div>
 
-            {/* SLIDE 3 (RIGHT): LỜI BÀI HÁT */}
+            {/* SLIDE 3 (RIGHT): LỜI BÀI HÁT - Xuống dòng bình thường không hiện ba chấm theo Yêu Cầu 16 */}
             <div className="w-1/3 h-full flex flex-col px-6 py-2 overflow-hidden justify-center">
 
-              {/* Exactly 5 lines with Kinetic Scrolling Animation (2 above, 1 middle active, 2 below) */}
+              {/* Dynamic scrollable lyrics with line wrapping */}
               <div className="flex-1 flex items-center justify-center my-auto w-full min-h-0 overflow-hidden">
                 {lyrics.length === 0 ? (
                   <div className="w-full text-center text-[var(--text-secondary)] text-xs py-8">
@@ -480,24 +472,13 @@ export const MobileFullPlayerModal: React.FC = () => {
                 ) : (
                   <div
                     ref={lyricsContainerRef}
-                    className="w-full overflow-hidden relative mode-kinetic select-none"
+                    className="w-full overflow-y-auto no-scrollbar relative mode-kinetic select-none max-h-[260px] py-4"
                     style={{
-                      height: '240px',
-                      maxHeight: '240px',
-                      minHeight: '240px',
                       maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
                       WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
                     }}
                   >
-                    <div
-                      className="w-full will-change-transform"
-                      style={{
-                        transform: `translateY(-${activeLyricIdx * 48}px)`,
-                        transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                        paddingTop: '96px',
-                        paddingBottom: '96px',
-                      }}
-                    >
+                    <div className="w-full space-y-3 px-1">
                       {lyrics.map((line, idx) => {
                         const displayText = cleanLyricText(line.text);
                         if (!displayText) return null;
@@ -509,17 +490,16 @@ export const MobileFullPlayerModal: React.FC = () => {
                           <div
                             key={`mob-line-${idx}-${line.time}`}
                             onClick={() => seekTo(line.time)}
-                            style={{ height: '48px' }}
-                            className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-base sm:text-lg leading-snug truncate transition-colors duration-200 ${
+                            className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-sm sm:text-base leading-relaxed transition-all duration-200 py-1 ${
                               isCurrent
-                                ? 'active font-extrabold text-[#ffdb00]'
+                                ? 'active font-extrabold text-[#ffdb00] scale-[1.02]'
                                 : dist === 1
                                 ? 'adjacent font-semibold text-white/80'
                                 : 'font-semibold text-white/40'
                             }`}
                             title="Bấm để phát từ câu hát này"
                           >
-                            <span className="truncate w-full">{displayText}</span>
+                            <span className="w-full whitespace-normal break-words">{displayText}</span>
                           </div>
                         );
                       })}

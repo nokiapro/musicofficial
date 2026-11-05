@@ -111,7 +111,7 @@ export const BuySongModal: React.FC = () => {
                 type="text"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                placeholder="Nhập mã voucher (Ví dụ: XUANKEN50)"
+                placeholder="Nhập mã giảm giá"
                 className="flex-1 bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase focus:outline-none focus:border-[#9b4de0]"
               />
               <button
