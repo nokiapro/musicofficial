@@ -55,7 +55,7 @@ export const MobileMiniPlayer: React.FC = () => {
             <div
               className={`absolute left-0.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-zinc-950 border-2 transition-all duration-500 ease-out z-0 overflow-hidden ${
                 isPlaying
-                  ? 'translate-x-6 border-[var(--color-accent)] ring-1 ring-white/40'
+                  ? 'translate-x-4 border-[var(--color-accent)] ring-1 ring-white/40'
                   : 'translate-x-0 border-zinc-800'
               }`}
             >

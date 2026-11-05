@@ -192,7 +192,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
             </div>
             {song.isAlbumTrack ? (
               <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-white/40 opacity-50">
-                128 Kbps (Cố định)
+                128 Kbps
               </div>
             ) : (
               <div className="flex items-center p-1 rounded-xl bg-black/25 border border-[var(--border-color)] text-xs font-bold">

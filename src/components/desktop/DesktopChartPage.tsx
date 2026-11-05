@@ -249,7 +249,7 @@ export const DesktopChartPage: React.FC = () => {
           <span className="text-center whitespace-nowrap">Lượt nghe</span>
           <span className="text-center whitespace-nowrap">Thời lượng</span>
           <span className="text-center whitespace-nowrap">Mua</span>
-          <span className="text-center whitespace-nowrap">Thao tác</span>
+          <span className="text-center whitespace-nowrap">Thêm</span>
         </div>
 
         {/* Songs Rows */}

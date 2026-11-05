@@ -586,3 +586,20 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
 }
+
+/* Custom Chat Messages Scrollbar */
+.custom-chat-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-chat-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 9999px;
+}
+.custom-chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(155, 77, 224, 0.45);
+  border-radius: 9999px;
+}
+.custom-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 77, 224, 0.75);
+}
+

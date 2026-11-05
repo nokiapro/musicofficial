@@ -186,7 +186,7 @@ export const DesktopWeeklyTopPage: React.FC = () => {
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[140px]">LƯỢT NGHE TUẦN</th>
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[110px]">THỜI LƯỢNG</th>
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[100px]">MUA</th>
-                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[105px]">THAO TÁC</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[105px]">THÊM</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">

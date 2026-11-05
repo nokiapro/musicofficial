@@ -251,7 +251,7 @@ export const DesktopSongListView: React.FC = () => {
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[100px]">THỜI LƯỢNG</th>
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[130px]">MP3 HAY WAV</th>
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[110px]">MUA</th>
-                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[90px]">THAO TÁC</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[90px]">THÊM</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">

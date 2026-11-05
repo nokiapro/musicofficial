@@ -23,7 +23,7 @@ export const AudioSettingsModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out select-none"
     >
       <div
         style={{
@@ -31,7 +31,7 @@ export const AudioSettingsModal: React.FC = () => {
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-6 space-y-5 animate-in zoom-in-95 duration-200"
+        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-6 space-y-5 animate-in zoom-in-95 duration-350 ease-out"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -104,15 +104,7 @@ export const AudioSettingsModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="pt-2 flex justify-end">
-          <button
-            onClick={() => setIsAudioSettingsModalOpen(false)}
-            className="px-5 py-2 text-xs font-bold bg-[#9b4de0] hover:bg-[#8539c9] text-white rounded-xl shadow-lg transition-colors"
-          >
-            Đóng
-          </button>
-        </div>
+
       </div>
     </div>
   );

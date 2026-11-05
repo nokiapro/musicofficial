@@ -180,14 +180,14 @@ export const ThemeSelectorModal: React.FC = () => {
   return (
     <div
       onClick={handleClose}
-      className={`fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none duration-200 font-['Roboto_Condensed'] ${
+      className={`fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none duration-350 ease-out font-['Roboto_Condensed'] ${
         isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
       }`}
     >
       <div
         data-theme={theme}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden p-4 sm:p-6 max-h-[90vh] flex flex-col duration-200 font-['Roboto_Condensed'] ${
+        className={`w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden p-4 sm:p-6 max-h-[90vh] flex flex-col duration-350 ease-out font-['Roboto_Condensed'] ${
           isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
         }`}
         style={{
@@ -325,13 +325,6 @@ export const ThemeSelectorModal: React.FC = () => {
           <span className="text-xs text-[var(--text-secondary)]">
             Chủ đề: <strong className="text-[var(--text-primary)] capitalize">{theme}</strong>
           </span>
-          <button
-            onClick={handleClose}
-            style={{ backgroundColor: 'var(--color-accent)' }}
-            className="px-5 py-2 text-xs font-bold text-white rounded-xl transition-opacity hover:opacity-90 shadow-lg cursor-pointer"
-          >
-            Áp Dụng & Đóng
-          </button>
         </div>
       </div>
     </div>

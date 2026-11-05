@@ -34,7 +34,7 @@ export const TopUpModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out select-none"
     >
       <div
         style={{
@@ -42,7 +42,7 @@ export const TopUpModal: React.FC = () => {
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-200"
+        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-350 ease-out"
       >
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -106,20 +106,14 @@ export const TopUpModal: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex">
               <a
                 href={`mailto:${currentUser?.role === 'admin' ? currentUser.email : 'admin@xuanken.vn'}?subject=Yêu cầu nạp ví XuanKen Music ${selectedAmount}đ&body=Xin chào Admin,%0D%0ATôi muốn nạp ${selectedAmount}đ vào ví XuanKen Music.%0D%0ACú pháp: ${encodeURIComponent(transferSyntax)}`}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white text-center flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white text-center flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-purple-600/30"
               >
                 <Mail className="w-3.5 h-3.5" />
                 <span>Gửi Email Admin</span>
               </a>
-              <button
-                onClick={handleClose}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-xs text-white transition-colors"
-              >
-                Đã Hiểu & Đóng
-              </button>
             </div>
           </div>
         ) : (

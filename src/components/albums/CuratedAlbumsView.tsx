@@ -244,7 +244,7 @@ export const CuratedAlbumsView: React.FC = () => {
             </div>
 
             {/* Bảng danh sách bài hát */}
-            <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/5 backdrop-blur-xs">
+            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xs relative">
               {/* Tiêu đề cột:
                   - Trên Mobile (Requirement 6): Xóa thời gian, chuyển tim vào 3 gạch dọc
                   - Trên PC: Hiển thị đầy đủ
@@ -268,7 +268,7 @@ export const CuratedAlbumsView: React.FC = () => {
                   THỜI GIAN
                 </div>
                 <div className="w-12 sm:w-20 text-center shrink-0">
-                  THAO TÁC
+                  THÊM
                 </div>
               </div>
 
@@ -516,7 +516,7 @@ export const CuratedAlbumsView: React.FC = () => {
           <p>Chưa có Album nào trong hệ thống.</p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/10 bg-[#170f23]/90 overflow-hidden shadow-2xl">
+        <div className="rounded-2xl border border-white/10 bg-[#170f23]/90 shadow-2xl relative">
           <div className="divide-y divide-white/5">
             {exclusiveAlbums.map((album, idx) => {
               const isAlbumPlaying = isPlaying && currentSong?.album === album.title;
@@ -526,7 +526,9 @@ export const CuratedAlbumsView: React.FC = () => {
                 <div
                   key={album.id}
                   onClick={() => setSelectedAlbum(album)}
-                  className="p-3.5 sm:p-4 hover:bg-white/5 transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                  className={`p-3.5 sm:p-4 hover:bg-white/5 transition-all cursor-pointer flex items-center justify-between gap-3 group relative rounded-2xl ${
+                    activeAlbumMenuId === album.id ? 'z-30' : 'z-10'
+                  }`}
                 >
                   {/* Left: STT + Vinyl Thumbnail + Title & Artist */}
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -586,12 +588,17 @@ export const CuratedAlbumsView: React.FC = () => {
                       <MoreVertical className="w-5 h-5" />
                     </button>
 
-                    {/* Dropdown Menu */}
+                    {/* Dropdown Menu - Yêu Cầu 4: hiển thị trọn vẹn không bị cắt viền */}
                     {activeAlbumMenuId === album.id && (
-                      <div
-                        ref={albumMenuRef}
-                        className="absolute right-0 top-full mt-1 w-52 rounded-2xl bg-zinc-900 border border-white/15 p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 select-none text-xs"
-                      >
+                      <>
+                        <div
+                          className="fixed inset-0 z-40 bg-transparent"
+                          onClick={() => setActiveAlbumMenuId(null)}
+                        />
+                        <div
+                          ref={albumMenuRef}
+                          className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-zinc-900 border border-white/20 p-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 animate-in fade-in zoom-in-95 duration-200 select-none text-xs"
+                        >
                         {/* 1. Chạy theo thứ tự */}
                         <button
                           type="button"
@@ -675,7 +682,8 @@ export const CuratedAlbumsView: React.FC = () => {
                           <Share2 className="w-3.5 h-3.5 text-sky-400" />
                           <span>Chia sẻ album</span>
                         </button>
-                      </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

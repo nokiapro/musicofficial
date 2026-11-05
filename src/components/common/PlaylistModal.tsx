@@ -27,7 +27,7 @@ export const PlaylistModal: React.FC = () => {
     setTimeout(() => {
       setIsPlaylistModalOpen(false);
       setIsClosing(false);
-    }, 200);
+    }, 350);
   };
 
   const showToast = (msg: string) => {
@@ -61,8 +61,8 @@ export const PlaylistModal: React.FC = () => {
     <div 
       data-theme={theme}
       onClick={handleClose}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none transition-opacity duration-200 ${
-        isClosing ? 'animate-out fade-out duration-200' : 'animate-in fade-in duration-200'
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none transition-opacity duration-350 ease-out ${
+        isClosing ? 'animate-out fade-out duration-350 ease-out' : 'animate-in fade-in duration-350 ease-out'
       }`}
     >
       <div 
@@ -72,8 +72,8 @@ export const PlaylistModal: React.FC = () => {
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 max-h-[90vh] flex flex-col transition-all duration-200 ${
-          isClosing ? 'animate-out zoom-out-95 fade-out duration-200' : 'animate-in zoom-in-95 duration-200'
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 max-h-[90vh] flex flex-col transition-all duration-350 ease-out ${
+          isClosing ? 'animate-out zoom-out-95 fade-out duration-350 ease-out' : 'animate-in zoom-in-95 duration-350 ease-out'
         }`}
       >
         {/* Header */}

@@ -136,7 +136,7 @@ export const KaraokeLyricsModal: React.FC = () => {
     <div
       data-theme={theme}
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-      className="fixed inset-0 z-50 flex flex-col overflow-hidden animate-in fade-in duration-300 font-['Roboto_Condensed'] select-none transition-colors"
+      className="fixed inset-0 z-50 flex flex-col overflow-hidden animate-in fade-in duration-350 ease-out font-['Roboto_Condensed'] select-none transition-colors"
     >
       {/* Top Header - Badge 'Lời bài hát' removed as requested in earlier item */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)] backdrop-blur-md bg-black/25 shrink-0">
@@ -212,12 +212,12 @@ export const KaraokeLyricsModal: React.FC = () => {
                 WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
               }}
             >
-              {/* Vertical sliding track - shifts by exactly 1 line (64px) with smooth 0.8s cubic-bezier(0.16, 1, 0.3, 1) transition */}
+              {/* Vertical sliding track - shifts by exactly 1 line (64px) with smooth 0.65s cubic-bezier(0.16, 1, 0.3, 1) transition */}
               <div
                 className="w-full will-change-transform"
                 style={{
                   transform: `translateY(-${centerIdx * LINE_HEIGHT}px)`,
-                  transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+                  transition: 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)',
                   paddingTop: `${LINE_HEIGHT * 2}px`,
                   paddingBottom: `${LINE_HEIGHT * 2}px`,
                 }}
@@ -233,12 +233,14 @@ export const KaraokeLyricsModal: React.FC = () => {
                     <div
                       key={`line-${idx}-${line.time}`}
                       onClick={() => seekTo(line.time)}
-                      className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-xl sm:text-2xl md:text-3xl leading-relaxed transition-colors duration-200 py-1.5 ${
+                      className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-xl sm:text-2xl md:text-3xl leading-relaxed transition-all duration-300 py-1.5 ${
                         isCurrent
-                          ? 'active font-extrabold text-[#ffdb00]'
+                          ? 'active font-extrabold text-[#ffdb00] opacity-100 scale-100'
                           : dist === 1
-                          ? 'adjacent font-semibold text-white/80 hover:text-white'
-                          : 'font-semibold text-white/40 hover:text-white/80'
+                          ? 'adjacent font-semibold text-white/70 hover:text-white opacity-70'
+                          : dist === 2
+                          ? 'font-normal text-white/40 hover:text-white/70 opacity-40'
+                          : 'opacity-0 pointer-events-none select-none'
                       }`}
                       title="Bấm để phát từ câu hát này"
                     >

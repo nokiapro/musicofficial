@@ -20,6 +20,7 @@ import {
   Sparkles,
   Waves,
   Headphones,
+  X,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { MobilePlayerActionSheet } from './MobilePlayerActionSheet';
@@ -237,7 +238,7 @@ export const MobileFullPlayerModal: React.FC = () => {
           background: 'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-primary) 55%, var(--bg-sidebar) 100%)',
           color: 'var(--text-primary)',
         }}
-        className={`fixed inset-0 z-50 flex flex-col select-none duration-300 overflow-hidden font-['Roboto_Condensed'] ${
+        className={`fixed inset-0 z-50 flex flex-col select-none duration-350 ease-out overflow-hidden font-['Roboto_Condensed'] ${
           isClosingPlayer ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
         }`}
       >
@@ -460,53 +461,60 @@ export const MobileFullPlayerModal: React.FC = () => {
               </div>
             </div>
 
-            {/* SLIDE 3 (RIGHT): LỜI BÀI HÁT - Xuống dòng bình thường không hiện ba chấm theo Yêu Cầu 16 */}
-            <div className="w-1/3 h-full flex flex-col px-6 py-2 overflow-hidden justify-center">
-
-              {/* Dynamic scrollable lyrics with line wrapping */}
-              <div className="flex-1 flex items-center justify-center my-auto w-full min-h-0 overflow-hidden">
-                {lyrics.length === 0 ? (
-                  <div className="w-full text-center text-[var(--text-secondary)] text-xs py-8">
-                    Chưa có lời bài hát đồng bộ cho ca khúc này
-                  </div>
-                ) : (
+            {/* SLIDE 3 (RIGHT): LỜI BÀI HÁT - 5 dòng: 2 trên, 1 giữa bôi vàng không đổ bóng, 2 dưới, trượt mượt mà theo Yêu Cầu 10 */}
+            <div className="w-1/3 h-full flex flex-col px-4 sm:px-6 py-2 overflow-hidden justify-center items-center">
+              {lyrics.length === 0 ? (
+                <div className="w-full text-center text-[var(--text-secondary)] text-xs py-8">
+                  Chưa có lời bài hát đồng bộ cho ca khúc này
+                </div>
+              ) : (
+                <div
+                  className="w-full h-[240px] overflow-hidden relative select-none"
+                  style={{
+                    maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+                  }}
+                >
+                  {/* Sliding track for exactly 5 lines (48px per line) */}
                   <div
-                    ref={lyricsContainerRef}
-                    className="w-full overflow-y-auto no-scrollbar relative mode-kinetic select-none max-h-[260px] py-4"
+                    className="w-full will-change-transform flex flex-col items-center"
                     style={{
-                      maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
-                      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+                      transform: `translateY(-${activeLyricIdx * 48}px)`,
+                      transition: 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)',
+                      paddingTop: '96px',
+                      paddingBottom: '96px',
                     }}
                   >
-                    <div className="w-full space-y-3 px-1">
-                      {lyrics.map((line, idx) => {
-                        const displayText = cleanLyricText(line.text);
-                        if (!displayText) return null;
+                    {lyrics.map((line, idx) => {
+                      const displayText = cleanLyricText(line.text);
+                      if (!displayText) return null;
 
-                        const isCurrent = idx === activeLyricIdx;
-                        const dist = Math.abs(idx - activeLyricIdx);
+                      const isCurrent = idx === activeLyricIdx;
+                      const dist = Math.abs(idx - activeLyricIdx);
 
-                        return (
-                          <div
-                            key={`mob-line-${idx}-${line.time}`}
-                            onClick={() => seekTo(line.time)}
-                            className={`lyric-line flex items-center text-left w-full cursor-pointer select-none text-sm sm:text-base leading-relaxed transition-all duration-200 py-1 ${
-                              isCurrent
-                                ? 'active font-extrabold text-[#ffdb00] scale-[1.02]'
-                                : dist === 1
-                                ? 'adjacent font-semibold text-white/80'
-                                : 'font-semibold text-white/40'
-                            }`}
-                            title="Bấm để phát từ câu hát này"
-                          >
-                            <span className="w-full whitespace-normal break-words">{displayText}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                      return (
+                        <div
+                          key={`mob-line-${idx}-${line.time}`}
+                          onClick={() => seekTo(line.time)}
+                          style={{ minHeight: '48px', height: '48px' }}
+                          className={`lyric-line flex items-center justify-center text-center w-full cursor-pointer select-none px-2 transition-all duration-300 ${
+                            isCurrent
+                              ? 'active font-extrabold text-[#ffdb00] text-sm sm:text-base scale-100 opacity-100'
+                              : dist === 1
+                              ? 'font-semibold text-white/70 text-xs sm:text-sm opacity-70'
+                              : dist === 2
+                              ? 'font-normal text-white/40 text-[11px] sm:text-xs opacity-40'
+                              : 'opacity-0 pointer-events-none select-none'
+                          }`}
+                          title="Bấm để phát từ câu hát này"
+                        >
+                          <span className="w-full whitespace-normal break-words leading-tight">{displayText}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </main>
@@ -694,7 +702,7 @@ export const MobileFullPlayerModal: React.FC = () => {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className={`w-full bg-[var(--bg-surface)] border-t border-[var(--border-color)] rounded-t-3xl p-5 shadow-2xl text-[var(--text-primary)] space-y-4 duration-200 ${
+              className={`w-full bg-[var(--bg-surface)] border-t border-[var(--border-color)] rounded-t-3xl p-5 shadow-2xl text-[var(--text-primary)] space-y-4 duration-350 ease-out ${
                 isClosingQualitySheet ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
               }`}
             >
@@ -704,8 +712,11 @@ export const MobileFullPlayerModal: React.FC = () => {
                   <Waves className="w-4 h-4 text-[var(--color-accent)]" />
                   <h3 className="text-sm font-bold">Chất lượng âm thanh</h3>
                 </div>
-                <button onClick={handleCloseQuality} className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
-                  Đóng
+                <button
+                  onClick={handleCloseQuality}
+                  className="p-1 rounded-full hover:bg-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+                >
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
@@ -781,7 +792,7 @@ export const MobileFullPlayerModal: React.FC = () => {
                 borderColor: 'var(--border-color)',
                 color: 'var(--text-primary)',
               }}
-              className={`w-full max-w-md mx-auto rounded-t-3xl border-t p-4 flex flex-col shadow-2xl duration-200 max-h-[82vh] h-[540px] select-none ${
+              className={`w-full max-w-md mx-auto rounded-t-3xl border-t p-4 flex flex-col shadow-2xl duration-350 ease-out max-h-[82vh] h-[540px] select-none ${
                 isClosingQueueSheet ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
               }`}
             >
@@ -795,10 +806,9 @@ export const MobileFullPlayerModal: React.FC = () => {
                 </div>
                 <button
                   onClick={handleCloseQueue}
-                  style={{ color: 'var(--color-accent)' }}
-                  className="text-xs font-bold cursor-pointer hover:opacity-80 px-2.5 py-1 rounded-lg hover:bg-white/10 transition-colors"
+                  className="p-1 rounded-full hover:bg-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
                 >
-                  Đóng
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 

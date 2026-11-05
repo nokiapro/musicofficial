@@ -27,6 +27,7 @@ import { AdminPageView } from '../admin/AdminPageView';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileMiniPlayer } from './MobileMiniPlayer';
 import { MobileFullPlayerModal } from './MobileFullPlayerModal';
+import { FloatingVinylDisc } from './FloatingVinylDisc';
 import { CuratedAlbumsView } from '../albums/CuratedAlbumsView';
 import { ChatBoxView } from '../chat/ChatBoxView';
 
@@ -531,10 +532,10 @@ export const MobileAppLayout: React.FC = () => {
                       {isPurchased ? (
                         <button
                           onClick={() => openDownloadModal(song)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow"
+                          className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow flex items-center justify-center transition-colors cursor-pointer"
+                          title="Tải bài hát"
                         >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Tải</span>
+                          <Download className="w-4 h-4" />
                         </button>
                       ) : (
                         <button
@@ -1006,11 +1007,10 @@ export const MobileAppLayout: React.FC = () => {
                         </span>
                         <button
                           onClick={() => downloadSong(song, song.audioFormat)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shadow"
+                          className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow transition-colors cursor-pointer"
                           title="Tải về máy"
                         >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Tải</span>
+                          <Download className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -1128,11 +1128,20 @@ export const MobileAppLayout: React.FC = () => {
         {/* Mobile App Header */}
         <MobileTopBar />
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto no-scrollbar">{renderTabContent()}</main>
+        {/* Main Content Area: Chat Box has overflow-hidden and fills height */}
+        <main
+          className={`flex-1 min-h-0 flex flex-col ${
+            activeMobileTab === 'chat' ? 'overflow-hidden' : 'overflow-y-auto no-scrollbar'
+          }`}
+        >
+          {renderTabContent()}
+        </main>
 
         {/* Mini Player: Hide bottom player when in chat box (Item 8) */}
         {activeMobileTab !== 'chat' && <MobileMiniPlayer />}
+
+        {/* Floating Draggable Vinyl Disc when in Chat Box (Item 1: lơ lửng khắp màn hình) */}
+        {activeMobileTab === 'chat' && currentSong && <FloatingVinylDisc />}
 
         {/* Bottom Tab Navigation */}
         <MobileBottomNav />

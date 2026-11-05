@@ -336,7 +336,7 @@ export const ChatBoxView: React.FC = () => {
   const pinnedMessages = displayMessages.filter((m) => m.isPinned);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] sm:h-[calc(100vh-150px)] max-w-6xl mx-auto rounded-2xl sm:rounded-3xl bg-zinc-900/80 border border-white/10 backdrop-blur-md overflow-hidden shadow-2xl select-none font-['Roboto_Condensed'] relative">
+    <div className="flex flex-col h-full sm:h-[calc(100vh-150px)] w-full max-w-6xl mx-auto rounded-none sm:rounded-3xl bg-zinc-900/90 sm:border sm:border-white/10 backdrop-blur-md overflow-hidden shadow-2xl select-none font-['Roboto_Condensed'] relative flex-1 min-h-0">
       {/* Top Header */}
       <div className="px-3.5 py-2.5 sm:px-6 sm:py-3.5 border-b border-white/10 bg-white/5 flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -396,8 +396,8 @@ export const ChatBoxView: React.FC = () => {
         </div>
       )}
 
-      {/* Messages Stream Area - Yêu Cầu 9: Cố định khung và CHỈ cuộn tin nhắn ở đây */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3.5">
+      {/* Messages Stream Area - Yêu Cầu 2: Cố định toàn khung chat, CHỈ cuộn tin nhắn và hiển thị thanh cuộn rõ ràng */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3.5 custom-chat-scrollbar">
         {displayMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-white/40 space-y-2 py-12">
             <MessageSquare className="w-12 h-12 stroke-[1.2]" />
@@ -592,10 +592,9 @@ export const ChatBoxView: React.FC = () => {
                 </div>
               )}
 
-              {/* Input Composer Form - Yêu Cầu 10: Biểu cảm nhanh nằm trong icon mặt cười đặt cạnh nút gửi */}
               <form
                 onSubmit={handleSend}
-                className="p-2.5 sm:p-4 border-t border-white/10 bg-white/5 flex items-center gap-1.5 sm:gap-2 shrink-0 relative"
+                className="p-2 sm:p-3.5 border-t border-white/10 bg-zinc-900/95 flex items-center gap-1.5 sm:gap-2 shrink-0 relative"
               >
                 {/* Attach Song Button */}
                 <button
