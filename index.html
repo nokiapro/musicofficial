@@ -4,31 +4,41 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>XuanKen Music Official</title>
-    <meta name="description" content="Nền tảng nghe nhạc trực tuyến" />
-    <meta property="og:title" content="XuanKen Music Official" />
-    <meta property="og:description" content="Nền tảng nghe nhạc trực tuyến" />
+    <meta name="description" content="Nền tảng nghe nhạc trực tuyến chất lượng cao" />
+    <meta property="og:title" content="XuanKen Music" />
+    <meta property="og:description" content="Nền tảng nghe nhạc trực tuyến chất lượng cao" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,700&display=swap" rel="stylesheet">
+
     <script>
       (function() {
         try {
           var originalFetch = window.fetch;
-          var currentFetch = originalFetch;
+          var _currentFetch = originalFetch;
           try {
             Object.defineProperty(window, 'fetch', {
-              value: originalFetch,
-              writable: true,
+              get: function() {
+                return _currentFetch;
+              },
+              set: function(fn) {
+                _currentFetch = fn;
+              },
               configurable: true,
               enumerable: true
             });
           } catch (e1) {
             try {
-              Object.defineProperty(window, 'fetch', {
-                get: function() { return currentFetch || originalFetch; },
-                set: function(fn) { currentFetch = fn; },
+              Object.defineProperty(Window.prototype, 'fetch', {
+                get: function() {
+                  return _currentFetch;
+                },
+                set: function(fn) {
+                  _currentFetch = fn;
+                },
                 configurable: true,
                 enumerable: true
               });
@@ -38,8 +48,24 @@
 
         window.addEventListener('error', function(event) {
           if (
-            (event.filename && (event.filename.indexOf('chrome-extension://') !== -1 || event.filename.indexOf('moz-extension://') !== -1)) ||
-            (event.message && event.message.indexOf('Cannot set property fetch') !== -1)
+            (event.message && (
+              event.message.indexOf('Cannot set property fetch') !== -1 ||
+              event.message.indexOf('only a getter') !== -1
+            )) ||
+            (event.filename && event.filename.indexOf('chrome-extension://') !== -1)
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          if (
+            event.reason &&
+            event.reason.message &&
+            (event.reason.message.indexOf('Cannot set property fetch') !== -1 ||
+             event.reason.message.indexOf('only a getter') !== -1)
           ) {
             event.preventDefault();
             event.stopImmediatePropagation();

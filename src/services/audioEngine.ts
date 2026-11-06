@@ -103,6 +103,9 @@ export class AudioEngine {
 
       this.audioElement.addEventListener('error', (e) => {
         console.warn('Audio playback notice:', e);
+        if (this.onErrorCallback) {
+          this.onErrorCallback(e);
+        }
       });
     }
     return this.audioElement;
@@ -136,6 +139,16 @@ export class AudioEngine {
 
   public calculateDurationFromUrl(url: string): Promise<number> {
     return AudioEngine.calculateDurationFromUrl(url);
+  }
+
+  private onErrorCallback: ((err: any) => void) | null = null;
+
+  public setOnError(cb: ((err: any) => void) | null) {
+    this.onErrorCallback = cb;
+  }
+
+  public getCurrentUrl(): string | null {
+    return this.currentUrl;
   }
 
   public playUrl(url?: string, onDurationLoaded?: (dur: number) => void, forceRestart: boolean = false) {
@@ -196,6 +209,11 @@ export class AudioEngine {
           if (err?.name === 'AbortError') return;
           this.isPlaying = false;
         });
+    }
+
+    // If metadata is already loaded from cache, immediately invoke callback
+    if (onDurationLoaded && audio.duration && isFinite(audio.duration) && audio.duration > 0) {
+      onDurationLoaded(Math.round(audio.duration));
     }
 
     audio.onloadedmetadata = () => {

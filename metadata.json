@@ -1,8 +1,6 @@
 {
-  "name": "CHIỀU 5/11/26",
-  "description": "",
+  "name": "XuanKen Music Official",
+  "description": "Nền tảng nghe nhạc trực tuyến chất lượng cao",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

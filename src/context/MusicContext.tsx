@@ -416,6 +416,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const historyRef = useRef<Song[]>(history);
   const blockedSongIdsRef = useRef<string[]>(blockedSongIds);
   const activePlaylistSongsRef = useRef<Song[]>(activePlaylistSongs);
+  const exclusiveAlbumsRef = useRef<ExclusiveAlbum[]>(exclusiveAlbums);
+  const handleSongEndRef = useRef<() => void>(() => {});
 
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
   useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
@@ -425,6 +427,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => { historyRef.current = history; }, [history]);
   useEffect(() => { blockedSongIdsRef.current = blockedSongIds; }, [blockedSongIds]);
   useEffect(() => { activePlaylistSongsRef.current = activePlaylistSongs; }, [activePlaylistSongs]);
+  useEffect(() => { exclusiveAlbumsRef.current = exclusiveAlbums; }, [exclusiveAlbums]);
 
   const updateSiteSettings = async (partial: Partial<SiteSettings>) => {
     const updated: SiteSettings = { ...siteSettings, ...partial };
@@ -617,10 +620,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     MusicService.fetchSongs().then((loadedSongs) => {
       const validSongs = loadedSongs || [];
       setSongs(validSongs);
-      setCurrentSong(null);
-      setQueue([]);
-      setCurrentTime(0);
-      setIsPlaying(false);
     });
 
     // Real-time listener for live sync across devices
@@ -629,8 +628,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSongs(list);
       setCurrentSong((cur) => {
         if (!cur) return null;
+        // Never wipe out album songs or active playing tracks when standard catalog syncs
+        if (cur.isAlbumTrack) return cur;
         const matched = list.find((s) => s.id === cur.id);
-        return matched ? { ...cur, ...matched } : null;
+        return matched ? { ...cur, ...matched } : cur;
       });
     });
 
@@ -687,10 +688,36 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     MusicService.fetchExclusiveAlbums().then((loadedAlbums) => {
-      setExclusiveAlbums(loadedAlbums || []);
+      const list = loadedAlbums || [];
+      setExclusiveAlbums(list);
+      exclusiveAlbumsRef.current = list;
     });
     const unsubscribeAlbums = MusicService.subscribeToExclusiveAlbums((updatedAlbums) => {
-      setExclusiveAlbums(updatedAlbums || []);
+      const list = updatedAlbums || [];
+      setExclusiveAlbums(list);
+      exclusiveAlbumsRef.current = list;
+      setSelectedAlbum((prev) => {
+        if (!prev) return null;
+        const matched = list.find((a) => a.id === prev.id);
+        return matched || prev;
+      });
+      setCurrentSong((cur) => {
+        if (!cur || !cur.isAlbumTrack) return cur;
+        const alb = list.find((a) => a.id === cur.albumId);
+        if (alb && alb.songs) {
+          const matchedSong = alb.songs.find((s) => s.id === cur.id);
+          if (matchedSong) {
+            return {
+              ...cur,
+              title: matchedSong.title || cur.title,
+              artists: matchedSong.artists || cur.artists,
+              playCount: matchedSong.playCount ?? cur.playCount,
+              plays: `${(matchedSong.playCount || 0).toLocaleString('vi-VN')} lượt nghe`,
+            };
+          }
+        }
+        return cur;
+      });
     });
 
     MusicService.fetchChatMessages().then((loadedMsgs) => {
@@ -789,17 +816,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased?: boolean) => {
     if (!song) return '';
     const isActuallyPurchased = purchased || song.isPurchased || isSongPurchased(song.id);
+    let url = '';
     // Security Restriction: If song is NOT purchased and user is NOT admin,
     // ONLY the 60-second demo URL is provided. Full lossless master links are protected.
     if (!isActuallyPurchased && !isAdmin) {
-      return song.demoUrl || song.mp3Url || '';
+      url = song.demoUrl || song.mp3Url || '';
+    } else {
+      const wantsWav = format === 'WAV' || song.audioFormat === 'WAV';
+      url = wantsWav
+        ? (song.wavUrl || song.mp3Url || song.demoUrl || '')
+        : (song.mp3Url || song.wavUrl || song.demoUrl || '');
     }
-    // Song is purchased, is an album track, or user is Admin: provide full audio stream
-    const wantsWav = format === 'WAV' || song.audioFormat === 'WAV';
-    if (wantsWav) {
-      return (song.wavUrl || song.mp3Url || song.demoUrl) || '';
+    // Fallback if URL contains obsolete 404 demo1/demo2/demo3 links or is empty
+    if (!url || url.includes('/demo1.mp3') || url.includes('/demo2.mp3') || url.includes('/demo3.mp3')) {
+      return 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/BANTINHCADAUTIEN-XUANKEN.mp3';
     }
-    return (song.mp3Url || song.wavUrl || song.demoUrl) || '';
+    return url;
   };
 
   const setPreferredAudioFormat = (fmt: 'MP3' | 'WAV') => {
@@ -860,9 +892,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (isPlaying) {
           audioEngine.acquireWakeLock();
           if (audioEngine.isAudioPaused()) {
-            audioEngine.resume().catch(() => {
-              setIsPlaying(false);
-            });
+            audioEngine.resume().catch(() => {});
           }
         }
       }
@@ -871,19 +901,26 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [isPlaying]);
 
-  // Playback timer & 60-second Demo cutoff
+  // Audio Playback & Duration resolution
   useEffect(() => {
     if (isPlaying && currentSong) {
       const activePurchased = isSongPurchased(currentSong.id);
       const songFormat = songFormatMap[currentSong.id] || preferredAudioFormat;
       const activeUrl = resolveAudioUrl(currentSong, songFormat, activePurchased);
 
-      audioEngine.playUrl(activeUrl, (dur) => {
-        if (dur > 0) {
-          setDuration(dur);
-        }
-      });
+      if (audioEngine.getCurrentUrl() !== activeUrl) {
+        audioEngine.playUrl(activeUrl, (dur) => {
+          if (dur > 0) {
+            setDuration(dur);
+          }
+        });
+      }
+    }
+  }, [isPlaying, currentSong?.id, preferredAudioFormat, songFormatMap]);
 
+  // Playback timer & 60-second Demo cutoff
+  useEffect(() => {
+    if (isPlaying && currentSong) {
       timerRef.current = window.setInterval(() => {
         const audioEngineTime = audioEngine.getCurrentTime();
         const isAudioPaused = audioEngine.isAudioPaused();
@@ -893,39 +930,51 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
 
-        setCurrentTime((prev) => {
-          const purchased = isSongPurchased(currentSong.id);
-          // High-precision sync with audio element
-          const nextTime = audioEngineTime >= 0 ? audioEngineTime : prev + 0.1;
+        const purchased = isSongPurchased(currentSong.id);
+        const nextTime = audioEngineTime >= 0 ? audioEngineTime : 0;
 
-          // Requirement 2 & 6: Demo 60s limitation - at yellow dot, pop up buy song modal
-          // NEVER cut off album tracks (album tracks are 100% free for everyone)
-          if (!currentSong.isAlbumTrack && !purchased && nextTime >= 60) {
-            audioEngine.pause();
-            setIsPlaying(false);
-            setSongToBuy(currentSong);
-            setIsBuyModalOpen(true);
-            setIsDemoLimitModalOpen(true);
-            return 60;
-          }
+        // Requirement 2 & 6: Demo 60s limitation - at yellow dot, pop up buy song modal
+        // NEVER cut off album tracks (album tracks are 100% free for everyone)
+        if (!currentSong.isAlbumTrack && !purchased && nextTime >= 60) {
+          audioEngine.pause();
+          setIsPlaying(false);
+          setSongToBuy(currentSong);
+          setIsBuyModalOpen(true);
+          setIsDemoLimitModalOpen(true);
+          setCurrentTime(60);
+          return;
+        }
 
-          // Requirement 9: Only end song when audio has actually ended!
-          if (audioEngine.isEnded()) {
-            handleSongEnd();
-            return 0;
-          }
+        // Requirement 9: Only end song when audio has actually ended!
+        if (audioEngine.isEnded()) {
+          handleSongEndRef.current();
+          return;
+        }
 
-          const hasSecondChanged = Math.floor(nextTime) !== Math.floor(prev);
+        audioEngine.updatePositionState(nextTime, duration, playbackRate);
 
-          if (hasSecondChanged) {
-            audioEngine.updatePositionState(nextTime, duration, playbackRate);
-          }
+        // Requirement 8: Phải nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
+        const minSeconds = siteSettings?.minListenDurationSeconds ?? 5;
+        if (!hasCountedPlayRef.current && nextTime >= minSeconds && currentSong) {
+          hasCountedPlayRef.current = true;
 
-          // Requirement 8: Phải nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
-          const minSeconds = siteSettings?.minListenDurationSeconds ?? 5;
-          if (!hasCountedPlayRef.current && nextTime >= minSeconds && currentSong) {
-            hasCountedPlayRef.current = true;
-
+          if (currentSong.isAlbumTrack && currentSong.albumId) {
+            setExclusiveAlbums((prevAlbums) => {
+              const updated = prevAlbums.map((alb) => {
+                if (alb.id !== currentSong.albumId) return alb;
+                return {
+                  ...alb,
+                  songs: (alb.songs || []).map((s) =>
+                    s.id === currentSong.id ? { ...s, playCount: (s.playCount || 0) + 1 } : s
+                  ),
+                };
+              });
+              exclusiveAlbumsRef.current = updated;
+              MusicService.saveExclusiveAlbums(updated);
+              return updated;
+            });
+            setCurrentSong((prev) => (prev && prev.id === currentSong.id ? { ...prev, playCount: (prev.playCount || 0) + 1 } : prev));
+          } else {
             // Increment playCount for #xuankenchart ranking and sync to Firebase
             setSongs((prevSongs) => {
               const target = prevSongs.find((s) => s.id === currentSong.id);
@@ -945,9 +994,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               return updated;
             });
           }
+        }
 
-          return nextTime;
-        });
+        setCurrentTime(nextTime);
       }, 100);
     } else {
       audioEngine.pause();
@@ -962,12 +1011,16 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         clearInterval(timerRef.current);
       }
     };
-  }, [isPlaying, currentSong, duration, purchasedSongIds, playbackRate, preferredAudioFormat, songFormatMap, siteSettings, currentWeekKey]);
+  }, [isPlaying, currentSong?.id, duration, playbackRate, siteSettings, currentWeekKey]);
+
+  useEffect(() => {
+    handleSongEndRef.current = handleSongEnd;
+  });
 
   // Register AudioEngine ended listener to seamlessly play next/repeat track
   useEffect(() => {
     audioEngine.setOnEnded(() => {
-      handleSongEnd();
+      handleSongEndRef.current();
     });
     return () => {
       audioEngine.setOnEnded(null);
@@ -1011,12 +1064,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Requirement 6: If current song is an album track, stay strictly inside this album!
     if (currentSongItem?.isAlbumTrack && currentSongItem.albumId) {
-      const album = exclusiveAlbums.find((a) => a.id === currentSongItem.albumId);
+      const album = (exclusiveAlbumsRef.current.length > 0 ? exclusiveAlbumsRef.current : exclusiveAlbums).find((a) => a.id === currentSongItem.albumId);
+      const isNhacTre =
+        album?.title?.toLowerCase().includes('nhạc trẻ') ||
+        (album?.genre && album?.genre?.toLowerCase().includes('nhạc trẻ')) ||
+        album?.title?.toLowerCase().includes('tuyển tập');
+      const rawSongs = album?.songs || [];
+      const sortedSongs = isNhacTre
+        ? [...rawSongs].sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+        : rawSongs;
       const albumSongs = activePlaylistSongsRef.current.length > 0 && activePlaylistSongsRef.current.every((s) => s.albumId === currentSongItem.albumId)
         ? activePlaylistSongsRef.current
-        : (album ? (album.songs || []).map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album.id, album: album.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song)) : []);
+        : sortedSongs.map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album?.id, album: album?.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album?.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song));
 
       if (albumSongs.length > 0) {
+        activePlaylistSongsRef.current = albumSongs;
+
         if (currentRepMode === 'one') {
           setCurrentTime(0);
           seekTo(0);
@@ -1097,8 +1160,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSongFormatMap((prev) => ({ ...prev, [song.id]: formatOverride }));
     }
 
-    // If song is not in currently active playlist, reset active playlist to allow free library playback
-    if (activePlaylistSongsRef.current.length > 0 && !activePlaylistSongsRef.current.some((s) => s.id === song.id)) {
+    // Ensure active playlist is properly set when playing an album track
+    if (song.isAlbumTrack && song.albumId) {
+      if (
+        activePlaylistSongsRef.current.length === 0 ||
+        !activePlaylistSongsRef.current.every((s) => s.albumId === song.albumId) ||
+        !activePlaylistSongsRef.current.some((s) => s.id === song.id)
+      ) {
+        const matchedAlbum = (exclusiveAlbumsRef.current.length > 0 ? exclusiveAlbumsRef.current : exclusiveAlbums).find((a) => a.id === song.albumId);
+        if (matchedAlbum && Array.isArray(matchedAlbum.songs) && matchedAlbum.songs.length > 0) {
+          const rawList = matchedAlbum.songs;
+          const isNhacTre =
+            matchedAlbum.title?.toLowerCase().includes('nhạc trẻ') ||
+            (matchedAlbum.genre && matchedAlbum.genre?.toLowerCase().includes('nhạc trẻ')) ||
+            matchedAlbum.title?.toLowerCase().includes('tuyển tập');
+          const sortedList = isNhacTre
+            ? [...rawList].sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+            : rawList;
+          const albumAsSongs: Song[] = sortedList.map((s, idx) => ({
+            id: s.id,
+            stt: s.stt || idx + 1,
+            title: s.title,
+            artists: s.artists || matchedAlbum.artist || 'XuanKen Official',
+            duration: s.duration && s.duration > 0 ? s.duration : 210,
+            audioFormat: s.audioFormat || 'MP3',
+            coverImage: s.coverImage || matchedAlbum.coverImage,
+            coverGradient: 'from-purple-900 to-indigo-950',
+            album: matchedAlbum.title,
+            price: 0,
+            isPurchased: true,
+            demoUrl: s.demoUrl || s.mp3Url || s.wavUrl,
+            mp3Url: s.mp3Url,
+            wavUrl: s.wavUrl,
+            lyrics: s.lyrics || [],
+            lrcRaw: s.lrcRaw,
+            plays: `${(s.playCount || 0).toLocaleString('vi-VN')} lượt nghe`,
+            playCount: s.playCount || 0,
+            isAlbumTrack: true,
+            albumId: matchedAlbum.id,
+          }));
+          setActivePlaylistSongs(albumAsSongs);
+          activePlaylistSongsRef.current = albumAsSongs;
+        }
+      }
+    } else if (activePlaylistSongsRef.current.length > 0 && !activePlaylistSongsRef.current.some((s) => s.id === song.id)) {
       setActivePlaylistSongs([]);
       activePlaylistSongsRef.current = [];
     }
@@ -1172,12 +1277,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Requirement 6: If current song is an album track, stay strictly inside this album!
     if (currentSongItem?.isAlbumTrack && currentSongItem.albumId) {
-      const album = exclusiveAlbums.find((a) => a.id === currentSongItem.albumId);
+      const album = (exclusiveAlbumsRef.current.length > 0 ? exclusiveAlbumsRef.current : exclusiveAlbums).find((a) => a.id === currentSongItem.albumId);
+      const isNhacTre =
+        album?.title?.toLowerCase().includes('nhạc trẻ') ||
+        (album?.genre && album?.genre?.toLowerCase().includes('nhạc trẻ')) ||
+        album?.title?.toLowerCase().includes('tuyển tập');
+      const rawSongs = album?.songs || [];
+      const sortedSongs = isNhacTre
+        ? [...rawSongs].sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+        : rawSongs;
       const albumSongs = activePlaylistSongsRef.current.length > 0 && activePlaylistSongsRef.current.every((s) => s.albumId === currentSongItem.albumId)
         ? activePlaylistSongsRef.current
-        : (album ? (album.songs || []).map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album.id, album: album.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song)) : []);
+        : sortedSongs.map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album?.id, album: album?.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album?.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song));
 
       if (albumSongs.length > 0) {
+        activePlaylistSongsRef.current = albumSongs;
+
         if (isShuffleActive) {
           const pool = albumSongs.filter((s) => s.id !== currentSongItem.id);
           const chosen = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : albumSongs[0];
@@ -1237,12 +1352,29 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Requirement 6: If current song is an album track, stay strictly inside this album!
     if (currentSongItem?.isAlbumTrack && currentSongItem.albumId) {
-      const album = exclusiveAlbums.find((a) => a.id === currentSongItem.albumId);
+      const album = (exclusiveAlbumsRef.current.length > 0 ? exclusiveAlbumsRef.current : exclusiveAlbums).find((a) => a.id === currentSongItem.albumId);
+      const isNhacTre =
+        album?.title?.toLowerCase().includes('nhạc trẻ') ||
+        (album?.genre && album?.genre?.toLowerCase().includes('nhạc trẻ')) ||
+        album?.title?.toLowerCase().includes('tuyển tập');
+      const rawSongs = album?.songs || [];
+      const sortedSongs = isNhacTre
+        ? [...rawSongs].sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+        : rawSongs;
       const albumSongs = activePlaylistSongsRef.current.length > 0 && activePlaylistSongsRef.current.every((s) => s.albumId === currentSongItem.albumId)
         ? activePlaylistSongsRef.current
-        : (album ? (album.songs || []).map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album.id, album: album.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song)) : []);
+        : sortedSongs.map((s, idx) => ({ ...s, isAlbumTrack: true, albumId: album?.id, album: album?.title, price: 0, isPurchased: true, audioFormat: 'MP3' as const, coverImage: s.coverImage || album?.coverImage, duration: s.duration || 210, stt: idx + 1 } as Song));
 
       if (albumSongs.length > 0) {
+        activePlaylistSongsRef.current = albumSongs;
+
+        if (isShuffleActive) {
+          const pool = albumSongs.filter((s) => s.id !== currentSongItem.id);
+          const chosen = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : albumSongs[0];
+          playSong(chosen);
+          return;
+        }
+
         const curIdx = albumSongs.findIndex((s) => s.id === currentSongItem.id);
         const prevIdx = curIdx > 0 ? curIdx - 1 : albumSongs.length - 1;
         playSong(albumSongs[prevIdx]);
@@ -1612,9 +1744,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playCount: 1420,
         coverImage: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
         coverGradient: 'from-purple-600 via-pink-600 to-indigo-800',
-        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
-        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
-        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo1.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/BANTINHCADAUTIEN-XUANKEN.mp3',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/BANTINHCADAUTIEN-XUANKEN.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/BANTINHCADAUTIEN-XUANKEN.mp3',
         lrcRaw: '[00:00.00] Cơn Mưa Ngang Qua - Sơn Tùng M-TP\n[00:15.00] Cơn mưa ngang qua, mang em đi xa...\n[00:30.00] Nụ cười ngày nào giờ đã phai nhoà...\n[00:45.00] Anh đứng đây một mình trong bóng tối...',
         lyrics: [
           { time: 0, text: 'Cơn Mưa Ngang Qua - Sơn Tùng M-TP' },
@@ -1637,9 +1769,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playCount: 2850,
         coverImage: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
         coverGradient: 'from-amber-500 via-red-600 to-purple-800',
-        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
-        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
-        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo2.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/ANHYEUEMSAITHOIDIEM-XUANKEN.mp3',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/ANHYEUEMSAITHOIDIEM-XUANKEN.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/ANHYEUEMSAITHOIDIEM-XUANKEN.mp3',
         lrcRaw: '[00:00.00] Nơi Này Có Anh - Sơn Tùng M-TP\n[00:18.00] Em là ai từ đâu bước đến nơi đây dịu dàng chói chang...\n[00:35.00] Nụ cười ba mươi giây làm anh ngây ngất...\n[00:50.00] Cầm tay anh dựa vai anh kề bên anh mãi thôi...',
         lyrics: [
           { time: 0, text: 'Nơi Này Có Anh - Sơn Tùng M-TP' },
@@ -1662,9 +1794,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playCount: 3900,
         coverImage: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
         coverGradient: 'from-blue-600 via-cyan-600 to-indigo-900',
-        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo3.mp3',
-        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo3.mp3',
-        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/demo3.mp3',
+        demoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/CAUVONGKHUYET-XUANKEN.mp3',
+        mp3Url: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/CAUVONGKHUYET-XUANKEN.mp3',
+        wavUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/musicofficial/CAUVONGKHUYET-XUANKEN.mp3',
         lrcRaw: '[00:00.00] Chúng Ta Của Hiện Tại - Sơn Tùng M-TP\n[00:20.00] Mùa thu mang giấc mơ quay về...\n[00:40.00] Vẫn nguyên vẹn như hôm nào...\n[00:58.00] Điều anh luôn giữ kín trong tim...',
         lyrics: [
           { time: 0, text: 'Chúng Ta Của Hiện Tại - Sơn Tùng M-TP' },
@@ -1678,8 +1810,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ];
 
     setSongs(sampleSongs);
-    setCurrentSong(null);
-    setQueue([]);
     return await MusicService.saveSongsToFirebase(sampleSongs);
   };
 
@@ -2204,7 +2334,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const playAlbumTrack = (track: AlbumSong, album: ExclusiveAlbum, shuffle: boolean = false) => {
     // Strictly convert album tracks for isolated playback without altering the global songs catalog
-    const albumSongsList = Array.isArray(album?.songs) ? album.songs : [];
+    const rawList = Array.isArray(album?.songs) ? album.songs : [];
+    const isNhacTre =
+      album?.title?.toLowerCase().includes('nhạc trẻ') ||
+      (album?.genre && album?.genre?.toLowerCase().includes('nhạc trẻ')) ||
+      album?.title?.toLowerCase().includes('tuyển tập');
+    const albumSongsList = isNhacTre
+      ? [...rawList].sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
+      : rawList;
+
     const albumAsSongs: Song[] = albumSongsList.map((s, idx) => ({
       id: s.id,
       stt: s.stt || idx + 1,
