@@ -30,6 +30,7 @@ import { MobileFullPlayerModal } from './MobileFullPlayerModal';
 import { FloatingVinylDisc } from './FloatingVinylDisc';
 import { CuratedAlbumsView } from '../albums/CuratedAlbumsView';
 import { ChatBoxView } from '../chat/ChatBoxView';
+import { PlaylistDetailView } from '../playlist/PlaylistDetailView';
 
 export const MobileAppLayout: React.FC = () => {
   const {
@@ -54,6 +55,8 @@ export const MobileAppLayout: React.FC = () => {
     downloadSong,
     openDownloadModal,
     playlists,
+    selectedPlaylist,
+    setSelectedPlaylist,
     createPlaylist,
     deletePlaylist,
     playPlaylist,
@@ -874,7 +877,11 @@ export const MobileAppLayout: React.FC = () => {
             )}
 
             {/* Subtab 2: Custom Playlists */}
-            {librarySubTab === 'playlists' && (
+            {librarySubTab === 'playlists' && selectedPlaylist && (
+              <PlaylistDetailView playlist={selectedPlaylist} onBack={() => setSelectedPlaylist(null)} />
+            )}
+
+            {librarySubTab === 'playlists' && !selectedPlaylist && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white/70 uppercase">Danh sách phát cá nhân</span>
@@ -925,9 +932,13 @@ export const MobileAppLayout: React.FC = () => {
                       key={pl.id}
                       className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-2"
                     >
-                      <div className="truncate min-w-0 flex-1">
-                        <h4 className="text-xs font-bold text-white truncate">{pl.name}</h4>
-                        <p className="text-[10px] text-white/50">{Array.isArray(pl.songIds) ? pl.songIds.length : 0} bài hát</p>
+                      <div
+                        className="truncate min-w-0 flex-1 cursor-pointer active:opacity-70"
+                        onClick={() => setSelectedPlaylist(pl)}
+                        title="Xem danh sách bài hát trong playlist"
+                      >
+                        <h4 className="text-xs font-bold text-white truncate hover:text-[#c273ed]">{pl.name}</h4>
+                        <p className="text-[10px] text-white/50">{Array.isArray(pl.songIds) ? pl.songIds.length : 0} bài hát &bull; Chạm để xem</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {/* Requirement 3: Phát theo thứ tự và phát random */}
@@ -1069,7 +1080,7 @@ export const MobileAppLayout: React.FC = () => {
 
       case 'albums':
         return (
-          <div className="pb-32 px-3 pt-2 max-w-6xl mx-auto">
+          <div className="pb-32 px-1 sm:px-2 pt-1 w-full max-w-full">
             <CuratedAlbumsView />
           </div>
         );

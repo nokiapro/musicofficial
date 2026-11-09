@@ -137,6 +137,8 @@ interface MusicContextType {
 
   // Custom Playlists
   playlists: Playlist[];
+  selectedPlaylist: Playlist | null;
+  setSelectedPlaylist: (playlist: Playlist | null) => void;
   createPlaylist: (name: string, description?: string) => Promise<Playlist>;
   deletePlaylist: (id: string) => Promise<void>;
   addSongToPlaylist: (playlistId: string, songId: string) => Promise<void>;
@@ -313,7 +315,16 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
   const [songToDownload, setSongToDownload] = useState<Song | null>(null);
   const [playbackRate, setPlaybackRateState] = useState<number>(1.0);
-  const [crossfadeDuration, setCrossfadeDurationState] = useState<number>(3);
+  const [crossfadeDuration, setCrossfadeDurationState] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('xuanken_crossfade_duration');
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0) return parsed;
+      }
+    } catch (e) {}
+    return 3;
+  });
   const [isAudioSettingsModalOpen, setIsAudioSettingsModalOpen] = useState<boolean>(false);
 
   const openDownloadModal = (song: Song) => {
@@ -324,13 +335,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setSongAudioFormat = (songId: string, format: 'MP3' | 'WAV') => {
     setSongFormatMap((prev) => {
       const updated = { ...prev, [songId]: format };
-      MusicService.saveAudioSettings(preferredAudioFormat, updated, currentUser?.uid);
+      MusicService.saveAudioSettings(preferredAudioFormat, updated, currentUser?.uid, crossfadeDuration);
       return updated;
     });
   };
 
   // Playlists
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState<boolean>(false);
   const [songForPlaylistModal, setSongForPlaylistModal] = useState<Song | null>(null);
 
@@ -406,6 +418,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Requirement 8: Nghe đủ 5 giây trở lên mới tính là 1 lượt nghe
   const hasCountedPlayRef = useRef<boolean>(false);
   const lastEndedTimestampRef = useRef<number>(0);
+  // Requirement 4: Track recently played songs in random/shuffle mode to prevent ping-ponging (e.g. 1 -> 2 -> 1)
+  const recentPlayedIdsRef = useRef<string[]>([]);
 
   // Synchronized refs to eliminate stale closure bugs during continuous audio playback
   const repeatModeRef = useRef<RepeatMode>(repeatMode);
@@ -652,18 +666,23 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setVouchers(loadedVouchers || []);
     });
 
-    if (currentUser?.uid) {
-      MusicService.fetchAudioSettings(currentUser.uid).then((settings) => {
-        if (settings) {
-          if (settings.preferredFormat) {
-            setPreferredAudioFormatState(settings.preferredFormat);
-          }
-          if (settings.formatMap && Object.keys(settings.formatMap).length > 0) {
-            setSongFormatMap(settings.formatMap);
-          }
+    MusicService.fetchAudioSettings(currentUser?.uid).then((settings) => {
+      if (settings) {
+        if (settings.preferredFormat) {
+          setPreferredAudioFormatState(settings.preferredFormat);
         }
-      });
-    }
+        if (settings.formatMap && Object.keys(settings.formatMap).length > 0) {
+          setSongFormatMap(settings.formatMap);
+        }
+        if (settings.crossfadeDuration !== undefined) {
+          setCrossfadeDurationState(settings.crossfadeDuration);
+          audioEngine.setCrossfadeDuration(settings.crossfadeDuration);
+          try {
+            localStorage.setItem('xuanken_crossfade_duration', settings.crossfadeDuration.toString());
+          } catch (e) {}
+        }
+      }
+    });
 
     MusicService.fetchSiteSettings().then((loaded) => {
       if (loaded) {
@@ -836,7 +855,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setPreferredAudioFormat = (fmt: 'MP3' | 'WAV') => {
     setPreferredAudioFormatState(fmt);
-    MusicService.saveAudioSettings(fmt, songFormatMap, currentUser?.uid);
+    MusicService.saveAudioSettings(fmt, songFormatMap, currentUser?.uid, crossfadeDuration);
     if (currentSong && isPlaying) {
       const activePurchased = isSongPurchased(currentSong.id);
       const songFormat = songFormatMap[currentSong.id] || fmt;
@@ -903,6 +922,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Audio Playback & Duration resolution
   useEffect(() => {
+    if (!isPlaying) {
+      if (!audioEngine.isAudioPaused()) {
+        audioEngine.pause();
+      }
+      return;
+    }
+
     if (isPlaying && currentSong) {
       const activePurchased = isSongPurchased(currentSong.id);
       const songFormat = songFormatMap[currentSong.id] || preferredAudioFormat;
@@ -914,6 +940,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setDuration(dur);
           }
         });
+      } else if (audioEngine.isAudioPaused()) {
+        audioEngine.resume().catch(() => {});
       }
     }
   }, [isPlaying, currentSong?.id, preferredAudioFormat, songFormatMap]);
@@ -1027,6 +1055,26 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
 
+  // Helper to pick a non-repeating random song from a candidate pool
+  const pickNonRepeatingRandom = (pool: Song[], currentSongId?: string): Song | null => {
+    if (!pool || pool.length === 0) return null;
+    if (pool.length === 1) return pool[0];
+
+    // Exclude current song
+    let candidates = pool.filter((s) => s.id !== currentSongId);
+    if (candidates.length === 0) candidates = pool;
+
+    // Avoid recently played songs (up to 70% of pool size, max 20, min 1)
+    const avoidCount = Math.min(candidates.length - 1, Math.max(1, Math.floor(pool.length * 0.7)));
+    const recentToAvoid = new Set(recentPlayedIdsRef.current.slice(0, avoidCount));
+
+    const filteredCandidates = candidates.filter((s) => !recentToAvoid.has(s.id));
+    const finalPool = filteredCandidates.length > 0 ? filteredCandidates : candidates;
+
+    const randomIndex = Math.floor(Math.random() * finalPool.length);
+    return finalPool[randomIndex];
+  };
+
   // Helper to pick random song from active pool (supports playlist and main library)
   const getRandomSong = (excludeCurrent: boolean = true): Song | null => {
     const blocked = blockedSongIdsRef.current;
@@ -1035,11 +1083,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (activePool.length === 0) return null;
 
     const current = currentSongRef.current;
-    const pool = excludeCurrent && current && activePool.length > 1
-      ? activePool.filter((s) => s.id !== current.id)
-      : activePool;
-    const randomIndex = Math.floor(Math.random() * pool.length);
-    return pool[randomIndex];
+    return pickNonRepeatingRandom(activePool, excludeCurrent && current ? current.id : undefined);
   };
 
   const handleSongEnd = () => {
@@ -1088,8 +1132,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         if (isShuffleActive) {
-          const pool = albumSongs.filter((s) => s.id !== currentSongItem.id);
-          const chosen = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : albumSongs[0];
+          const chosen = pickNonRepeatingRandom(albumSongs, currentSongItem.id) || albumSongs[0];
           playSong(chosen);
           return;
         }
@@ -1225,6 +1268,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     setIsPlaying(true);
 
+    // Track recently played song ID for non-repeating shuffle
+    recentPlayedIdsRef.current = [song.id, ...recentPlayedIdsRef.current.filter((id) => id !== song.id)].slice(0, 50);
+
     const activePurchased = isSongPurchased(song.id);
     const chosenFormat = formatOverride || songFormatMap[song.id] || preferredAudioFormat;
     const activeUrl = resolveAudioUrl(song, chosenFormat, activePurchased);
@@ -1248,7 +1294,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       return;
     }
-    setIsPlaying((prev) => !prev);
+    if (isPlaying) {
+      setIsPlaying(false);
+      audioEngine.pause();
+    } else {
+      setIsPlaying(true);
+      if (audioEngine.isAudioPaused() && audioEngine.getCurrentUrl()) {
+        audioEngine.resume().catch(() => {});
+      } else if (currentSong) {
+        playSong(currentSong);
+      }
+    }
   };
 
   const seekTo = (seconds: number) => {
@@ -1294,8 +1350,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         activePlaylistSongsRef.current = albumSongs;
 
         if (isShuffleActive) {
-          const pool = albumSongs.filter((s) => s.id !== currentSongItem.id);
-          const chosen = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : albumSongs[0];
+          const chosen = pickNonRepeatingRandom(albumSongs, currentSongItem.id) || albumSongs[0];
           playSong(chosen);
           return;
         }
@@ -1369,8 +1424,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         activePlaylistSongsRef.current = albumSongs;
 
         if (isShuffleActive) {
-          const pool = albumSongs.filter((s) => s.id !== currentSongItem.id);
-          const chosen = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : albumSongs[0];
+          const unblockedHistory = historyRef.current.filter((s) => !blocked.includes(s.id) && s.albumId === currentSongItem.albumId);
+          if (unblockedHistory.length > 0) {
+            playSong(unblockedHistory[0]);
+            return;
+          }
+          const chosen = pickNonRepeatingRandom(albumSongs, currentSongItem.id) || albumSongs[0];
           playSong(chosen);
           return;
         }
@@ -1938,20 +1997,96 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, [currentSong, isPlaying]);
 
-  // 2. Deep Linking (?song=song-id or ?playlist=playlist-id)
+  // 2. Deep Linking (?song=song-id or ?album=album-id or ?playlist=playlist-id)
+  const hasProcessedDeepLinkRef = useRef(false);
   useEffect(() => {
+    if (hasProcessedDeepLinkRef.current) return;
     try {
-      const params = new URLSearchParams(window.location.search);
-      const songParam = params.get('song');
-      if (songParam && songs.length > 0) {
-        const found = songs.find((s) => s.id === songParam || s.id === `song-${songParam}`);
-        if (found) {
-          setCurrentSong(found);
-          setDuration(found.duration && found.duration > 0 ? found.duration : 210);
+      let songParam: string | null = null;
+      let albumParam: string | null = null;
+      let playlistParam: string | null = null;
+
+      if (typeof window !== 'undefined') {
+        const urlObj = new URL(window.location.href);
+        songParam = urlObj.searchParams.get('song');
+        albumParam = urlObj.searchParams.get('album');
+        playlistParam = urlObj.searchParams.get('playlist');
+
+        // Support hash params as fallback (e.g. #/?song=...)
+        if (!songParam && window.location.hash.includes('?')) {
+          const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
+          songParam = hashParams.get('song') || songParam;
+          albumParam = hashParams.get('album') || albumParam;
+          playlistParam = hashParams.get('playlist') || playlistParam;
+        }
+      }
+
+      if (songParam) {
+        const decodedParam = decodeURIComponent(songParam).trim().toLowerCase();
+
+        // Check if library/albums have loaded yet; if not, wait for next render
+        const hasSongsLoaded = (songs && songs.length > 0) || (exclusiveAlbums && exclusiveAlbums.length > 0);
+        if (!hasSongsLoaded) return;
+
+        // Search in standard songs
+        const standardSong = (songs || []).find(
+          (s) => s.id.toLowerCase() === decodedParam ||
+                 `song-${s.id}`.toLowerCase() === decodedParam ||
+                 s.id.toLowerCase() === `song-${decodedParam}`
+        );
+        if (standardSong) {
+          hasProcessedDeepLinkRef.current = true;
+          playSong(standardSong);
+          return;
+        }
+
+        // Search in allSearchableSongs
+        const searchableSong = (allSearchableSongs || []).find(
+          (s) => s.id.toLowerCase() === decodedParam ||
+                 `song-${s.id}`.toLowerCase() === decodedParam ||
+                 s.id.toLowerCase() === `song-${decodedParam}`
+        );
+        if (searchableSong) {
+          hasProcessedDeepLinkRef.current = true;
+          playSong(searchableSong);
+          return;
+        }
+
+        // Search in curated albums
+        for (const alb of (exclusiveAlbums || [])) {
+          const track = (alb.songs || []).find(
+            (s) => s.id.toLowerCase() === decodedParam ||
+                   `song-${s.id}`.toLowerCase() === decodedParam ||
+                   s.id.toLowerCase() === `song-${decodedParam}`
+          );
+          if (track) {
+            hasProcessedDeepLinkRef.current = true;
+            setSelectedAlbum(alb);
+            playAlbumTrack(track, alb);
+            return;
+          }
+        }
+      } else if (albumParam) {
+        const decodedAlbum = decodeURIComponent(albumParam).trim().toLowerCase();
+        const foundAlb = (exclusiveAlbums || []).find((a) => a.id.toLowerCase() === decodedAlbum);
+        if (foundAlb) {
+          hasProcessedDeepLinkRef.current = true;
+          setSelectedAlbum(foundAlb);
+          setActiveDesktopTab('albums');
+          setActiveMobileTab('albums');
+        }
+      } else if (playlistParam) {
+        const decodedPl = decodeURIComponent(playlistParam).trim().toLowerCase();
+        const foundPl = (playlists || []).find((p) => p.id.toLowerCase() === decodedPl);
+        if (foundPl) {
+          hasProcessedDeepLinkRef.current = true;
+          setSelectedPlaylist(foundPl);
+          setActiveDesktopTab('library');
+          setActiveMobileTab('library');
         }
       }
     } catch (e) {}
-  }, [songs]);
+  }, [songs, exclusiveAlbums, playlists, allSearchableSongs]);
 
   // 3. Playback Rate & Crossfade setters
   const setPlaybackRate = (rate: number) => {
@@ -1962,6 +2097,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setCrossfadeDuration = (sec: number) => {
     setCrossfadeDurationState(sec);
     audioEngine.setCrossfadeDuration(sec);
+    try {
+      localStorage.setItem('xuanken_crossfade_duration', sec.toString());
+    } catch (e) {}
+    MusicService.saveAudioSettings(preferredAudioFormat, songFormatMap, currentUser?.uid, sec);
   };
 
   // 4. Custom Playlists Handlers
@@ -2077,7 +2216,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const pool = (allSearchableSongs && allSearchableSongs.length > 0) ? allSearchableSongs : songs;
     const pSongs = pool.filter((s) => targetIds.includes(s.id) && !blockedSongIds.includes(s.id));
     if (pSongs.length > 0) {
-      playCustomPool(pSongs, playlist.name, mode === 'shuffle', pSongs[0]);
+      if (mode === 'shuffle') {
+        const randIdx = Math.floor(Math.random() * pSongs.length);
+        playCustomPool(pSongs, playlist.name, true, pSongs[randIdx]);
+      } else {
+        playCustomPool(pSongs, playlist.name, false, pSongs[0]);
+      }
     }
   };
 
@@ -2577,6 +2721,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isAudioSettingsModalOpen,
         setIsAudioSettingsModalOpen,
         playlists,
+        selectedPlaylist,
+        setSelectedPlaylist,
         createPlaylist,
         deletePlaylist,
         addSongToPlaylist,

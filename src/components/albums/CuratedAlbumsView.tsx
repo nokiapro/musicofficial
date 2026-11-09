@@ -125,9 +125,9 @@ export const CuratedAlbumsView: React.FC = () => {
       || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
 
     return (
-      <div className="space-y-6 pb-24 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
+      <div className="w-full max-w-full space-y-6 pb-24 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
         {/* Album Detail Layout */}
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start relative">
+        <div className="w-full max-w-full flex flex-col lg:flex-row gap-6 lg:gap-8 items-start relative">
           {/* CỘT TRÁI (Sticky): Đĩa tròn quay 360 độ + Thông tin + Nút phát */}
           <div className="w-full lg:w-72 xl:w-80 shrink-0 lg:sticky lg:top-4 flex flex-col items-center text-center self-start">
             <div
@@ -244,7 +244,7 @@ export const CuratedAlbumsView: React.FC = () => {
             </div>
 
             {/* Bảng danh sách bài hát */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xs relative">
+            <div className="w-full rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xs relative overflow-visible">
               {/* Tiêu đề cột:
                   - Trên Mobile (Requirement 6): Xóa thời gian, chuyển tim vào 3 gạch dọc
                   - Trên PC: Hiển thị đầy đủ
@@ -291,7 +291,7 @@ export const CuratedAlbumsView: React.FC = () => {
                       <div
                         key={song.id}
                         onClick={() => playAlbumTrack(song, selectedAlbum)}
-                        className={`relative flex items-center px-3 sm:px-4 py-2.5 transition-all cursor-pointer group ${
+                        className={`w-full relative flex items-center px-2 sm:px-4 py-2.5 transition-all cursor-pointer group ${
                           isCurrent
                             ? 'bg-purple-600/25 border-l-2 border-[#c273ed]'
                             : 'hover:bg-white/10'
@@ -395,7 +395,11 @@ export const CuratedAlbumsView: React.FC = () => {
                               />
                               <div
                                 ref={menuRef}
-                                className="absolute right-0 top-full mt-1 sm:top-8 w-52 rounded-2xl bg-zinc-900 border border-white/15 shadow-2xl p-1.5 z-50 text-xs backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 space-y-0.5"
+                                className={`absolute right-0 ${
+                                  idx >= Math.max(0, albumSongsList.length - 3)
+                                    ? 'bottom-full mb-1 origin-bottom-right'
+                                    : 'top-full mt-1 sm:top-8 origin-top-right'
+                                } w-52 rounded-2xl bg-[#1b122c] border border-white/20 shadow-2xl p-1.5 z-50 text-xs backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 space-y-0.5`}
                               >
                                 {/* Requirement 6: Yêu thích / Thả tim bài hát trong 3 gạch dọc */}
                                 <button
@@ -492,9 +496,9 @@ export const CuratedAlbumsView: React.FC = () => {
   // - HIỂN THỊ ALBUM NHẠC HAY THEO DẠNG LIST (THAY VÌ GRID)
   // =========================================================================
   return (
-    <div className="space-y-6 pb-24 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
+    <div className="w-full max-w-full space-y-6 pb-24 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
       {/* Top Banner Header: Clean Title only, No Subtitle, No Admin Button */}
-      <div className="border-b border-white/10 pb-4">
+      <div className="border-b border-white/10 pb-4 w-full">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white shadow-lg shrink-0">
             <Disc3 className="w-6 h-6 animate-spin-slow" />
@@ -512,22 +516,23 @@ export const CuratedAlbumsView: React.FC = () => {
 
       {/* Album List View (Dạng Danh Sách LIST theo Yêu Cầu 5) */}
       {exclusiveAlbums.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl bg-white/5 border border-white/10 text-white/50 text-xs space-y-2">
+        <div className="w-full p-12 text-center rounded-2xl bg-white/5 border border-white/10 text-white/50 text-xs space-y-2">
           <p>Chưa có Album nào trong hệ thống.</p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/10 bg-[#170f23]/90 shadow-2xl relative">
-          <div className="divide-y divide-white/5">
+        <div className="w-full rounded-2xl border border-white/10 bg-[#170f23]/90 shadow-2xl relative">
+          <div className="w-full divide-y divide-white/5">
             {exclusiveAlbums.map((album, idx) => {
               const isAlbumPlaying = isPlaying && currentSong?.album === album.title;
               const songCount = Array.isArray(album.songs) ? album.songs.length : 0;
+              const isNearBottom = idx >= Math.max(0, exclusiveAlbums.length - 2);
 
               return (
                 <div
                   key={album.id}
                   onClick={() => setSelectedAlbum(album)}
-                  className={`p-3.5 sm:p-4 hover:bg-white/5 transition-all cursor-pointer flex items-center justify-between gap-3 group relative rounded-2xl ${
-                    activeAlbumMenuId === album.id ? 'z-30' : 'z-10'
+                  className={`w-full p-4 sm:p-5 hover:bg-white/5 transition-all cursor-pointer flex items-center justify-between gap-4 group relative first:rounded-t-2xl last:rounded-b-2xl ${
+                    activeAlbumMenuId === album.id ? 'z-50' : 'z-10'
                   }`}
                 >
                   {/* Left: STT + Vinyl Thumbnail + Title & Artist */}
@@ -597,7 +602,9 @@ export const CuratedAlbumsView: React.FC = () => {
                         />
                         <div
                           ref={albumMenuRef}
-                          className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-zinc-900 border border-white/20 p-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 animate-in fade-in zoom-in-95 duration-200 select-none text-xs"
+                          className={`absolute right-0 ${
+                            isNearBottom ? 'bottom-full mb-2 origin-bottom-right' : 'top-full mt-2 origin-top-right'
+                          } w-56 rounded-2xl bg-[#1b122c] border border-white/20 p-2 shadow-[0_25px_60px_rgba(0,0,0,0.95)] z-50 animate-in fade-in zoom-in-95 duration-150 select-none text-xs`}
                         >
                         {/* 1. Chạy theo thứ tự */}
                         <button

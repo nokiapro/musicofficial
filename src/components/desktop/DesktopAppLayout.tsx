@@ -67,8 +67,8 @@ export const DesktopAppLayout: React.FC = () => {
         {/* Center Main Work Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <DesktopHeader />
-          <main className="flex-1 overflow-y-auto px-6 sm:px-8 py-6">
-            <div className="w-full max-w-[1580px] mx-auto">{renderContent()}</div>
+          <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5">
+            <div className="w-full max-w-full mx-auto">{renderContent()}</div>
           </main>
         </div>
 

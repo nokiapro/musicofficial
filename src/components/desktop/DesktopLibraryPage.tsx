@@ -13,6 +13,7 @@ import {
   Shuffle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { PlaylistDetailView } from '../playlist/PlaylistDetailView';
 
 export const DesktopLibraryPage: React.FC = () => {
   const {
@@ -21,6 +22,8 @@ export const DesktopLibraryPage: React.FC = () => {
     toggleLike,
     playSong,
     playlists,
+    selectedPlaylist,
+    setSelectedPlaylist,
     createPlaylist,
     deletePlaylist,
     playPlaylist,
@@ -342,7 +345,11 @@ export const DesktopLibraryPage: React.FC = () => {
       )}
 
       {/* TAB 2: PLAYLISTS CÁ NHÂN (Requirement 11: Làm theo dạng list!) */}
-      {activeTab === 'playlists' && (
+      {activeTab === 'playlists' && selectedPlaylist && (
+        <PlaylistDetailView playlist={selectedPlaylist} onBack={() => setSelectedPlaylist(null)} />
+      )}
+
+      {activeTab === 'playlists' && !selectedPlaylist && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -429,16 +436,20 @@ export const DesktopLibraryPage: React.FC = () => {
                           <td className="py-3.5 px-4 text-center font-mono text-white/40 font-bold">
                             {idx + 1}
                           </td>
-                          <td className="py-3.5 px-4">
+                          <td
+                            className="py-3.5 px-4 cursor-pointer"
+                            onClick={() => setSelectedPlaylist(pl)}
+                            title="Nhấp để xem danh sách bài hát trong playlist"
+                          >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-purple-600/20 text-[#c273ed] border border-purple-500/30 flex items-center justify-center shrink-0 shadow-md">
+                              <div className="w-10 h-10 rounded-xl bg-purple-600/20 text-[#c273ed] group-hover:bg-[#9b4de0] group-hover:text-white border border-purple-500/30 flex items-center justify-center shrink-0 shadow-md transition-all">
                                 <ListMusic className="w-5 h-5" />
                               </div>
                               <div className="truncate">
                                 <p className="font-bold text-white text-sm group-hover:text-[#c273ed] transition-colors truncate">
                                   {pl.name}
                                 </p>
-                                <p className="text-[10px] text-white/40">Tạo bởi cá nhân</p>
+                                <p className="text-[10px] text-white/40 group-hover:text-purple-300">Xem {count} bài hát &rarr;</p>
                               </div>
                             </div>
                           </td>

@@ -1032,14 +1032,16 @@ export const MusicService = {
   // -------------------------------------------------------------
   // Audio Format Settings (MP3 / WAV) Sync (Requirement 5)
   // -------------------------------------------------------------
-  async fetchAudioSettings(uid?: string): Promise<{ preferredFormat: 'MP3' | 'WAV'; formatMap: Record<string, 'MP3' | 'WAV'> } | null> {
+  async fetchAudioSettings(uid?: string): Promise<{ preferredFormat: 'MP3' | 'WAV'; formatMap: Record<string, 'MP3' | 'WAV'>; crossfadeDuration?: number } | null> {
     if (!uid) {
       try {
         const localPref = localStorage.getItem('xuanken_preferred_audio_format') as 'MP3' | 'WAV';
         const localMap = localStorage.getItem('xuanken_song_format_map');
+        const localCross = localStorage.getItem('xuanken_crossfade_duration');
         return {
           preferredFormat: localPref === 'WAV' ? 'WAV' : 'MP3',
           formatMap: localMap ? JSON.parse(localMap) : {},
+          crossfadeDuration: localCross !== null ? parseInt(localCross, 10) : undefined,
         };
       } catch (e) {
         return null;
@@ -1057,9 +1059,13 @@ export const MusicService = {
           if (val.formatMap) {
             localStorage.setItem('xuanken_song_format_map', JSON.stringify(val.formatMap));
           }
+          if (typeof val.crossfadeDuration === 'number') {
+            localStorage.setItem('xuanken_crossfade_duration', val.crossfadeDuration.toString());
+          }
           return {
             preferredFormat: val.preferredFormat === 'WAV' ? 'WAV' : 'MP3',
             formatMap: val.formatMap || {},
+            crossfadeDuration: typeof val.crossfadeDuration === 'number' ? val.crossfadeDuration : undefined,
           };
         }
       }
@@ -1072,30 +1078,46 @@ export const MusicService = {
     try {
       const localPref = localStorage.getItem('xuanken_preferred_audio_format') as 'MP3' | 'WAV';
       const localMap = localStorage.getItem('xuanken_song_format_map');
+      const localCross = localStorage.getItem('xuanken_crossfade_duration');
       return {
         preferredFormat: localPref === 'WAV' ? 'WAV' : 'MP3',
         formatMap: localMap ? JSON.parse(localMap) : {},
+        crossfadeDuration: localCross !== null ? parseInt(localCross, 10) : undefined,
       };
     } catch (e) {
       return null;
     }
   },
 
-  async saveAudioSettings(preferredFormat: 'MP3' | 'WAV', formatMap: Record<string, 'MP3' | 'WAV'>, uid?: string): Promise<void> {
-    const payload = {
+  async saveAudioSettings(
+    preferredFormat: 'MP3' | 'WAV',
+    formatMap: Record<string, 'MP3' | 'WAV'>,
+    uid?: string,
+    crossfadeDuration?: number
+  ): Promise<void> {
+    const payload: any = {
       preferredFormat,
       formatMap: cleanForFirebase(formatMap) || {},
+      crossfadeDuration: crossfadeDuration !== undefined ? crossfadeDuration : 3,
       updatedAt: new Date().toISOString(),
     };
     try {
       localStorage.setItem('xuanken_preferred_audio_format', preferredFormat);
       localStorage.setItem('xuanken_song_format_map', JSON.stringify(payload.formatMap));
+      if (crossfadeDuration !== undefined) {
+        localStorage.setItem('xuanken_crossfade_duration', crossfadeDuration.toString());
+      }
     } catch (e) {}
     try {
       const key = uid ? `users/${uid}/audio_settings` : 'audio_settings/shared';
       await set(ref(rtdb, key), payload);
       if (uid) {
-        await update(ref(rtdb, `members/${uid}`), { preferredAudioFormat: preferredFormat });
+        const memberUpdate: any = { preferredAudioFormat: preferredFormat };
+        if (crossfadeDuration !== undefined) {
+          memberUpdate.crossfadeDuration = crossfadeDuration;
+        }
+        await update(ref(rtdb, `members/${uid}`), memberUpdate);
+        await setDoc(doc(db, 'members', uid), memberUpdate, { merge: true });
       }
     } catch (e) {
       console.warn('Audio settings save notice:', e);

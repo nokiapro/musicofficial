@@ -10,7 +10,7 @@ export const ShareModal: React.FC = () => {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://xuanken.name.vn';
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const shareUrl = `${origin}${pathname}?song=${songToShare.id}`;
+  const shareUrl = `${origin}${pathname}?song=${encodeURIComponent(songToShare.id)}`;
 
   const handleCopy = () => {
     try {

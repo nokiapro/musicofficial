@@ -18,18 +18,81 @@ export class AudioEngine {
   private wakeLock: any = null;
   private onEndedCallback: (() => void) | null = null;
 
+  private isManualPause: boolean = false;
+  private wasInterrupted: boolean = false;
+  private interruptedByOtherMedia: boolean = false;
+
   constructor() {
     if (typeof window !== 'undefined') {
       this.initAudioElement();
+
       if (typeof document !== 'undefined') {
+        // Global listener: Auto-pause when another audio or video starts playing (mobile & web)
+        document.addEventListener(
+          'play',
+          (e) => {
+            const target = e.target as HTMLMediaElement;
+            if (
+              target &&
+              target !== this.audioElement &&
+              (target.tagName === 'VIDEO' || target.tagName === 'AUDIO')
+            ) {
+              if (this.isPlaying && this.audioElement && !this.audioElement.paused) {
+                this.interruptedByOtherMedia = true;
+                this.audioElement.pause();
+              }
+            }
+          },
+          true
+        );
+
+        // Global listener: Auto-resume when the interrupting video or audio pauses or ends
+        const checkAndResume = (e: Event) => {
+          const target = e.target as HTMLMediaElement;
+          if (
+            target &&
+            target !== this.audioElement &&
+            (target.tagName === 'VIDEO' || target.tagName === 'AUDIO')
+          ) {
+            setTimeout(() => {
+              if (this.interruptedByOtherMedia && this.isPlaying) {
+                const allMedia = Array.from(document.querySelectorAll('video, audio')) as HTMLMediaElement[];
+                const isAnyOtherPlaying = allMedia.some(
+                  (m) => m !== this.audioElement && !m.paused && !m.ended && m.readyState > 0
+                );
+                if (!isAnyOtherPlaying) {
+                  this.interruptedByOtherMedia = false;
+                  this.resume().catch(() => {});
+                }
+              }
+            }, 300);
+          }
+        };
+
+        document.addEventListener('pause', checkAndResume, true);
+        document.addEventListener('ended', checkAndResume, true);
+
+        // Visibility & Focus listener: Auto-recover when returning to app from phone call or other apps
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') {
-            if (this.isPlaying && this.audioElement && this.audioElement.paused) {
-              this.audioElement.play().catch(() => {});
+            if (this.isPlaying && (this.wasInterrupted || this.interruptedByOtherMedia)) {
+              this.wasInterrupted = false;
+              this.interruptedByOtherMedia = false;
+              this.resume().catch(() => {});
+            } else if (this.isPlaying && this.audioElement && this.audioElement.paused && !this.isManualPause) {
+              this.resume().catch(() => {});
             }
             if (this.isPlaying) {
               this.acquireWakeLock();
             }
+          }
+        });
+
+        window.addEventListener('focus', () => {
+          if (this.isPlaying && (this.wasInterrupted || this.interruptedByOtherMedia)) {
+            this.wasInterrupted = false;
+            this.interruptedByOtherMedia = false;
+            this.resume().catch(() => {});
           }
         });
       }
@@ -68,6 +131,9 @@ export class AudioEngine {
 
   public async resume(): Promise<void> {
     if (this.audioElement) {
+      this.isManualPause = false;
+      this.wasInterrupted = false;
+      this.interruptedByOtherMedia = false;
       this.isPlaying = true;
       this.audioElement.volume = this.isMuted ? 0 : this.volume;
       this.acquireWakeLock();
@@ -99,6 +165,16 @@ export class AudioEngine {
         if (this.onEndedCallback) {
           this.onEndedCallback();
         }
+      });
+
+      this.audioElement.addEventListener('pause', () => {
+        if (this.isPlaying && !this.isManualPause) {
+          this.wasInterrupted = true;
+        }
+      });
+
+      this.audioElement.addEventListener('play', () => {
+        this.wasInterrupted = false;
       });
 
       this.audioElement.addEventListener('error', (e) => {
@@ -224,12 +300,18 @@ export class AudioEngine {
   }
 
   public pause() {
+    this.isManualPause = true;
     this.isPlaying = false;
+    this.wasInterrupted = false;
+    this.interruptedByOtherMedia = false;
     this.releaseWakeLock();
     if (this.audioElement) {
       this.audioElement.pause();
       this.audioElement.volume = this.isMuted ? 0 : this.volume;
     }
+    setTimeout(() => {
+      this.isManualPause = false;
+    }, 150);
   }
 
   public seek(seconds: number) {
