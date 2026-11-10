@@ -1080,7 +1080,7 @@ export const MobileAppLayout: React.FC = () => {
 
       case 'albums':
         return (
-          <div className="pb-32 px-1 sm:px-2 pt-1 w-full max-w-full">
+          <div className="space-y-3 px-3 pb-32 pt-2 select-none">
             <CuratedAlbumsView />
           </div>
         );

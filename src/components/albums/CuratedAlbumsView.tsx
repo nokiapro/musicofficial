@@ -395,11 +395,7 @@ export const CuratedAlbumsView: React.FC = () => {
                               />
                               <div
                                 ref={menuRef}
-                                className={`absolute right-0 ${
-                                  idx >= Math.max(0, albumSongsList.length - 3)
-                                    ? 'bottom-full mb-1 origin-bottom-right'
-                                    : 'top-full mt-1 sm:top-8 origin-top-right'
-                                } w-52 rounded-2xl bg-[#1b122c] border border-white/20 shadow-2xl p-1.5 z-50 text-xs backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 space-y-0.5`}
+                                className="absolute right-0 top-full mt-1.5 w-52 rounded-2xl bg-[#1b122c] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.95)] p-1.5 z-50 text-xs backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 space-y-0.5 origin-top-right"
                               >
                                 {/* Requirement 6: Yêu thích / Thả tim bài hát trong 3 gạch dọc */}
                                 <button
@@ -496,7 +492,7 @@ export const CuratedAlbumsView: React.FC = () => {
   // - HIỂN THỊ ALBUM NHẠC HAY THEO DẠNG LIST (THAY VÌ GRID)
   // =========================================================================
   return (
-    <div className="w-full max-w-full space-y-6 pb-24 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
+    <div className="w-full max-w-full space-y-6 pb-36 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
       {/* Top Banner Header: Clean Title only, No Subtitle, No Admin Button */}
       <div className="border-b border-white/10 pb-4 w-full">
         <div className="flex items-center gap-3">
@@ -525,7 +521,6 @@ export const CuratedAlbumsView: React.FC = () => {
             {exclusiveAlbums.map((album, idx) => {
               const isAlbumPlaying = isPlaying && currentSong?.album === album.title;
               const songCount = Array.isArray(album.songs) ? album.songs.length : 0;
-              const isNearBottom = idx >= Math.max(0, exclusiveAlbums.length - 2);
 
               return (
                 <div
@@ -593,7 +588,7 @@ export const CuratedAlbumsView: React.FC = () => {
                       <MoreVertical className="w-5 h-5" />
                     </button>
 
-                    {/* Dropdown Menu - Yêu Cầu 4: hiển thị trọn vẹn không bị cắt viền */}
+                    {/* Dropdown Menu - Yêu Cầu: mở xuống dưới sang bên trái */}
                     {activeAlbumMenuId === album.id && (
                       <>
                         <div
@@ -602,9 +597,7 @@ export const CuratedAlbumsView: React.FC = () => {
                         />
                         <div
                           ref={albumMenuRef}
-                          className={`absolute right-0 ${
-                            isNearBottom ? 'bottom-full mb-2 origin-bottom-right' : 'top-full mt-2 origin-top-right'
-                          } w-56 rounded-2xl bg-[#1b122c] border border-white/20 p-2 shadow-[0_25px_60px_rgba(0,0,0,0.95)] z-50 animate-in fade-in zoom-in-95 duration-150 select-none text-xs`}
+                          className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-[#1b122c] border border-white/20 p-2 shadow-[0_25px_60px_rgba(0,0,0,0.95)] z-50 animate-in fade-in zoom-in-95 duration-150 select-none text-xs origin-top-right"
                         >
                         {/* 1. Chạy theo thứ tự */}
                         <button
