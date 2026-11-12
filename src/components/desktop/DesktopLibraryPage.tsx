@@ -14,10 +14,12 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { PlaylistDetailView } from '../playlist/PlaylistDetailView';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const DesktopLibraryPage: React.FC = () => {
   const {
     songs,
+    allSearchableSongs,
     likedSongIds,
     toggleLike,
     playSong,
@@ -63,38 +65,12 @@ export const DesktopLibraryPage: React.FC = () => {
     };
   }, [isPlayMenuOpen]);
 
-  // Requirement 3: Thư viện cá nhân chỉ khi đăng nhập mới hiện
-  if (!currentUser) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[55vh] text-center p-8 rounded-3xl bg-white/5 border border-white/10 select-none">
-        <div
-          className="w-16 h-16 rounded-3xl flex items-center justify-center text-white mb-4 shadow-xl"
-          style={{ backgroundColor: 'var(--color-accent)' }}
-        >
-          <FolderHeart className="w-8 h-8" />
-        </div>
-        <h2 className="text-2xl font-black text-white mb-2 font-['Roboto_Condensed'] uppercase tracking-tight">
-          Thư Viện Cá Nhân
-        </h2>
-        <p className="text-sm text-white/60 max-w-md mb-6 leading-relaxed">
-          Vui lòng đăng nhập để truy cập Thư Viện Cá Nhân, xem danh sách bài hát yêu thích, bài hát đã mua và quản lý các danh sách phát của riêng bạn.
-        </p>
-        <button
-          onClick={() => setIsLoginModalOpen(true)}
-          style={{ backgroundColor: 'var(--color-accent)' }}
-          className="px-6 py-2.5 rounded-xl text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>Đăng Nhập Ngay</span>
-        </button>
-      </div>
-    );
-  }
-
   // Requirement 3: Mỗi tài khoản là thư viện và playlist của người đó
-  const userPlaylists = playlists.filter((p) => !p.userId || p.userId === currentUser.uid);
+  const userPlaylists = playlists.filter((p) => !p.userId || (currentUser && p.userId === currentUser.uid));
 
-  const likedSongs = songs.filter((s) => likedSongIds.includes(s.id));
+  // Gộp tất cả bài hát từ catalog và album tuyển chọn để bài hát đã tim luôn hiển thị trên mọi thiết bị
+  const librarySongPool = allSearchableSongs && allSearchableSongs.length > 0 ? allSearchableSongs : songs;
+  const likedSongs = librarySongPool.filter((s) => likedSongIds.includes(s.id));
   const purchasedSongs = songs.filter((s) => isSongPurchased(s.id));
 
   const totalLikedPages = Math.max(1, Math.ceil(likedSongs.length / PAGE_SIZE));
@@ -102,8 +78,6 @@ export const DesktopLibraryPage: React.FC = () => {
 
   const totalPurchasedPages = Math.max(1, Math.ceil(purchasedSongs.length / PAGE_SIZE));
   const paginatedPurchasedSongs = purchasedSongs.slice((purchasedPage - 1) * PAGE_SIZE, purchasedPage * PAGE_SIZE);
-
-
 
   const librarySongs = likedSongs.length > 0 ? likedSongs : purchasedSongs.length > 0 ? purchasedSongs : songs;
 
@@ -226,7 +200,22 @@ export const DesktopLibraryPage: React.FC = () => {
 
       {/* TAB 1: YÊU THÍCH */}
       {activeTab === 'liked' && (
-        <div>
+        <div className="space-y-3">
+          {!currentUser && likedSongs.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-purple-600/15 border border-purple-500/30 text-xs text-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+              <span className="flex items-center gap-2">
+                <span className="text-base">💡</span>
+                <span>Bạn đang xem bài hát đã tim trên thiết bị này. Đăng nhập để tự động đồng bộ sang tất cả các thiết bị khác!</span>
+              </span>
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 self-start sm:self-auto cursor-pointer shadow transition-all active:scale-95"
+              >
+                Đăng Nhập Ngay
+              </button>
+            </div>
+          )}
+
           {likedSongs.length === 0 ? (
             <div className="py-20 text-center bg-white/5 rounded-3xl border border-white/5">
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto text-white/40 mb-3">
@@ -270,13 +259,13 @@ export const DesktopLibraryPage: React.FC = () => {
                       <p className="text-sm font-bold text-white truncate group-hover:text-[#c273ed] transition-colors">
                         {song.title}
                       </p>
-                      <p className="text-xs text-white/50 truncate mt-0.5">
-                        {song.artists}
-                      </p>
+                      <div className="text-xs text-white/50 truncate mt-0.5">
+                        <ArtistNames artists={song.artists} className="text-xs" linkClassName="text-white/50 hover:text-purple-300" />
+                      </div>
                     </div>
                   </div>
                   <div className="hidden md:block w-48 text-xs text-white/50 truncate">
-                    {song.artists}
+                    <ArtistNames artists={song.artists} className="text-xs" linkClassName="text-white/50 hover:text-purple-300" />
                   </div>
                   <div className="w-24 text-center">
                     <span className="text-[10px] font-black px-2 py-0.5 rounded bg-white/10 text-white/70">

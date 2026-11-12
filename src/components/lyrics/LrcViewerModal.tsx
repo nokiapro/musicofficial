@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, FileText, Copy, Check, Download, Mic2 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const LrcViewerModal: React.FC = () => {
   const { selectedLrcSong, setSelectedLrcSong, setIsLyricsOpen, theme } = useMusic();
@@ -60,7 +61,9 @@ export const LrcViewerModal: React.FC = () => {
               <h2 className="text-base font-bold text-white truncate max-w-xs sm:max-w-md">
                 Tệp Lời Bài Hát (LRC): {selectedLrcSong.title}
               </h2>
-              <p className="text-xs text-white/50">{selectedLrcSong.artists}</p>
+              <div className="text-xs text-white/50">
+                <ArtistNames artists={selectedLrcSong.artists} linkClassName="text-white/50 hover:text-purple-300" />
+              </div>
             </div>
           </div>
           <button

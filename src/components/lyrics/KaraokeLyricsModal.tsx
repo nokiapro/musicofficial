@@ -14,6 +14,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { cleanLyricText } from '../../utils/lyricUtils';
 import { SoundWaveIcon } from '../common/SoundWaveIcon';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const KaraokeLyricsModal: React.FC = () => {
   const {
@@ -151,7 +152,9 @@ export const KaraokeLyricsModal: React.FC = () => {
             <h1 className="text-base font-bold truncate max-w-xs md:max-w-md text-[var(--text-primary)]">
               {currentSong.title}
             </h1>
-            <p className="text-xs text-[var(--text-secondary)] truncate">{currentSong.artists}</p>
+            <div className="text-xs text-[var(--text-secondary)] truncate">
+              <ArtistNames artists={currentSong.artists} linkClassName="text-[var(--text-secondary)] hover:text-purple-300" />
+            </div>
           </div>
         </div>
 

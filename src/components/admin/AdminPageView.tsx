@@ -28,12 +28,14 @@ import {
   Sliders,
   Upload,
   Disc3,
+  Mic2,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song, AppUser, AudioFormat } from '../../types/music';
 import { audioEngine } from '../../services/audioEngine';
 import { testFirebaseConnection } from '../../services/firebase';
 import { AdminCuratedAlbumsTab } from './AdminCuratedAlbumsTab';
+import { AdminArtistBiosTab } from './AdminArtistBiosTab';
 
 export const AdminPageView: React.FC = () => {
   const {
@@ -61,7 +63,7 @@ export const AdminPageView: React.FC = () => {
     exclusiveAlbums,
   } = useMusic();
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'albums' | 'members' | 'rules' | 'vouchers' | 'settings'>('songs');
+  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'albums' | 'artists' | 'members' | 'rules' | 'vouchers' | 'settings'>('songs');
 
   // Website Settings State (Item 11)
   const [siteNameInput, setSiteNameInput] = useState(siteSettings?.siteName || 'XuanKen Music');
@@ -628,6 +630,18 @@ export const AdminPageView: React.FC = () => {
           <span>Album Nhạc Hay ({exclusiveAlbums.length})</span>
         </button>
         <button
+          onClick={() => setActiveAdminTab('artists')}
+          style={activeAdminTab === 'artists' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+            activeAdminTab === 'artists'
+              ? 'text-white shadow'
+              : 'text-white/60 hover:text-white'
+          }`}
+        >
+          <Mic2 className="w-3.5 h-3.5" />
+          <span>Ca Sĩ & Tiểu Sử</span>
+        </button>
+        <button
           onClick={() => setActiveAdminTab('members')}
           style={activeAdminTab === 'members' ? { backgroundColor: 'var(--color-accent)' } : undefined}
           className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
@@ -1002,6 +1016,11 @@ export const AdminPageView: React.FC = () => {
       {/* TAB: QUẢN LÝ ALBUM NHẠC HAY */}
       {activeAdminTab === 'albums' && (
         <AdminCuratedAlbumsTab />
+      )}
+
+      {/* TAB: QUẢN LÝ CA SĨ & TIỂU SỬ */}
+      {activeAdminTab === 'artists' && (
+        <AdminArtistBiosTab />
       )}
 
       {/* TAB 2: QUẢN LÝ THÀNH VIÊN */}
@@ -2318,15 +2337,27 @@ service firebase.storage {
                   />
                 </div>
                 <div>
-                  <label className="block text-white/70 mb-1 font-bold">Tên ca sỹ *</label>
+                  <label className="block text-white/70 mb-1 font-bold">
+                    Tên ca sỹ * (Nhiều ca sĩ cách nhau bằng dấu phẩy)
+                  </label>
                   <input
                     type="text"
                     required
                     value={artists}
                     onChange={(e) => setArtists(e.target.value)}
-                    placeholder="VD: Sơn Tùng M-TP"
+                    placeholder="VD: Sơn Tùng M-TP, JustaTee"
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#9b4de0]"
                   />
+                  {artists.includes(',') && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="text-[10px] text-white/40">Tách riêng từng ca sĩ:</span>
+                      {artists.split(',').map((a, i) => a.trim() && (
+                        <span key={i} className="px-2 py-0.5 rounded-md bg-purple-600/30 border border-purple-500/40 text-[10px] text-purple-300 font-medium">
+                          {a.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

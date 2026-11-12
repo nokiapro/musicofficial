@@ -1139,15 +1139,25 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-white/80 font-bold mb-1.5">Ca Sĩ Thể Hiện (*)</label>
+                  <label className="block text-white/80 font-bold mb-1.5">Ca Sĩ Thể Hiện (*) (Nhiều ca sĩ cách nhau dấu phẩy)</label>
                   <input
                     type="text"
                     required
                     value={songArtists}
                     onChange={(e) => setSongArtists(e.target.value)}
-                    placeholder="Ví dụ: XuanKen"
+                    placeholder="Ví dụ: Sơn Tùng M-TP, JustaTee"
                     className="w-full bg-black/40 border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-xs focus:outline-none focus:border-purple-500"
                   />
+                  {songArtists.includes(',') && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="text-[10px] text-white/40">Tách riêng:</span>
+                      {songArtists.split(',').map((a, i) => a.trim() && (
+                        <span key={i} className="px-2 py-0.5 rounded-md bg-purple-600/30 border border-purple-500/40 text-[10px] text-purple-300 font-medium">
+                          {a.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

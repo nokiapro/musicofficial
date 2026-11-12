@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play, Pause, SkipForward, Heart } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const MobileMiniPlayer: React.FC = () => {
   const {
@@ -95,7 +96,12 @@ export const MobileMiniPlayer: React.FC = () => {
           {/* Song title and artist */}
           <div className="truncate min-w-0">
             <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate leading-tight">{currentSong.title}</p>
-            <p className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">{currentSong.artists}</p>
+            <div className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">
+              <ArtistNames
+                artists={currentSong.artists}
+                linkClassName="text-[var(--text-secondary)] hover:text-purple-300"
+              />
+            </div>
           </div>
         </div>
 

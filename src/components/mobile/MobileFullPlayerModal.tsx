@@ -23,9 +23,11 @@ import {
   X,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { ArtistNames } from '../common/ArtistNames';
 import { MobilePlayerActionSheet } from './MobilePlayerActionSheet';
 import { cleanLyricText } from '../../utils/lyricUtils';
 import { SoundWaveIcon } from '../common/SoundWaveIcon';
+import { formatArtistName, formatArtistsString } from '../../utils/artistUtils';
 
 export const MobileFullPlayerModal: React.FC = () => {
   const {
@@ -57,6 +59,7 @@ export const MobileFullPlayerModal: React.FC = () => {
     openDownloadModal,
     playbackSource,
     setIsThemeModalOpen,
+    navigateToArtist,
     openAddToPlaylistModal,
     theme,
   } = useMusic();
@@ -359,9 +362,9 @@ export const MobileFullPlayerModal: React.FC = () => {
                     <h3 className="text-base font-black text-[var(--text-primary)] truncate leading-snug">
                       {currentSong.title}
                     </h3>
-                    <p className="text-xs text-[var(--text-secondary)] truncate mt-0.5 font-medium">
-                      {currentSong.artists}
-                    </p>
+                    <div className="text-xs text-[var(--text-secondary)] truncate mt-0.5 font-medium">
+                      <ArtistNames artists={currentSong.artists} linkClassName="text-[var(--text-secondary)] hover:text-purple-300" />
+                    </div>
                     {/* Requirement 4: Lượt tim và lượt nghe hiển thị đúng theo thời gian thực */}
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-[var(--text-secondary)]">
                       <button
@@ -402,7 +405,7 @@ export const MobileFullPlayerModal: React.FC = () => {
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[var(--text-secondary)] font-medium">Nhạc sĩ</span>
                     <span className="text-[var(--text-primary)] font-bold text-right truncate">
-                      {currentSong.composer || currentSong.artists || 'XuanKen'}
+                      {currentSong.composer ? formatArtistName(currentSong.composer) : formatArtistsString(currentSong.artists) || 'XuanKen'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -535,7 +538,16 @@ export const MobileFullPlayerModal: React.FC = () => {
             <h2 className="text-base sm:text-lg font-black text-[var(--text-primary)] truncate leading-snug">
               {currentSong.title}
             </h2>
-            <p className="text-xs text-[var(--text-secondary)] truncate mt-0.5">{currentSong.artists}</p>
+            <div className="text-xs text-[var(--text-secondary)] truncate mt-0.5">
+              <ArtistNames
+                artists={currentSong.artists}
+                linkClassName="text-[var(--text-secondary)] hover:text-purple-300"
+                onArtistClick={(name) => {
+                  setIsMobileFullPlayerOpen(false);
+                  navigateToArtist(name);
+                }}
+              />
+            </div>
           </div>
 
           {/* Right: Heart / Like Icon */}
@@ -856,7 +868,9 @@ export const MobileFullPlayerModal: React.FC = () => {
                             >
                               {song.title}
                             </p>
-                            <p className="text-[10px] text-[var(--text-secondary)] truncate mt-0.5">{song.artists}</p>
+                            <div className="text-[10px] text-[var(--text-secondary)] truncate mt-0.5">
+                              <ArtistNames artists={song.artists} linkClassName="text-[var(--text-secondary)] hover:text-purple-300" />
+                            </div>
                           </div>
                         </div>
                         <Play

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Clock, Trash2, Play, X, Music } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Visualizer } from '../common/Visualizer';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const DesktopQueueDrawer: React.FC = () => {
   const {
@@ -105,7 +106,9 @@ export const DesktopQueueDrawer: React.FC = () => {
                     </div>
                     <div className="truncate">
                       <p className="text-sm font-semibold text-white truncate">{currentSong.title}</p>
-                      <p className="text-xs text-[#c273ed] truncate">{currentSong.artists}</p>
+                      <div className="text-xs text-[#c273ed] truncate">
+                        <ArtistNames artists={currentSong.artists} linkClassName="text-[#c273ed] hover:text-white" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -161,7 +164,9 @@ export const DesktopQueueDrawer: React.FC = () => {
                         </div>
                         <div className="truncate">
                           <p className="text-xs font-semibold text-white truncate group-hover:text-[#c273ed] transition-colors">{song.title}</p>
-                          <p className="text-[11px] text-white/50 truncate">{song.artists}</p>
+                          <div className="text-[11px] text-white/50 truncate">
+                            <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                          </div>
                         </div>
                       </div>
 

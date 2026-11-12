@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ThemeId } from '../../types/music';
+import { formatArtistsString } from '../../utils/artistUtils';
 
 export const DesktopHeader: React.FC = () => {
   const {
@@ -204,7 +205,7 @@ export const DesktopHeader: React.FC = () => {
                         <div className="truncate">
                           <p className="text-sm font-semibold text-white truncate group-hover:text-[#c273ed] transition-colors">{song.title}</p>
                           <p className="text-xs text-white/60 truncate">
-                            {song.artists} {song.isAlbumTrack ? `• Album: ${song.album}` : ''}
+                            {formatArtistsString(song.artists)} {song.isAlbumTrack ? `• Album: ${song.album}` : ''}
                           </p>
                         </div>
                       </div>

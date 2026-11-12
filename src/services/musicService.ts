@@ -1,7 +1,7 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
 import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { rtdb, db, auth } from './firebase';
-import { Song, AppUser, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
+import { Song, AppUser, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage, ArtistBio } from '../types/music';
 import { SONGS_DATABASE } from '../data/songs';
 
 const STORAGE_KEY_SONGS = 'xuanken_music_songs_v3';
@@ -1510,6 +1510,130 @@ export const MusicService = {
       return () => {};
     }
   },
+
+  // -------------------------------------------------------------
+  // Artist Biographies Management (Tiểu Sử Ca Sĩ)
+  // -------------------------------------------------------------
+  async fetchArtistBios(): Promise<ArtistBio[]> {
+    try {
+      const dbRef = ref(rtdb);
+      const snapshot = await get(child(dbRef, 'artist_bios'));
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        let list: ArtistBio[] = [];
+        if (Array.isArray(val)) {
+          list = val.filter(Boolean);
+        } else if (typeof val === 'object' && val !== null) {
+          list = Object.values(val);
+        }
+        if (list.length > 0) {
+          localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(list));
+          return list;
+        }
+      }
+    } catch (e) {
+      console.warn('Firebase fetchArtistBios notice:', e);
+    }
+
+    try {
+      const local = localStorage.getItem('xuanken_artist_bios_v1');
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+
+    localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(DEFAULT_ARTIST_BIOS));
+    return DEFAULT_ARTIST_BIOS;
+  },
+
+  async saveArtistBios(bios: ArtistBio[]): Promise<{ success: boolean; error?: string }> {
+    const clean = cleanForFirebase(bios) || [];
+    try {
+      localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(clean));
+    } catch (e) {}
+
+    let success = false;
+    let lastError = '';
+
+    try {
+      const map: Record<string, ArtistBio> = {};
+      clean.forEach((b: ArtistBio) => {
+        if (b && b.id) map[b.id] = b;
+      });
+      await set(ref(rtdb, 'artist_bios'), map);
+      success = true;
+    } catch (err: any) {
+      lastError = err?.message || String(err);
+      console.error('Firebase saveArtistBios error:', err);
+    }
+
+    try {
+      for (const b of clean) {
+        if (b && b.id) {
+          await setDoc(doc(db, 'artist_bios', b.id), b, { merge: true });
+        }
+      }
+      success = true;
+    } catch (err: any) {
+      if (!lastError) lastError = err?.message || String(err);
+    }
+
+    return { success, error: success ? undefined : lastError };
+  },
+
+  async upsertArtistBio(bio: ArtistBio): Promise<{ success: boolean; error?: string }> {
+    const clean = cleanForFirebase(bio);
+    try {
+      const local = localStorage.getItem('xuanken_artist_bios_v1');
+      const list: ArtistBio[] = local ? JSON.parse(local) : [...DEFAULT_ARTIST_BIOS];
+      const idx = list.findIndex((b) => b.id === bio.id || b.name.toLowerCase() === bio.name.toLowerCase());
+      if (idx >= 0) {
+        list[idx] = clean;
+      } else {
+        list.push(clean);
+      }
+      localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(list));
+    } catch (e) {}
+
+    let success = false;
+    let lastError = '';
+
+    try {
+      await set(ref(rtdb, `artist_bios/${bio.id}`), clean);
+      success = true;
+    } catch (err: any) {
+      lastError = err?.message || String(err);
+    }
+
+    try {
+      await setDoc(doc(db, 'artist_bios', bio.id), clean, { merge: true });
+      success = true;
+    } catch (err: any) {
+      if (!lastError) lastError = err?.message || String(err);
+    }
+
+    return { success, error: success ? undefined : lastError };
+  },
+
+  async deleteArtistBio(id: string): Promise<void> {
+    try {
+      const local = localStorage.getItem('xuanken_artist_bios_v1');
+      if (local) {
+        const list: ArtistBio[] = JSON.parse(local);
+        localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(list.filter((b) => b.id !== id)));
+      }
+    } catch (e) {}
+
+    try {
+      await set(ref(rtdb, `artist_bios/${id}`), null);
+    } catch (e) {}
+    try {
+      await deleteDoc(doc(db, 'artist_bios', id));
+    } catch (e) {}
+  },
 };
 
 export const DEFAULT_EXCLUSIVE_ALBUMS: ExclusiveAlbum[] = [
@@ -1827,6 +1951,211 @@ export const DEFAULT_CHAT_MESSAGES: ChatMessage[] = [
     userRole: 'user',
     content: 'Album Nhạc Hay mới ra chất lượng đỉnh quá mọi người ơi, nghe bằng tai nghe bass đã tai thật sự 🔥🎶',
     timestamp: Date.now() - 1800000,
+  },
+];
+
+export const DEFAULT_ARTIST_BIOS: ArtistBio[] = [
+  {
+    id: 'art-xk-01',
+    name: 'XuanKen',
+    realName: 'Nguyễn Xuân Kiên',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '12/08/1998',
+    hometown: 'Hà Nội',
+    genres: ['V-Pop', 'Pop Ballad', 'R&B', 'EDM'],
+    debutYear: '2019',
+    isVerified: true,
+    bio: 'XuanKen là nghệ sĩ kiêm nhà sản xuất âm nhạc trẻ tài năng và là người sáng lập nền tảng nghe nhạc trực tuyến XuanKen Music. Mang phong cách sáng tác lãng mạn, giàu cảm xúc với những câu chuyện tình yêu gần gũi, âm nhạc của XuanKen là sự giao thoa mượt mà giữa Pop Ballad ấm áp và chất liệu điện tử thời thượng.',
+    achievements: [
+      'Sáng lập nền tảng âm nhạc XuanKen Music',
+      'Hơn 50.000.000+ lượt stream trên các nền tảng trực tuyến',
+      'Nhiều ca khúc nằm trong Top 10 Bảng Xếp Hạng Âm Nhạc Trực Tuyến',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+      tiktok: 'https://tiktok.com',
+    },
+  },
+  {
+    id: 'art-sontung-02',
+    name: 'Sơn Tùng M-TP',
+    realName: 'Nguyễn Thanh Tùng',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '05/07/1994',
+    hometown: 'Thái Bình',
+    genres: ['V-Pop', 'R&B', 'Hip Hop', 'EDM'],
+    debutYear: '2012',
+    isVerified: true,
+    bio: 'Sơn Tùng M-TP là một trong những nghệ sĩ giải trí hàng đầu và có tầm ảnh hưởng lớn nhất Việt Nam. Với tư duy âm nhạc tiên phong, phong cách thời trang ấn tượng và khả năng làm chủ sân khấu quốc tế, anh đã liên tục phá vỡ mọi kỷ lục nghe nhìn với chuỗi siêu hit như Cơn Mưa Ngang Qua, Lạc Trôi, Hãy Trao Cho Anh, Chúng Ta Của Hiện Tại, Đừng Làm Trái Tim Anh Đau.',
+    achievements: [
+      'Nghệ sĩ Đông Nam Á xuất sắc nhất tại giải thưởng quốc tế MTV EMA 2015',
+      'Kênh cá nhân đầu tiên của V-Pop nhận Nút Kim Cương YouTube (10M subscribers)',
+      'Ca khúc V-Pop đầu tiên lọt Top 1 Trending Toàn Cầu trên YouTube',
+      'Nhiều giải thưởng Cống Hiến, Làn Sóng Xanh, WebTVAsia Awards',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+      instagram: 'https://instagram.com',
+    },
+  },
+  {
+    id: 'art-justatee-03',
+    name: 'JustaTee',
+    realName: 'Nguyễn Thanh Tuấn',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '01/11/1990',
+    hometown: 'Hà Nội',
+    genres: ['R&B', 'Hip Hop', 'Melodic Rap', 'Pop'],
+    debutYear: '2008',
+    isVerified: true,
+    bio: 'Được tôn vinh là "Ông hoàng Giai điệu R&B" của âm nhạc Việt Nam, JustaTee là thành viên nòng cốt của SpaceSpeakers. Với khả năng viết vocal melody đỉnh cao cùng lối hòa âm tinh tế, anh đã định hình phong cách R&B hiện đại tại Việt Nam qua các tác phẩm huyền thoại như Forever Alone, Thằng Điên, Đã Lỡ Yêu Em Nhiều, và là giám khảo công tâm các mùa Rap Việt.',
+    achievements: [
+      'Giám khảo chính & Cố vấn sản xuất Rap Việt các mùa 1, 2, 3',
+      'Thành viên cốt cán nhóm SpaceSpeakers đình đám',
+      'Giải Làn Sóng Xanh: Ca khúc của năm, Hòa âm phối khí xuất sắc',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+    },
+  },
+  {
+    id: 'art-denvau-04',
+    name: 'Đen Vâu',
+    realName: 'Nguyễn Đức Cường',
+    avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '13/05/1989',
+    hometown: 'Quảng Ninh',
+    genres: ['Hip Hop', 'Rap', 'Acoustic Rap', 'Indie'],
+    debutYear: '2014',
+    isVerified: true,
+    bio: 'Đen Vâu là nghệ sĩ rap được mến mộ nhất Việt Nam nhờ ca từ mộc mạc, triết lý sâu sắc và sự chân thành lay động lòng người. Từ một công nhân dọn rác tại vịnh Hạ Long, Đen đã tạo nên kỳ tích âm nhạc với loạt bản rap đi vào lòng hàng triệu khán giả như Đi Về Nhà, Trốn Tìm, Bài Này Chill Phết, Mang Tiền Về Cho Mẹ, Nấu Ăn Cho Em.',
+    achievements: [
+      'Nghệ sĩ giữ kỷ lục nhiều MV đạt Top 1 Trending YouTube nhất Việt Nam (16+ MV)',
+      'Gương mặt trẻ Việt Nam tiêu biểu năm 2023',
+      'Giải thưởng Cống Hiến: Ca sĩ của năm, MV của năm',
+      'Tài trợ hàng ngàn bữa ăn và dự án nuôi em tại các điểm trường vùng cao',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+    },
+  },
+  {
+    id: 'art-vu-05',
+    name: 'Vũ.',
+    realName: 'Hoàng Thái Vũ',
+    avatarUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '03/10/1995',
+    hometown: 'Hà Nội',
+    genres: ['Indie Pop', 'Acoustic', 'Ballad'],
+    debutYear: '2016',
+    isVerified: true,
+    bio: 'Được công chúng ưu ái gọi bằng danh xưng "Hoàng tử Indie Việt", Vũ. chinh phục người nghe bằng giọng hát mộc mạc, trầm ấm cùng những sáng tác mang nỗi buồn dịu dàng, hoài niệm. Những tác phẩm tiêu biểu gồm Lạ Lùng, Bước Qua Mùa Cô Đơn, Bước Qua Nhau, Đông Kiếm Em đã trở thành thanh xuân của cả một thế hệ.',
+    achievements: [
+      'Live concert tour "Một Vạn Năm" và "Bảo Tàng Của Nuối Tiếc" cháy vé kỷ lục tại Hà Nội & TP.HCM',
+      'Đề cử giải thưởng Âm nhạc Cống Hiến',
+      'Nghệ sĩ Indie có lượng stream dẫn đầu trên Spotify Việt Nam',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+    },
+  },
+  {
+    id: 'art-soobin-06',
+    name: 'Soobin',
+    realName: 'Nguyễn Hoàng Sơn',
+    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '10/09/1992',
+    hometown: 'Hà Nội',
+    genres: ['R&B', 'Pop Ballad', 'Dân gian đương đại', 'Hip Hop'],
+    debutYear: '2014',
+    isVerified: true,
+    bio: 'Soobin là nghệ sĩ toàn năng bậc nhất thế hệ mới với nền tảng âm nhạc truyền thống lẫn hiện đại vững chắc. Sinh ra trong gia đình nghệ thuật, anh thông thạo đàn bầu, piano và sở hữu chất giọng R&B mượt mà hiếm có. Tên tuổi của Soobin gắn liền với Phía Sau Một Cô Gái, Tháng Năm, Xin Đừng Lặng Im, Giá Như và những màn trình diễn bùng nổ tại Anh Trai Vượt Ngàn Chông Gai.',
+    achievements: [
+      'Nghệ sĩ tỏa sáng tại Anh Trai Vượt Ngàn Chông Gai 2024',
+      'Giải thưởng Ngôi sao Châu Á tại Korean Culture & Entertainment Awards',
+      'Á quân The Remix - Hòa âm ánh sáng 2016',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+    },
+  },
+  {
+    id: 'art-hoangthuylinh-07',
+    name: 'Hoàng Thùy Linh',
+    realName: 'Hoàng Thùy Linh',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '11/08/1988',
+    hometown: 'Hà Nội',
+    genres: ['World Music', 'Electro-pop', 'Dân gian đương đại'],
+    debutYear: '2007',
+    isVerified: true,
+    bio: 'Hoàng Thùy Linh là nữ nghệ sĩ tiên phong đưa văn hóa dân gian truyền thống Việt Nam thăng hoa trên nền âm nhạc điện tử hiện đại thế giới. Hai album để đời "Hoàng" và "LINK" đã đưa tên tuổi cô vươn tầm quốc tế, trong đó "See Tình" trở thành cơn sốt viral toàn cầu được đông đảo nghệ sĩ và khán giả quốc tế yêu thích.',
+    achievements: [
+      'Hiện tượng âm nhạc toàn cầu với siêu hit "See Tình" (hàng tỷ lượt xem và chia sẻ quốc tế)',
+      'Thắng 4 hạng mục lớn tại Giải Cống Hiến: Ca sĩ của năm, Album của năm, Bài hát của năm, MV của năm',
+      'Giải thưởng Làn Sóng Xanh và Mai Vàng xuất sắc',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+    },
+  },
+  {
+    id: 'art-amee-08',
+    name: 'Amee',
+    realName: 'Trần Huyền My',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '23/03/2000',
+    hometown: 'Hà Nội',
+    genres: ['Teen Pop', 'V-Pop', 'R&B'],
+    debutYear: '2019',
+    isVerified: true,
+    bio: 'Amee được mệnh danh là "Công chúa Pop" ngọt ngào của thế hệ Gen Z Việt Nam. Với phong cách trẻ trung, giọng hát trong veo và hình ảnh tràn đầy năng lượng tích cực, Amee ghi dấu ấn với hàng loạt bản hit quốc dân như Anh Nhà Ở Đâu Thế?, Đen Đá Không Đường, Trời Giấu Trời Mang Đi, Ưng Quá Chừng, Mộng Meo.',
+    achievements: [
+      'Nghệ sĩ mới xuất sắc nhất Việt Nam tại MAMA (Mnet Asian Music Awards) 2020',
+      'Nghệ sĩ mới của năm tại Giải thưởng Âm nhạc Cống Hiến',
+      'Top 1 Album iTunes Việt Nam với album đầu tay dreAMEE',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+    },
+  },
+  {
+    id: 'art-jack-09',
+    name: 'Jack (J97)',
+    realName: 'Trịnh Trần Phương Tuấn',
+    avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&auto=format&fit=crop&q=80',
+    bannerUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=1600&auto=format&fit=crop&q=80',
+    birthDate: '12/04/1997',
+    hometown: 'Bến Tre',
+    genres: ['V-Pop', 'Pop', 'Âm hưởng Dân ca Miền Tây'],
+    debutYear: '2019',
+    isVerified: true,
+    bio: 'Jack (J97) là ca sĩ, nhạc sĩ sở hữu phong cách sáng tác độc đáo kết hợp giai điệu dân ca miền Tây sông nước và tiết tấu hiện đại. Anh đã lập hàng loạt kỷ lục vô tiền khoáng hậu tại V-Pop với những siêu phẩm như Hồng Nhan, Bạc Phận, Sóng Gió, Hoa Hải Đường, Đom Đóm.',
+    achievements: [
+      'Nghệ sĩ Đông Nam Á xuất sắc nhất tại MTV EMA 2020',
+      'Giải Mai Vàng - Nam ca sĩ hát nhạc nhẹ được yêu thích nhất',
+      'Nhiều MV đạt 100M - 400M views nhanh nhất lịch sử V-Pop',
+    ],
+    socialLinks: {
+      youtube: 'https://youtube.com',
+      facebook: 'https://facebook.com',
+    },
   },
 ];
 

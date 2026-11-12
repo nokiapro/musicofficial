@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, Share2, Facebook, Send, Link as LinkIcon } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { formatArtistsString } from '../../utils/artistUtils';
 
 export const ShareModal: React.FC = () => {
   const { isShareModalOpen, setIsShareModalOpen, songToShare, theme } = useMusic();
@@ -27,7 +28,7 @@ export const ShareModal: React.FC = () => {
       try {
         await navigator.share({
           title: `XuanKen Music - ${songToShare.title}`,
-          text: `Nghe ngay bài hát "${songToShare.title}" của ${songToShare.artists} trên XuanKen Music!`,
+          text: `Nghe ngay bài hát "${songToShare.title}" của ${formatArtistsString(songToShare.artists)} trên XuanKen Music!`,
           url: shareUrl,
         });
       } catch (e) {}
@@ -95,7 +96,7 @@ export const ShareModal: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold truncate text-white">{songToShare.title}</h3>
-            <p className="text-xs text-white/60 truncate">{songToShare.artists}</p>
+            <p className="text-xs text-white/60 truncate">{formatArtistsString(songToShare.artists)}</p>
             <span className="text-[10px] text-purple-400 font-semibold">{songToShare.audioFormat} • XuanKen Music</span>
           </div>
         </div>

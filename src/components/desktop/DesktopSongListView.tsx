@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const DesktopSongListView: React.FC = () => {
   const {
@@ -339,7 +340,10 @@ export const DesktopSongListView: React.FC = () => {
 
                       {/* 3: TÊN CA SỸ */}
                       <td className="py-3.5 px-4 font-medium text-white/80 truncate">
-                        {song.artists}
+                        <ArtistNames
+                          artists={song.artists}
+                          linkClassName="text-white/80 hover:text-purple-300"
+                        />
                       </td>
 
                       {/* 4: LRC */}

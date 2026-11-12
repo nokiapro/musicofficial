@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ShoppingBag, Tag, Check } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Voucher } from '../../types/music';
+import { formatArtistsString } from '../../utils/artistUtils';
 
 export const BuySongModal: React.FC = () => {
   const {
@@ -92,7 +93,7 @@ export const BuySongModal: React.FC = () => {
             </div>
             <div className="truncate flex-1 min-w-0">
               <h3 className="text-sm font-bold text-white truncate">{songToBuy.title}</h3>
-              <p className="text-xs text-white/60 truncate mt-0.5">{songToBuy.artists}</p>
+              <p className="text-xs text-white/60 truncate mt-0.5">{formatArtistsString(songToBuy.artists)}</p>
               <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#9b4de0]/20 text-[#c273ed] border border-[#9b4de0]/40">
                 Định dạng {songToBuy.audioFormat} Full Lossless
               </span>

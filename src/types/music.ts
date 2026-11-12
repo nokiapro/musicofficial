@@ -70,9 +70,30 @@ export type ThemeId =
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
-export type ActiveDesktopTab = 'discover' | 'store' | 'admin' | 'chart' | 'albums' | 'chat' | 'radio' | 'library' | 'weeklyTop';
+export type ActiveDesktopTab = 'discover' | 'store' | 'admin' | 'chart' | 'albums' | 'artists' | 'chat' | 'radio' | 'library' | 'weeklyTop';
 
-export type ActiveMobileTab = 'discover' | 'store' | 'admin' | 'chart' | 'albums' | 'chat' | 'library' | 'profile';
+export type ActiveMobileTab = 'discover' | 'store' | 'admin' | 'chart' | 'albums' | 'artists' | 'chat' | 'library' | 'profile';
+
+export interface ArtistBio {
+  id: string;
+  name: string; // Tên nghệ danh chính (VD: Sơn Tùng M-TP)
+  realName?: string; // Tên thật (VD: Nguyễn Thanh Tùng)
+  avatarUrl: string; // Ảnh chân dung chất lượng cao
+  bannerUrl?: string; // Ảnh bìa / sân khấu
+  birthDate?: string; // Ngày sinh (VD: 05/07/1994)
+  hometown?: string; // Quê quán (VD: Thái Bình)
+  genres?: string[]; // Thể loại nhạc (VD: ['V-Pop', 'R&B', 'Hip Hop'])
+  debutYear?: string; // Năm ra mắt / bắt đầu hoạt động (VD: 2012)
+  bio: string; // Câu chuyện tiểu sử chi tiết
+  achievements?: string[]; // Các thành tích & giải thưởng tiêu biểu
+  isVerified?: boolean; // Nghệ sĩ đã xác minh chính thức (hiển thị badge ĐÃ XÁC MINH)
+  socialLinks?: {
+    facebook?: string;
+    youtube?: string;
+    tiktok?: string;
+    instagram?: string;
+  };
+}
 
 export interface AlbumSong {
   id: string;

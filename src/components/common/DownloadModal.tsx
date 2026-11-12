@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Download, Music2, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { formatArtistsString } from '../../utils/artistUtils';
 
 export const DownloadModal: React.FC = () => {
   const {
@@ -96,7 +97,7 @@ export const DownloadModal: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-white truncate">{songToDownload.title}</h3>
-            <p className="text-xs text-white/60 truncate mt-0.5">{songToDownload.artists}</p>
+            <p className="text-xs text-white/60 truncate mt-0.5">{formatArtistsString(songToDownload.artists)}</p>
             <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               {isAlbumSong ? 'Album Nhạc Hay (128kbps)' : 'Đã mua bản quyền'}
             </span>

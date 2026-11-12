@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ExclusiveAlbum, AlbumSong, Song } from '../../types/music';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const CuratedAlbumsView: React.FC = () => {
   const {
@@ -155,9 +156,9 @@ export const CuratedAlbumsView: React.FC = () => {
               <p className="text-xs text-white/50 mt-1">
                 Cập nhật: {selectedAlbum.releaseYear ? `Năm ${selectedAlbum.releaseYear}` : '2026'}
               </p>
-              <p className="text-xs font-semibold text-white/70 mt-0.5 line-clamp-1">
-                {selectedAlbum.artist}
-              </p>
+              <div className="text-xs font-semibold text-white/70 mt-0.5 line-clamp-1">
+                <ArtistNames artists={selectedAlbum.artist} linkClassName="text-white/70 hover:text-purple-300" />
+              </div>
               <p className="text-xs text-white/50 mt-1.5 font-medium">
                 {albumSongsList.length} bài hát • {durationText}
               </p>
@@ -343,9 +344,9 @@ export const CuratedAlbumsView: React.FC = () => {
                             <p className={`text-xs sm:text-sm font-bold truncate ${isCurrent ? 'text-pink-400' : 'text-white group-hover:text-pink-300'}`}>
                               {song.title}
                             </p>
-                            <p className="text-[11px] text-white/50 truncate mt-0.5">
-                              {song.artists}
-                            </p>
+                            <div className="text-[11px] text-white/50 truncate mt-0.5">
+                              <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                            </div>
                           </div>
                         </div>
 

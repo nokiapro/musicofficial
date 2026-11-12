@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, X, Settings, Palette, Waves, Clock, Disc3, MessageSquare, ListMusic } from 'lucide-react';
+import { Search, X, Settings, Palette, Waves, Clock, Disc3, MessageSquare, ListMusic, Mic2 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ThemeId } from '../../types/music';
 
@@ -296,6 +296,20 @@ export const MobileTopBar: React.FC = () => {
         >
           <Disc3 className="w-3.5 h-3.5" />
           <span>Album Nhạc Hay</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveMobileTab('artists');
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
+            activeMobileTab === 'artists'
+              ? 'bg-[#ec4899] text-white shadow-sm'
+              : 'bg-white/5 text-white/70 hover:text-white'
+          }`}
+        >
+          <Mic2 className="w-3.5 h-3.5" />
+          <span>Tiểu Sử Ca Sĩ</span>
         </button>
 
         {currentUser && (

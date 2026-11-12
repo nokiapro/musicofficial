@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Check, ListPlus, FolderPlus } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { formatArtistsString } from '../../utils/artistUtils';
 
 export const PlaylistModal: React.FC = () => {
   const {
@@ -114,7 +115,7 @@ export const PlaylistModal: React.FC = () => {
           </div>
           <div className="min-w-0 flex-1 truncate">
             <h3 className="text-xs font-bold text-white truncate">{songForPlaylistModal.title}</h3>
-            <p className="text-[10px] text-white/50 truncate">{songForPlaylistModal.artists}</p>
+            <p className="text-[10px] text-white/50 truncate">{formatArtistsString(songForPlaylistModal.artists)}</p>
           </div>
         </div>
 

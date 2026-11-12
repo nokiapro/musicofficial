@@ -14,6 +14,7 @@ import {
   ListPlus,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const DesktopWeeklyTopPage: React.FC = () => {
   const {
@@ -251,7 +252,7 @@ export const DesktopWeeklyTopPage: React.FC = () => {
 
                     {/* Artist */}
                     <td className="py-3.5 px-4 font-medium text-white/80 truncate">
-                      {song.artists}
+                      <ArtistNames artists={song.artists} linkClassName="text-white/80 hover:text-purple-300" />
                     </td>
 
                     {/* Audio format */}

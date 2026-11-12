@@ -14,6 +14,7 @@ import {
   Mic2,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const DesktopPlayerBar: React.FC = () => {
   const {
@@ -165,9 +166,9 @@ export const DesktopPlayerBar: React.FC = () => {
                 >
                   {currentSong.title}
                 </p>
-                <p className="text-xs text-white/60 hover:text-white cursor-pointer mt-0.5 truncate" title={currentSong.artists}>
-                  {currentSong.artists}
-                </p>
+                <div className="text-xs text-white/60 mt-0.5 truncate" title={currentSong.artists}>
+                  <ArtistNames artists={currentSong.artists} linkClassName="text-white/60 hover:text-purple-300" />
+                </div>
               </>
             ) : (
               <div>

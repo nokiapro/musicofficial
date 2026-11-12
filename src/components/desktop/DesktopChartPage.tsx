@@ -18,6 +18,8 @@ import {
   ListPlus,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { ArtistNames } from '../common/ArtistNames';
+import { formatArtistsString } from '../../utils/artistUtils';
 
 export const DesktopChartPage: React.FC = () => {
   const {
@@ -182,7 +184,7 @@ export const DesktopChartPage: React.FC = () => {
               return (
                 <span key={s.id} className="flex items-center gap-1.5 font-semibold" style={{ color: colors[idx] }}>
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors[idx] }} />
-                  <span className="font-so">#{idx + 1}</span> {s.title} ({s.artists})
+                  <span className="font-so">#{idx + 1}</span> {s.title} ({formatArtistsString(s.artists)})
                 </span>
               );
             })}
@@ -335,9 +337,9 @@ export const DesktopChartPage: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-white/60 truncate mt-0.5">
-                      {song.artists}
-                    </p>
+                    <div className="text-xs text-white/60 truncate mt-0.5">
+                      <ArtistNames artists={song.artists} linkClassName="text-white/60 hover:text-purple-300" />
+                    </div>
                   </div>
                 </div>
 

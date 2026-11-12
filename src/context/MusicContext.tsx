@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage } from '../types/music';
+import { Song, AppUser, ThemeId, RepeatMode, ActiveDesktopTab, ActiveMobileTab, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage, ArtistBio } from '../types/music';
 import { auth } from '../services/firebase';
 import { audioEngine } from '../services/audioEngine';
 import { MusicService } from '../services/musicService';
@@ -210,6 +210,14 @@ interface MusicContextType {
   banChatMember: (userId: string, userName: string, durationMinutes: number | null) => Promise<void>;
   unbanChatMember: (userId: string) => Promise<void>;
   bannedMembers: Record<string, { bannedUntil: number | null; bannedAt: number; userName: string }>;
+
+  // Artist Biographies (Tiểu Sử Ca Sĩ)
+  artistBios: ArtistBio[];
+  selectedArtistName: string | null;
+  setSelectedArtistName: (name: string | null) => void;
+  navigateToArtist: (artistName: string) => void;
+  upsertArtistBio: (bio: ArtistBio) => Promise<void>;
+  deleteArtistBio: (id: string) => Promise<void>;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -236,7 +244,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
   const [queue, setQueue] = useState<Song[]>([]);
   const [history, setHistory] = useState<Song[]>([]);
-  const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
+  const [likedSongIds, setLikedSongIds] = useState<string[]>(() => {
+    try {
+      const saved =
+        localStorage.getItem('xuanken_liked_v2') ||
+        localStorage.getItem('xuanken_liked_guest');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
   const [purchasedSongIds, setPurchasedSongIds] = useState<string[]>([]);
   const [blockedSongIds, setBlockedSongIds] = useState<string[]>(() => {
     try {
@@ -388,12 +404,52 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [exclusiveAlbums, setExclusiveAlbums] = useState<ExclusiveAlbum[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<ExclusiveAlbum | null>(null);
 
-  const canGoBack = Boolean(selectedAlbum) || tabHistoryIndex > 0;
+  // Artist Biographies (Tiểu Sử Ca Sĩ)
+  const [artistBios, setArtistBios] = useState<ArtistBio[]>([]);
+  const [selectedArtistName, setSelectedArtistName] = useState<string | null>(null);
+
+  const navigateToArtist = (artistName: string) => {
+    const cleanName = (artistName || '').trim();
+    if (!cleanName) return;
+    setSelectedArtistName(cleanName);
+    setActiveDesktopTab('artists');
+    setActiveMobileTab('artists');
+  };
+
+  const upsertArtistBio = async (bio: ArtistBio) => {
+    await MusicService.upsertArtistBio(bio);
+    setArtistBios((prev) => {
+      const idx = prev.findIndex((b) => b.id === bio.id || b.name.toLowerCase() === bio.name.toLowerCase());
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = bio;
+        return updated;
+      }
+      return [...prev, bio];
+    });
+  };
+
+  const deleteArtistBio = async (id: string) => {
+    await MusicService.deleteArtistBio(id);
+    setArtistBios((prev) => prev.filter((b) => b.id !== id));
+    if (selectedArtistName) {
+      const deleted = artistBios.find((b) => b.id === id);
+      if (deleted && deleted.name.toLowerCase() === selectedArtistName.toLowerCase()) {
+        setSelectedArtistName(null);
+      }
+    }
+  };
+
+  const canGoBack = Boolean(selectedAlbum) || Boolean(selectedArtistName) || tabHistoryIndex > 0;
   const canGoForward = tabHistoryIndex < tabHistory.length - 1;
 
   const navigateBack = () => {
     if (selectedAlbum) {
       setSelectedAlbum(null);
+      return;
+    }
+    if (selectedArtistName) {
+      setSelectedArtistName(null);
       return;
     }
     if (tabHistoryIndex > 0) {
@@ -578,15 +634,24 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setBlockedSongIds(currentMember.blockedSongIds);
         }
         const memberAny = currentMember as any;
-        if (memberAny.likedSongIds && Array.isArray(memberAny.likedSongIds)) {
-          setLikedSongIds(memberAny.likedSongIds);
-        } else {
-          try {
-            const userLiked = localStorage.getItem(`xuanken_liked_${currentMember.uid}`);
-            setLikedSongIds(userLiked ? JSON.parse(userLiked) : []);
-          } catch (e) {
-            setLikedSongIds([]);
-          }
+        const remoteLiked: string[] = Array.isArray(memberAny.likedSongIds) ? memberAny.likedSongIds : [];
+        let localLiked: string[] = [];
+        try {
+          const userLiked =
+            localStorage.getItem(`xuanken_liked_${currentMember.uid}`) ||
+            localStorage.getItem('xuanken_liked_v2') ||
+            localStorage.getItem('xuanken_liked_guest');
+          if (userLiked) localLiked = JSON.parse(userLiked);
+        } catch (e) {}
+        const mergedLikes = Array.from(new Set([...remoteLiked, ...localLiked]));
+        setLikedSongIds(mergedLikes);
+        try {
+          localStorage.setItem(`xuanken_liked_${currentMember.uid}`, JSON.stringify(mergedLikes));
+          localStorage.setItem('xuanken_liked_v2', JSON.stringify(mergedLikes));
+          localStorage.setItem('xuanken_liked_guest', JSON.stringify(mergedLikes));
+        } catch (e) {}
+        if (mergedLikes.length > remoteLiked.length) {
+          MusicService.saveUserSettings(currentMember.uid, { likedSongIds: mergedLikes });
         }
 
         // Isolate playlists per user account (Requirement 3)
@@ -620,7 +685,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCurrentUser(null);
         setUserBalance(0);
         setPurchasedSongIds([]);
-        setLikedSongIds([]);
+        try {
+          const guestLiked =
+            localStorage.getItem('xuanken_liked_v2') ||
+            localStorage.getItem('xuanken_liked_guest');
+          setLikedSongIds(guestLiked ? JSON.parse(guestLiked) : []);
+        } catch (e) {
+          setLikedSongIds([]);
+        }
         setPlaylists([]);
       }
       setIsAuthLoading(false);
@@ -746,6 +818,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setChatMessages(updatedMsgs || []);
     });
 
+    MusicService.fetchArtistBios().then((loadedBios) => {
+      setArtistBios(loadedBios || []);
+    });
+
     return () => {
       unsubscribeRealtime();
       unsubscribeAlbums();
@@ -804,12 +880,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCurrentUser(null);
     setUserBalance(0);
     setPurchasedSongIds([]);
-    setLikedSongIds([]);
+    try {
+      const guestLiked =
+        localStorage.getItem('xuanken_liked_v2') ||
+        localStorage.getItem('xuanken_liked_guest');
+      setLikedSongIds(guestLiked ? JSON.parse(guestLiked) : []);
+    } catch (e) {
+      setLikedSongIds([]);
+    }
     setPlaylists([]);
-    if (activeDesktopTab === 'admin' || activeDesktopTab === 'library') {
+    if (activeDesktopTab === 'admin') {
       setActiveDesktopTab('discover');
     }
-    if (activeMobileTab === 'admin' || activeMobileTab === 'library') {
+    if (activeMobileTab === 'admin') {
       setActiveMobileTab('discover');
     }
   };
@@ -1490,10 +1573,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLikedSongIds((prev) => {
       const isCurrentlyLiked = prev.includes(songId);
       const next = isCurrentlyLiked ? prev.filter((id) => id !== songId) : [...prev, songId];
-      if (currentUser?.uid) {
-        try {
+      try {
+        localStorage.setItem('xuanken_liked_v2', JSON.stringify(next));
+        localStorage.setItem('xuanken_liked_guest', JSON.stringify(next));
+        if (currentUser?.uid) {
           localStorage.setItem(`xuanken_liked_${currentUser.uid}`, JSON.stringify(next));
-        } catch (e) {}
+        }
+      } catch (e) {}
+      if (currentUser?.uid) {
         MusicService.saveUserSettings(currentUser.uid, { likedSongIds: next });
       }
 
@@ -2783,6 +2870,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         banChatMember,
         unbanChatMember,
         bannedMembers,
+
+        // Artist Biographies (Tiểu Sử Ca Sĩ)
+        artistBios,
+        selectedArtistName,
+        setSelectedArtistName,
+        navigateToArtist,
+        upsertArtistBio,
+        deleteArtistBio,
       }}
     >
       {children}

@@ -13,6 +13,7 @@ import { DesktopWeeklyTopPage } from './DesktopWeeklyTopPage';
 import { DesktopProfileModal } from './DesktopProfileModal';
 import { CuratedAlbumsView } from '../albums/CuratedAlbumsView';
 import { ChatBoxView } from '../chat/ChatBoxView';
+import { ArtistBioPageView } from '../artists/ArtistBioPageView';
 
 export const DesktopAppLayout: React.FC = () => {
   const { activeDesktopTab, isProfileModalOpen, setIsProfileModalOpen } = useMusic();
@@ -42,6 +43,9 @@ export const DesktopAppLayout: React.FC = () => {
 
       case 'albums':
         return <CuratedAlbumsView />;
+
+      case 'artists':
+        return <ArtistBioPageView />;
 
       case 'chat':
         return <ChatBoxView />;

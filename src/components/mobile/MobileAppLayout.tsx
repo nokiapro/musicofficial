@@ -31,6 +31,8 @@ import { FloatingVinylDisc } from './FloatingVinylDisc';
 import { CuratedAlbumsView } from '../albums/CuratedAlbumsView';
 import { ChatBoxView } from '../chat/ChatBoxView';
 import { PlaylistDetailView } from '../playlist/PlaylistDetailView';
+import { ArtistBioPageView } from '../artists/ArtistBioPageView';
+import { ArtistNames } from '../common/ArtistNames';
 
 export const MobileAppLayout: React.FC = () => {
   const {
@@ -141,7 +143,9 @@ export const MobileAppLayout: React.FC = () => {
   const purchasedCount = sortedDiscoverSongs.filter((s) => isSongPurchased(s.id)).length;
   const unpurchasedCount = Math.max(0, totalSongs - purchasedCount);
 
-  const likedSongs = songs.filter((s) => likedSongIds.includes(s.id));
+  // Gộp tất cả bài hát từ catalog và album tuyển chọn để bài hát đã tim luôn hiển thị trên mọi thiết bị
+  const mobileLibraryPool = allSearchableSongs && allSearchableSongs.length > 0 ? allSearchableSongs : songs;
+  const likedSongs = mobileLibraryPool.filter((s) => likedSongIds.includes(s.id));
   const ownedSongs = songs.filter((s) => isSongPurchased(s.id));
 
   const totalDiscoverPages = Math.max(1, Math.ceil(sortedDiscoverSongs.length / PAGE_SIZE));
@@ -336,7 +340,9 @@ export const MobileAppLayout: React.FC = () => {
                         >
                           {song.title}
                         </p>
-                        <p className="text-[10px] text-white/60 truncate mt-0.5">{song.artists}</p>
+                        <div className="text-[10px] text-white/60 truncate mt-0.5">
+                          <ArtistNames artists={song.artists} linkClassName="text-white/60 hover:text-purple-300" />
+                        </div>
                       </div>
                     </div>
 
@@ -518,7 +524,9 @@ export const MobileAppLayout: React.FC = () => {
                           {song.audioFormat}
                         </span>
                       </div>
-                      <p className="text-[10px] text-white/50 truncate mt-0.5">{song.artists}</p>
+                      <div className="text-[10px] text-white/50 truncate mt-0.5">
+                        <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                      </div>
                       {/* Item 10: Cho chữ đ cùng 1 hàng đừng xuống dòng */}
                       <p className="text-xs font-bold text-amber-400 mt-1 whitespace-nowrap">
                         {isPurchased ? (
@@ -653,7 +661,9 @@ export const MobileAppLayout: React.FC = () => {
                         <p className={`text-xs font-bold truncate ${isCurrent ? 'text-[#c273ed]' : 'text-white'}`}>
                           {song.title}
                         </p>
-                        <p className="text-[10px] text-white/50 truncate">{song.artists}</p>
+                        <div className="text-[10px] text-white/50 truncate">
+                          <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                        </div>
                       </div>
                     </div>
 
@@ -718,34 +728,7 @@ export const MobileAppLayout: React.FC = () => {
       }
 
       case 'library': {
-        if (!currentUser) {
-          return (
-            <div className="pb-32 px-4 pt-12 flex flex-col items-center justify-center text-center select-none">
-              <div
-                className="w-16 h-16 rounded-3xl flex items-center justify-center text-white mb-4 shadow-xl"
-                style={{ backgroundColor: 'var(--color-accent)' }}
-              >
-                <FolderHeart className="w-8 h-8" />
-              </div>
-              <h2 className="text-xl font-black text-white mb-2 font-['Roboto_Condensed'] uppercase tracking-tight">
-                Thư Viện Cá Nhân
-              </h2>
-              <p className="text-xs text-white/60 max-w-xs mb-6 leading-relaxed">
-                Vui lòng đăng nhập tài khoản để truy cập Thư Viện Cá Nhân, xem danh sách bài hát yêu thích, bài hát đã mua và quản lý các danh sách phát của riêng bạn.
-              </p>
-              <button
-                onClick={() => setIsLoginModalOpen(true)}
-                style={{ backgroundColor: 'var(--color-accent)' }}
-                className="px-6 py-2.5 rounded-xl text-white font-bold text-xs shadow-lg hover:opacity-90 transition-all active:scale-95 flex items-center gap-1.5"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Đăng Nhập Ngay</span>
-              </button>
-            </div>
-          );
-        }
-
-        const userPlaylists = playlists.filter((p) => !p.userId || p.userId === currentUser.uid);
+        const userPlaylists = playlists.filter((p) => !p.userId || (currentUser && p.userId === currentUser.uid));
 
         return (
           <div className="space-y-3 px-3 pb-32 pt-2 select-none">
@@ -786,6 +769,18 @@ export const MobileAppLayout: React.FC = () => {
             {/* Subtab 1: Yêu thích */}
             {librarySubTab === 'liked' && (
               <div className="space-y-2">
+                {!currentUser && likedSongs.length > 0 && (
+                  <div className="p-2.5 rounded-xl bg-purple-600/15 border border-purple-500/30 text-[11px] text-purple-200 flex items-center justify-between gap-2 shadow-sm">
+                    <span>💡 Đăng nhập để đồng bộ bài hát yêu thích sang thiết bị khác!</span>
+                    <button
+                      onClick={() => setIsLoginModalOpen(true)}
+                      className="px-2 py-0.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-[10px] shrink-0"
+                    >
+                      Đăng nhập
+                    </button>
+                  </div>
+                )}
+
                 {likedSongs.length === 0 ? (
                   <div className="py-12 text-center text-white/40 text-xs bg-white/5 rounded-2xl border border-white/5">
                     Chưa có bài hát yêu thích. Hãy bấm icon tim để lưu bài hát!
@@ -818,7 +813,9 @@ export const MobileAppLayout: React.FC = () => {
                         </div>
                         <div className="truncate">
                           <p className="text-xs font-bold text-white truncate">{song.title}</p>
-                          <p className="text-[10px] text-white/50 truncate mt-0.5">{song.artists}</p>
+                          <div className="text-[10px] text-white/50 truncate mt-0.5">
+                            <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -877,11 +874,25 @@ export const MobileAppLayout: React.FC = () => {
             )}
 
             {/* Subtab 2: Custom Playlists */}
-            {librarySubTab === 'playlists' && selectedPlaylist && (
+            {librarySubTab === 'playlists' && !currentUser && (
+              <div className="py-12 px-4 flex flex-col items-center justify-center text-center select-none bg-white/5 rounded-2xl border border-white/5">
+                <FolderPlus className="w-8 h-8 text-purple-400 mb-2" />
+                <p className="text-sm font-bold text-white mb-1">Playlist Cá Nhân</p>
+                <p className="text-xs text-white/50 max-w-xs mb-3">Đăng nhập để tạo và lưu danh sách bài hát yêu thích.</p>
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow cursor-pointer active:scale-95"
+                >
+                  Đăng Nhập Ngay
+                </button>
+              </div>
+            )}
+
+            {librarySubTab === 'playlists' && currentUser && selectedPlaylist && (
               <PlaylistDetailView playlist={selectedPlaylist} onBack={() => setSelectedPlaylist(null)} />
             )}
 
-            {librarySubTab === 'playlists' && !selectedPlaylist && (
+            {librarySubTab === 'playlists' && currentUser && !selectedPlaylist && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white/70 uppercase">Danh sách phát cá nhân</span>
@@ -975,7 +986,21 @@ export const MobileAppLayout: React.FC = () => {
             )}
 
             {/* Subtab 3: Đã mua (Download MP3/WAV) */}
-            {librarySubTab === 'purchased' && (
+            {librarySubTab === 'purchased' && !currentUser && (
+              <div className="py-12 px-4 flex flex-col items-center justify-center text-center select-none bg-white/5 rounded-2xl border border-white/5">
+                <FolderHeart className="w-8 h-8 text-emerald-400 mb-2" />
+                <p className="text-sm font-bold text-white mb-1">Kho Nhạc Bản Quyền</p>
+                <p className="text-xs text-white/50 max-w-xs mb-3">Đăng nhập tài khoản để xem các bài hát đã mua của bạn.</p>
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow cursor-pointer active:scale-95"
+                >
+                  Đăng Nhập Ngay
+                </button>
+              </div>
+            )}
+
+            {librarySubTab === 'purchased' && currentUser && (
               <div className="space-y-2">
                 {ownedSongs.length === 0 ? (
                   <div className="py-12 text-center text-white/40 text-xs bg-white/5 rounded-2xl border border-white/5">
@@ -1009,7 +1034,9 @@ export const MobileAppLayout: React.FC = () => {
                         </div>
                         <div className="truncate">
                           <p className="text-xs font-bold text-white truncate">{song.title}</p>
-                          <p className="text-[10px] text-white/50 truncate mt-0.5">{song.artists}</p>
+                          <div className="text-[10px] text-white/50 truncate mt-0.5">
+                            <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1082,6 +1109,13 @@ export const MobileAppLayout: React.FC = () => {
         return (
           <div className="space-y-3 px-3 pb-32 pt-2 select-none">
             <CuratedAlbumsView />
+          </div>
+        );
+
+      case 'artists':
+        return (
+          <div className="space-y-3 px-3 pb-32 pt-2 select-none">
+            <ArtistBioPageView />
           </div>
         );
 

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
+import { ArtistNames } from '../common/ArtistNames';
 
 interface MobilePlayerActionSheetProps {
   isOpen: boolean;
@@ -133,7 +134,9 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)] shrink-0">
           <div className="truncate pr-2">
             <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">{song.title}</h3>
-            <p className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">{song.artists}</p>
+            <div className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">
+              <ArtistNames artists={song.artists} linkClassName="text-[var(--text-secondary)] hover:text-purple-300" />
+            </div>
           </div>
           <button
             onClick={handleAnimatedClose}

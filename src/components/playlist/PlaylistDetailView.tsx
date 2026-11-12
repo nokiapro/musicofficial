@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Playlist, Song } from '../../types/music';
+import { ArtistNames } from '../common/ArtistNames';
 
 interface PlaylistDetailViewProps {
   playlist: Playlist;
@@ -275,9 +276,9 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
                           <p className={`text-xs sm:text-sm font-bold truncate ${isCurrent ? 'text-pink-400' : 'text-white group-hover:text-pink-300'}`}>
                             {song.title}
                           </p>
-                          <p className="text-[11px] text-white/50 truncate mt-0.5">
-                            {song.artists}
-                          </p>
+                          <div className="text-[11px] text-white/50 truncate mt-0.5">
+                            <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                          </div>
                         </div>
                       </div>
 
