@@ -143,8 +143,9 @@ export const MobileAppLayout: React.FC = () => {
   const purchasedCount = sortedDiscoverSongs.filter((s) => isSongPurchased(s.id)).length;
   const unpurchasedCount = Math.max(0, totalSongs - purchasedCount);
 
-  // Gộp tất cả bài hát từ catalog và album tuyển chọn để bài hát đã tim luôn hiển thị trên mọi thiết bị
-  const mobileLibraryPool = allSearchableSongs && allSearchableSongs.length > 0 ? allSearchableSongs : songs;
+  // Gộp tất cả bài hát từ catalog và album tuyển chọn (loại bỏ trùng ID) để bài hát đã tim luôn hiển thị trên mọi thiết bị
+  const rawMobilePool = allSearchableSongs && allSearchableSongs.length > 0 ? allSearchableSongs : songs;
+  const mobileLibraryPool = Array.from(new Map(rawMobilePool.map((s) => [s.id, s])).values());
   const likedSongs = mobileLibraryPool.filter((s) => likedSongIds.includes(s.id));
   const ownedSongs = songs.filter((s) => isSongPurchased(s.id));
 
@@ -159,9 +160,19 @@ export const MobileAppLayout: React.FC = () => {
   const paginatedChartSongs = rankedSongs.slice((chartPage - 1) * PAGE_SIZE, chartPage * PAGE_SIZE);
 
   const totalLikedPages = Math.max(1, Math.ceil(likedSongs.length / PAGE_SIZE));
+  React.useEffect(() => {
+    if (likedPage > totalLikedPages) {
+      setLikedPage(totalLikedPages);
+    }
+  }, [likedPage, totalLikedPages]);
   const paginatedLikedSongs = likedSongs.slice((likedPage - 1) * PAGE_SIZE, likedPage * PAGE_SIZE);
 
   const totalPurchasedPages = Math.max(1, Math.ceil(ownedSongs.length / PAGE_SIZE));
+  React.useEffect(() => {
+    if (purchasedPage > totalPurchasedPages) {
+      setPurchasedPage(totalPurchasedPages);
+    }
+  }, [purchasedPage, totalPurchasedPages]);
   const paginatedOwnedSongs = ownedSongs.slice((purchasedPage - 1) * PAGE_SIZE, purchasedPage * PAGE_SIZE);
 
 
@@ -745,7 +756,10 @@ export const MobileAppLayout: React.FC = () => {
                 Yêu thích ({likedSongs.length})
               </button>
               <button
-                onClick={() => setLibrarySubTab('playlists')}
+                onClick={() => {
+                  setLibrarySubTab('playlists');
+                  setSelectedPlaylist(null);
+                }}
                 className={`flex-1 py-1 px-2.5 rounded-lg font-bold transition-all whitespace-nowrap text-center ${
                   librarySubTab === 'playlists'
                     ? 'bg-[#9b4de0] text-white shadow'

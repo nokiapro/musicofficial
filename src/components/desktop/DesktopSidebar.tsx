@@ -23,6 +23,7 @@ export const DesktopSidebar: React.FC = () => {
     isAdmin,
     setIsProfileModalOpen,
     setSelectedAlbum,
+    setSelectedPlaylist,
     setSelectedArtistName,
   } = useMusic();
 
@@ -88,6 +89,9 @@ export const DesktopSidebar: React.FC = () => {
                     setActiveDesktopTab(item.id);
                     if (item.id === 'albums') {
                       setSelectedAlbum(null);
+                    }
+                    if (item.id === 'library') {
+                      setSelectedPlaylist(null);
                     }
                   }}
                   style={isActive ? { backgroundColor: 'var(--color-accent)' } : undefined}

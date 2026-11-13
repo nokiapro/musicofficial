@@ -407,7 +407,12 @@ export const MusicService = {
               avatarUrl: val.avatarUrl || '',
               balance: typeof val.balance === 'number' ? val.balance : 500000,
               purchasedSongIds: Array.isArray(val.purchasedSongIds) ? val.purchasedSongIds : [],
+              likedSongIds: Array.isArray(val.likedSongIds) ? val.likedSongIds : [],
               blockedSongIds: Array.isArray(val.blockedSongIds) ? val.blockedSongIds : [],
+              usedVoucherCodes: Array.isArray(val.usedVoucherCodes) ? val.usedVoucherCodes : undefined,
+              theme: val.theme,
+              crossfadeDuration: typeof val.crossfadeDuration === 'number' ? val.crossfadeDuration : undefined,
+              preferredAudioFormat: val.preferredAudioFormat,
               role: val.role || 'user',
               createdAt: val.createdAt || new Date().toLocaleDateString('vi-VN'),
             });
@@ -419,8 +424,11 @@ export const MusicService = {
           return membersArray;
         }
       }
-    } catch (err) {
-      console.warn('Firestore fallback fetchMembers notice:', err);
+    } catch (err: any) {
+      const isPermDenied = err?.message?.toLowerCase().includes('permission') || err?.code === 'permission-denied';
+      if (!isPermDenied) {
+        console.warn('Firestore fallback fetchMembers notice:', err);
+      }
     }
 
     const localCached = localStorage.getItem(STORAGE_KEY_MEMBERS);
@@ -458,9 +466,95 @@ export const MusicService = {
     return [];
   },
 
+  async fetchMemberByUid(uid: string): Promise<AppUser | null> {
+    if (!uid) return null;
+    let rtdbMember: AppUser | null = null;
+    let fsMember: AppUser | null = null;
+
+    try {
+      const snap = await get(ref(rtdb, `members/${uid}`));
+      if (snap.exists()) {
+        rtdbMember = snap.val();
+      }
+    } catch (e) {}
+
+    try {
+      const { getDoc } = await import('firebase/firestore');
+      const docSnap = await getDoc(doc(db, 'members', uid));
+      if (docSnap.exists()) {
+        fsMember = docSnap.data() as AppUser;
+      }
+    } catch (e) {}
+
+    if (!rtdbMember && !fsMember) return null;
+
+    const base = { ...(fsMember || {}), ...(rtdbMember || {}) } as AppUser;
+    const rtdbLikes = Array.isArray(rtdbMember?.likedSongIds) ? rtdbMember.likedSongIds : [];
+    const fsLikes = Array.isArray(fsMember?.likedSongIds) ? fsMember.likedSongIds : [];
+    const mergedLikes = Array.from(new Set([...rtdbLikes, ...fsLikes]));
+
+    const rtdbPurchased = Array.isArray(rtdbMember?.purchasedSongIds) ? rtdbMember.purchasedSongIds : [];
+    const fsPurchased = Array.isArray(fsMember?.purchasedSongIds) ? fsMember.purchasedSongIds : [];
+    const mergedPurchased = Array.from(new Set([...rtdbPurchased, ...fsPurchased]));
+
+    return {
+      ...base,
+      uid: base.uid || uid,
+      purchasedSongIds: mergedPurchased,
+      likedSongIds: mergedLikes,
+    };
+  },
+
+  async fetchLikedSongs(uid: string): Promise<{ ids: string[]; updatedAt: number } | null> {
+    if (!uid) return null;
+    const allIds = new Set<string>();
+    let latestUpdatedAt = 0;
+    let hasRemoteData = false;
+
+    try {
+      const snap = await get(ref(rtdb, `users/${uid}/liked_songs`));
+      if (snap.exists()) {
+        const val = snap.val();
+        if (val && Array.isArray(val.likedSongIds)) {
+          hasRemoteData = true;
+          val.likedSongIds.forEach((id: any) => typeof id === 'string' && allIds.add(id));
+          if (typeof val.updatedAt === 'number' && val.updatedAt > latestUpdatedAt) {
+            latestUpdatedAt = val.updatedAt;
+          }
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const snap = await get(ref(rtdb, `members/${uid}/likedSongIds`));
+      if (snap.exists()) {
+        const val = snap.val();
+        if (Array.isArray(val)) {
+          hasRemoteData = true;
+          val.forEach((id: any) => typeof id === 'string' && allIds.add(id));
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const { getDoc } = await import('firebase/firestore');
+      const docSnap = await getDoc(doc(db, 'members', uid));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && Array.isArray(data.likedSongIds)) {
+          hasRemoteData = true;
+          data.likedSongIds.forEach((id: any) => typeof id === 'string' && allIds.add(id));
+        }
+      }
+    } catch (e) {}
+
+    if (!hasRemoteData) return null;
+    return { ids: Array.from(allIds), updatedAt: latestUpdatedAt };
+  },
+
   async saveMembers(members: AppUser[]): Promise<{ success: boolean; error?: string }> {
     const cleanMembers = cleanForFirebase(members) || [];
-    // Ensure every member balance is individually preserved in local storage
+    // Ensure every member balance and likedSongIds are preserved
     cleanMembers.forEach((m: AppUser) => {
       if (m && m.uid && typeof m.balance === 'number') {
         try {
@@ -472,17 +566,22 @@ export const MusicService = {
     let success = false;
     let lastError = '';
 
-    // Save each member individually to RTDB first (matches child rule)
+    // Update each member individually in RTDB using update() so fields like likedSongIds/theme are never wiped
     for (const m of cleanMembers) {
       if (m && m.uid) {
         try {
-          await set(ref(rtdb, `members/${m.uid}`), m);
+          await update(ref(rtdb, `members/${m.uid}`), m);
           success = true;
-        } catch (e) {}
+        } catch (e) {
+          try {
+            await set(ref(rtdb, `members/${m.uid}`), m);
+            success = true;
+          } catch (e2) {}
+        }
       }
     }
 
-    // Also attempt bulk save to members node
+    // Also attempt bulk save to members node only if all members already contain full data
     try {
       const membersRef = ref(rtdb, 'members');
       const map: Record<string, AppUser> = {};
@@ -491,7 +590,7 @@ export const MusicService = {
           map[m.uid] = m;
         }
       });
-      await set(membersRef, map);
+      await update(membersRef, map);
       success = true;
     } catch (err: any) {
       lastError = err?.message || String(err);
@@ -533,12 +632,15 @@ export const MusicService = {
       } catch (e) {}
     }
 
-    // Keep cached members list up to date
+    // Keep cached members list up to date and preserve likedSongIds if missing on incoming object
     try {
       const cached = localStorage.getItem(STORAGE_KEY_MEMBERS);
       const list: AppUser[] = cached ? JSON.parse(cached) : [];
       const idx = list.findIndex((m) => m.uid === member.uid);
       if (idx >= 0) {
+        if (clean.likedSongIds === undefined && Array.isArray(list[idx].likedSongIds)) {
+          clean.likedSongIds = list[idx].likedSongIds;
+        }
         list[idx] = { ...list[idx], ...clean };
       } else {
         list.push(clean);
@@ -551,11 +653,16 @@ export const MusicService = {
 
     try {
       const memberRef = ref(rtdb, `members/${member.uid}`);
-      await set(memberRef, clean);
+      await update(memberRef, clean);
       success = true;
     } catch (err: any) {
-      lastError = err?.message || String(err);
-      console.error('Firebase upsertMember error:', err);
+      try {
+        await set(ref(rtdb, `members/${member.uid}`), clean);
+        success = true;
+      } catch (err2: any) {
+        lastError = err2?.message || err?.message || String(err2);
+        console.error('Firebase upsertMember error:', err2);
+      }
     }
 
     try {
@@ -977,11 +1084,27 @@ export const MusicService = {
   // User Settings sync (theme, crossfade, format, liked, blocked)
   async saveUserSettings(uid: string, settings: any): Promise<void> {
     const clean = cleanForFirebase(settings);
+    if (!uid || !clean) return;
+
     try {
       await update(ref(rtdb, `members/${uid}`), clean);
+    } catch (e) {
+      // Ignore RTDB member update error so Firestore and backup node still run
+    }
+
+    if (Array.isArray(clean.likedSongIds)) {
+      try {
+        await set(ref(rtdb, `users/${uid}/liked_songs`), {
+          likedSongIds: clean.likedSongIds,
+          updatedAt: Date.now(),
+        });
+      } catch (e) {}
+    }
+
+    try {
       await setDoc(doc(db, 'members', uid), clean, { merge: true });
     } catch (e) {
-      console.warn('User settings save notice:', e);
+      console.warn('User settings Firestore save notice:', e);
     }
   },
 

@@ -68,15 +68,26 @@ export const DesktopLibraryPage: React.FC = () => {
   // Requirement 3: Mỗi tài khoản là thư viện và playlist của người đó
   const userPlaylists = playlists.filter((p) => !p.userId || (currentUser && p.userId === currentUser.uid));
 
-  // Gộp tất cả bài hát từ catalog và album tuyển chọn để bài hát đã tim luôn hiển thị trên mọi thiết bị
-  const librarySongPool = allSearchableSongs && allSearchableSongs.length > 0 ? allSearchableSongs : songs;
+  // Gộp tất cả bài hát từ catalog và album tuyển chọn (loại bỏ trùng ID) để bài hát đã tim luôn hiển thị trên mọi thiết bị
+  const rawPool = allSearchableSongs && allSearchableSongs.length > 0 ? allSearchableSongs : songs;
+  const librarySongPool = Array.from(new Map(rawPool.map((s) => [s.id, s])).values());
   const likedSongs = librarySongPool.filter((s) => likedSongIds.includes(s.id));
   const purchasedSongs = songs.filter((s) => isSongPurchased(s.id));
 
   const totalLikedPages = Math.max(1, Math.ceil(likedSongs.length / PAGE_SIZE));
+  useEffect(() => {
+    if (likedPage > totalLikedPages) {
+      setLikedPage(totalLikedPages);
+    }
+  }, [likedPage, totalLikedPages]);
   const paginatedLikedSongs = likedSongs.slice((likedPage - 1) * PAGE_SIZE, likedPage * PAGE_SIZE);
 
   const totalPurchasedPages = Math.max(1, Math.ceil(purchasedSongs.length / PAGE_SIZE));
+  useEffect(() => {
+    if (purchasedPage > totalPurchasedPages) {
+      setPurchasedPage(totalPurchasedPages);
+    }
+  }, [purchasedPage, totalPurchasedPages]);
   const paginatedPurchasedSongs = purchasedSongs.slice((purchasedPage - 1) * PAGE_SIZE, purchasedPage * PAGE_SIZE);
 
   const librarySongs = likedSongs.length > 0 ? likedSongs : purchasedSongs.length > 0 ? purchasedSongs : songs;
@@ -173,7 +184,10 @@ export const DesktopLibraryPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('playlists')}
+            onClick={() => {
+              setActiveTab('playlists');
+              setSelectedPlaylist(null);
+            }}
             style={activeTab === 'playlists' ? { backgroundColor: 'var(--color-accent)' } : undefined}
             className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
               activeTab === 'playlists'
@@ -181,7 +195,7 @@ export const DesktopLibraryPage: React.FC = () => {
                 : 'text-white/60 hover:text-white'
             }`}
           >
-            Playlists ({playlists.length})
+            Playlists ({userPlaylists.length})
           </button>
 
           <button
@@ -533,7 +547,9 @@ export const DesktopLibraryPage: React.FC = () => {
                     </div>
                     <div className="truncate">
                       <p className="text-sm font-bold text-white truncate">{song.title}</p>
-                      <p className="text-xs text-white/50 truncate mt-0.5">{song.artists}</p>
+                      <div className="text-xs text-white/50 truncate mt-0.5">
+                        <ArtistNames artists={song.artists} className="text-xs" linkClassName="text-white/50 hover:text-purple-300" />
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>

@@ -43,8 +43,12 @@ export interface AppUser {
   avatarUrl?: string; // Link ảnh hoặc base64 ảnh đại diện
   balance: number; // Số dư ví VNĐ
   purchasedSongIds: string[];
+  likedSongIds?: string[]; // Danh sách ID bài hát đã tim đồng bộ đa thiết bị
   blockedSongIds?: string[]; // Danh sách bài hát bị chặn
   usedVoucherCodes?: string[]; // Danh sách mã voucher đã dùng
+  theme?: ThemeId;
+  crossfadeDuration?: number;
+  preferredAudioFormat?: AudioFormat;
   role: 'admin' | 'user';
   createdAt: string;
 }

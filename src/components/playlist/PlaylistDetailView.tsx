@@ -1,14 +1,11 @@
 import React from 'react';
 import {
-  ArrowLeft,
   Play,
   Pause,
   Shuffle,
-  Trash2,
   Heart,
   Music2,
   Clock,
-  Disc3,
   X,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
@@ -17,10 +14,10 @@ import { ArtistNames } from '../common/ArtistNames';
 
 interface PlaylistDetailViewProps {
   playlist: Playlist;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
-export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist, onBack }) => {
+export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist }) => {
   const {
     allSearchableSongs,
     songs,
@@ -30,7 +27,6 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
     playCustomPool,
     playPlaylist,
     removeSongFromPlaylist,
-    deletePlaylist,
     likedSongIds,
     toggleLike,
     isShuffle,
@@ -39,10 +35,17 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
   const pool = allSearchableSongs && allSearchableSongs.length > 0 ? allSearchableSongs : songs;
   const songIds = Array.isArray(playlist.songIds) ? playlist.songIds : [];
 
-  // Map playlist songIds to Song objects
-  const playlistSongs: Song[] = songIds
-    .map((id) => pool.find((s) => s.id === id))
-    .filter((s): s is Song => Boolean(s));
+  // Map playlist songIds to unique Song objects sorted alphabetically (A-Z)
+  const uniqueMap = new Map<string, Song>();
+  songIds.forEach((id) => {
+    const found = pool.find((s) => s.id === id);
+    if (found && !uniqueMap.has(found.id)) {
+      uniqueMap.set(found.id, found);
+    }
+  });
+  const playlistSongs: Song[] = Array.from(uniqueMap.values()).sort((a, b) =>
+    a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' })
+  );
 
   const totalDurationSecs = playlistSongs.reduce((acc, s) => acc + (s.duration || 0), 0);
   const totalHours = Math.floor(totalDurationSecs / 3600);
@@ -72,31 +75,6 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
 
   return (
     <div className="w-full max-w-full space-y-6 pb-24 select-none font-['Roboto_Condensed'] animate-in fade-in duration-200">
-      {/* Top Bar: Back Button */}
-      <div className="flex items-center justify-between pb-2 border-b border-white/10 w-full">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all active:scale-95 cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Quay lại danh sách Playlist</span>
-        </button>
-
-        <button
-          onClick={() => {
-            if (confirm(`Bạn có chắc chắn muốn xóa playlist "${playlist.name}"?`)) {
-              deletePlaylist(playlist.id);
-              onBack();
-            }
-          }}
-          className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-          title="Xóa playlist này"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Xóa Playlist</span>
-        </button>
-      </div>
-
       {/* Playlist Detail Layout - Matched with CuratedAlbumsView */}
       <div className="w-full max-w-full flex flex-col lg:flex-row gap-6 lg:gap-8 items-start relative">
         {/* CỘT TRÁI: Đĩa tròn xoay 360 độ + Thông tin + Nút điều khiển */}

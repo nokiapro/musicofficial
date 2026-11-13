@@ -14,7 +14,7 @@ interface NavItemConfig {
 }
 
 export const MobileBottomNav: React.FC = () => {
-  const { activeMobileTab, setActiveMobileTab, isAdmin, currentUser } = useMusic();
+  const { activeMobileTab, setActiveMobileTab, setSelectedPlaylist, isAdmin, currentUser } = useMusic();
 
   // Navigation items: each section has its own distinctive, vibrant color!
   const navConfigs: NavItemConfig[] = [
@@ -102,7 +102,12 @@ export const MobileBottomNav: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveMobileTab(item.id)}
+              onClick={() => {
+                setActiveMobileTab(item.id);
+                if (item.id === 'library') {
+                  setSelectedPlaylist(null);
+                }
+              }}
               className={`flex flex-col items-center justify-center py-1 transition-all ${
                 isActive ? `${item.activeColor} ${item.glowColor}` : item.inactiveColor
               }`}
