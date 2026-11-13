@@ -15,6 +15,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { ExclusiveAlbum, AlbumSong, Song } from '../../types/music';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAutoScrollToSong } from '../../hooks/useAutoScrollToSong';
 
 export const CuratedAlbumsView: React.FC = () => {
   const {
@@ -49,6 +50,17 @@ export const CuratedAlbumsView: React.FC = () => {
   const [isAlbumLiked, setIsAlbumLiked] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const albumMenuRef = useRef<HTMLDivElement | null>(null);
+  const albumSongsListRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
+
+  useAutoScrollToSong({
+    containerRef: albumSongsListRef,
+    songId: currentSong?.id,
+    enabled: Boolean(selectedAlbum),
+    viewKey: selectedAlbum?.id || null,
+    manualTrigger: scrollTrigger,
+    itemCount: Array.isArray(selectedAlbum?.songs) ? selectedAlbum.songs.length : 0,
+  });
 
   // Close 3-dots popup on click outside (PC & Mobile - Requirement 7)
   useEffect(() => {
@@ -211,6 +223,7 @@ export const CuratedAlbumsView: React.FC = () => {
                       // Always pick a random track within this album and keep playback inside this album
                       const randIdx = Math.floor(Math.random() * albumSongsList.length);
                       playAlbumTrack(albumSongsList[randIdx], selectedAlbum, true);
+                      setScrollTrigger((t) => t + 1);
                     }}
                     style={
                       isAlbumShuffleActive
@@ -279,7 +292,7 @@ export const CuratedAlbumsView: React.FC = () => {
                   Album này chưa có bài hát nào.
                 </div>
               ) : (
-                <div className="divide-y divide-white/5">
+                <div ref={albumSongsListRef} className="divide-y divide-white/5">
                   {albumSongsList.map((song, idx) => {
                     const isCurrent = currentSong?.id === song.id;
                     const isPlayingThis = isCurrent && isPlaying;
@@ -291,6 +304,7 @@ export const CuratedAlbumsView: React.FC = () => {
                     return (
                       <div
                         key={song.id}
+                        data-song-id={song.id}
                         onClick={() => playAlbumTrack(song, selectedAlbum)}
                         className={`w-full relative flex items-center px-2 sm:px-4 py-2.5 transition-all cursor-pointer group ${
                           isCurrent

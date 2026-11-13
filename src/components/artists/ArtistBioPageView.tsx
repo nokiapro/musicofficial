@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Mic2,
   Play,
@@ -21,6 +21,7 @@ import { useMusic } from '../../context/MusicContext';
 import { ArtistBio, Song } from '../../types/music';
 import { ArtistNames } from '../common/ArtistNames';
 import { formatArtistName } from '../../utils/artistUtils';
+import { useAutoScrollToSong } from '../../hooks/useAutoScrollToSong';
 
 interface ArtistBioPageViewProps {
   onEditArtistInAdmin?: (artist: ArtistBio) => void;
@@ -210,6 +211,18 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
     return result;
   }, [selectedArtistName, songs, exclusiveAlbums]);
 
+  const artistSongsListRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
+
+  useAutoScrollToSong({
+    containerRef: artistSongsListRef,
+    songId: currentSong?.id,
+    enabled: Boolean(currentArtistBio && selectedArtistName),
+    viewKey: selectedArtistName || null,
+    manualTrigger: scrollTrigger,
+    itemCount: artistSongs.length,
+  });
+
   const handlePlayAll = (shuffle: boolean = false) => {
     if (artistSongs.length === 0) return;
     playCustomPool(
@@ -218,6 +231,7 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
       shuffle,
       shuffle ? undefined : artistSongs[0]
     );
+    setScrollTrigger((t) => t + 1);
   };
 
   const handleSongClick = (song: Song) => {
@@ -547,7 +561,7 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
               Chưa có bài hát nào của nghệ sĩ này trong hệ thống.
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
+            <div ref={artistSongsListRef} className="divide-y divide-white/5">
               {artistSongs.map((song, index) => {
                 const isCur = currentSong?.id === song.id;
                 const isSongPlaying = isCur && isPlaying;
@@ -556,6 +570,7 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
                 return (
                   <div
                     key={song.id}
+                    data-song-id={song.id}
                     onClick={() => handleSongClick(song)}
                     className={`group flex items-center justify-between gap-3 rounded-xl p-2.5 transition-colors cursor-pointer hover:bg-white/10 ${
                       isCur ? 'bg-purple-600/20 text-purple-300' : 'text-white'

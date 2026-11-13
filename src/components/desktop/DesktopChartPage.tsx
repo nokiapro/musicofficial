@@ -20,6 +20,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { ArtistNames } from '../common/ArtistNames';
 import { formatArtistsString } from '../../utils/artistUtils';
+import { useAutoScrollToSong } from '../../hooks/useAutoScrollToSong';
 
 export const DesktopChartPage: React.FC = () => {
   const {
@@ -46,6 +47,8 @@ export const DesktopChartPage: React.FC = () => {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
   const playMenuRef = useRef<HTMLDivElement | null>(null);
+  const chartListRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -88,15 +91,29 @@ export const DesktopChartPage: React.FC = () => {
   const startIndex = (validCurrentPage - 1) * PAGE_SIZE;
   const paginatedSongs = rankedSongs.slice(startIndex, startIndex + PAGE_SIZE);
 
+  useAutoScrollToSong({
+    containerRef: chartListRef,
+    songId: currentSong?.id,
+    enabled: true,
+    viewKey: 'desktop-chart',
+    paginatedList: rankedSongs,
+    pageSize: PAGE_SIZE,
+    currentPage: validCurrentPage,
+    onPageChange: setCurrentPage,
+    manualTrigger: scrollTrigger,
+  });
+
   const handlePlayInOrder = () => {
     if (rankedSongs.length === 0) return;
     playCustomPool(rankedSongs, '#xuankenchart', false, rankedSongs[0]);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     if (rankedSongs.length === 0) return;
     playCustomPool(rankedSongs, '#xuankenchart', true);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
@@ -243,7 +260,7 @@ export const DesktopChartPage: React.FC = () => {
       </div>
 
       {/* Chart List Table (Requirement 8: bỏ chữ trạng thái đi để MUA, bên cạnh ghi THAO TÁC) */}
-      <div className="space-y-2">
+      <div ref={chartListRef} className="space-y-2">
         <div className="grid grid-cols-[80px_1fr_110px_110px_90px_110px_90px] gap-4 px-5 py-3 text-xs font-bold text-white/50 uppercase tracking-wider border-b border-white/10 bg-white/5 rounded-xl">
           <span className="text-center whitespace-nowrap">Thứ hạng</span>
           <span className="whitespace-nowrap">Bài hát</span>
@@ -280,6 +297,7 @@ export const DesktopChartPage: React.FC = () => {
             return (
               <div
                 key={song.id}
+                data-song-id={song.id}
                 onClick={() => playSong(song)}
                 className={`grid grid-cols-[80px_1fr_110px_110px_90px_110px_90px] gap-4 px-5 py-3.5 rounded-2xl border cursor-pointer group transition-all items-center ${
                   isCurrent

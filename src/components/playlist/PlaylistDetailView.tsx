@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Play,
   Pause,
@@ -11,6 +11,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { Playlist, Song } from '../../types/music';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAutoScrollToSong } from '../../hooks/useAutoScrollToSong';
 
 interface PlaylistDetailViewProps {
   playlist: Playlist;
@@ -46,6 +47,18 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
   const playlistSongs: Song[] = Array.from(uniqueMap.values()).sort((a, b) =>
     a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' })
   );
+
+  const playlistSongsListRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
+
+  useAutoScrollToSong({
+    containerRef: playlistSongsListRef,
+    songId: currentSong?.id,
+    enabled: true,
+    viewKey: playlist.id,
+    manualTrigger: scrollTrigger,
+    itemCount: playlistSongs.length,
+  });
 
   const totalDurationSecs = playlistSongs.reduce((acc, s) => acc + (s.duration || 0), 0);
   const totalHours = Math.floor(totalDurationSecs / 3600);
@@ -145,6 +158,7 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
                 onClick={() => {
                   if (playlistSongs.length === 0) return;
                   playPlaylist(playlist, 'shuffle');
+                  setScrollTrigger((t) => t + 1);
                 }}
                 style={
                   isPlaylistShuffleActive
@@ -192,7 +206,7 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-white/5">
+              <div ref={playlistSongsListRef} className="divide-y divide-white/5">
                 {playlistSongs.map((song, idx) => {
                   const isCurrent = currentSong?.id === song.id;
                   const isPlayingThis = isCurrent && isPlaying;
@@ -201,6 +215,7 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
                   return (
                     <div
                       key={song.id}
+                      data-song-id={song.id}
                       onClick={() => handlePlaySongInPlaylist(song)}
                       className={`w-full relative flex items-center px-2 sm:px-4 py-2.5 transition-all cursor-pointer group ${
                         isCurrent

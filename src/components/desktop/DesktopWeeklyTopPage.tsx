@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAutoScrollToSong } from '../../hooks/useAutoScrollToSong';
 
 export const DesktopWeeklyTopPage: React.FC = () => {
   const {
@@ -40,6 +41,8 @@ export const DesktopWeeklyTopPage: React.FC = () => {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
   const playMenuRef = useRef<HTMLDivElement | null>(null);
+  const tableBodyRef = useRef<HTMLTableSectionElement | null>(null);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
 
   // Close 3-dots Menu on outside click (Requirement 3)
   useEffect(() => {
@@ -65,15 +68,26 @@ export const DesktopWeeklyTopPage: React.FC = () => {
     .sort((a, b) => b.weeklyPlaysCount - a.weeklyPlaysCount)
     .slice(0, 10);
 
+  useAutoScrollToSong({
+    containerRef: tableBodyRef,
+    songId: currentSong?.id,
+    enabled: true,
+    viewKey: 'desktop-weekly-top',
+    manualTrigger: scrollTrigger,
+    itemCount: weeklyRankedSongs.length,
+  });
+
   const handlePlayInOrder = () => {
     if (weeklyRankedSongs.length === 0) return;
     playCustomPool(weeklyRankedSongs, 'Top Tuần', false, weeklyRankedSongs[0]);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     if (weeklyRankedSongs.length === 0) return;
     playCustomPool(weeklyRankedSongs, 'Top Tuần', true);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
@@ -190,7 +204,7 @@ export const DesktopWeeklyTopPage: React.FC = () => {
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[105px]">THÊM</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody ref={tableBodyRef} className="divide-y divide-white/5">
               {weeklyRankedSongs.map((song, idx) => {
                 const rank = idx + 1;
                 const isCurrent = currentSong?.id === song.id;
@@ -209,6 +223,7 @@ export const DesktopWeeklyTopPage: React.FC = () => {
                 return (
                   <tr
                     key={song.id}
+                    data-song-id={song.id}
                     onClick={() => playSong(song)}
                     className={`cursor-pointer transition-colors group ${
                       isCurrent ? 'bg-[#9b4de0]/20' : 'hover:bg-white/5'

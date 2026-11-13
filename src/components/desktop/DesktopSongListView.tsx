@@ -18,6 +18,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAutoScrollToSong } from '../../hooks/useAutoScrollToSong';
 
 export const DesktopSongListView: React.FC = () => {
   const {
@@ -56,6 +57,8 @@ export const DesktopSongListView: React.FC = () => {
   // Requirement 21: 20 songs per page
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
+  const tableBodyRef = useRef<HTMLTableSectionElement | null>(null);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
 
   const handleToggleMenu = (e: React.MouseEvent, songId: string) => {
     e.stopPropagation();
@@ -118,6 +121,18 @@ export const DesktopSongListView: React.FC = () => {
   const startIndex = (validCurrentPage - 1) * PAGE_SIZE;
   const paginatedSongs = sortedSongs.slice(startIndex, startIndex + PAGE_SIZE);
 
+  useAutoScrollToSong({
+    containerRef: tableBodyRef,
+    songId: currentSong?.id,
+    enabled: true,
+    viewKey: 'desktop-discover',
+    paginatedList: sortedSongs,
+    pageSize: PAGE_SIZE,
+    currentPage: validCurrentPage,
+    onPageChange: setCurrentPage,
+    manualTrigger: scrollTrigger,
+  });
+
   const formatDuration = (seconds?: number) => {
     if (!seconds || isNaN(seconds) || seconds <= 0) return '03:30';
     const totalSecs = Math.floor(seconds);
@@ -138,12 +153,14 @@ export const DesktopSongListView: React.FC = () => {
   const handlePlayInOrder = () => {
     if (sortedSongs.length === 0) return;
     playCustomPool(sortedSongs, 'Danh sách bài hát', false, sortedSongs[0]);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     if (sortedSongs.length === 0) return;
     playCustomPool(sortedSongs, 'Danh sách bài hát', true);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
@@ -255,7 +272,7 @@ export const DesktopSongListView: React.FC = () => {
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[90px]">THÊM</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-sm">
+            <tbody ref={tableBodyRef} className="divide-y divide-white/5 text-sm">
               {paginatedSongs.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-white/50">
@@ -281,6 +298,7 @@ export const DesktopSongListView: React.FC = () => {
                   return (
                     <tr
                       key={song.id}
+                      data-song-id={song.id}
                       onClick={() => handlePlayOrPause(song)}
                       className={`cursor-pointer transition-colors group ${
                         isCurrent

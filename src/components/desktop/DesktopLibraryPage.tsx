@@ -15,11 +15,13 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { PlaylistDetailView } from '../playlist/PlaylistDetailView';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAutoScrollToSong } from '../../hooks/useAutoScrollToSong';
 
 export const DesktopLibraryPage: React.FC = () => {
   const {
     songs,
     allSearchableSongs,
+    currentSong,
     likedSongIds,
     toggleLike,
     playSong,
@@ -50,6 +52,9 @@ export const DesktopLibraryPage: React.FC = () => {
   const PAGE_SIZE = 20;
   const [likedPage, setLikedPage] = useState(1);
   const [purchasedPage, setPurchasedPage] = useState(1);
+  const likedListRef = useRef<HTMLDivElement | null>(null);
+  const purchasedListRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
 
   useEffect(() => {
     const handleClickOutsidePlayMenu = (e: MouseEvent) => {
@@ -92,15 +97,41 @@ export const DesktopLibraryPage: React.FC = () => {
 
   const librarySongs = likedSongs.length > 0 ? likedSongs : purchasedSongs.length > 0 ? purchasedSongs : songs;
 
+  useAutoScrollToSong({
+    containerRef: likedListRef,
+    songId: currentSong?.id,
+    enabled: activeTab === 'liked',
+    viewKey: 'desktop-library-liked',
+    paginatedList: likedSongs,
+    pageSize: PAGE_SIZE,
+    currentPage: likedPage,
+    onPageChange: setLikedPage,
+    manualTrigger: scrollTrigger,
+  });
+
+  useAutoScrollToSong({
+    containerRef: purchasedListRef,
+    songId: currentSong?.id,
+    enabled: activeTab === 'purchased',
+    viewKey: 'desktop-library-purchased',
+    paginatedList: purchasedSongs,
+    pageSize: PAGE_SIZE,
+    currentPage: purchasedPage,
+    onPageChange: setPurchasedPage,
+    manualTrigger: scrollTrigger,
+  });
+
   const handlePlayInOrder = () => {
     if (librarySongs.length === 0) return;
     playCustomPool(librarySongs, 'Thư viện của tôi', false, librarySongs[0]);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
   const handlePlayRandom = () => {
     if (librarySongs.length === 0) return;
     playCustomPool(librarySongs, 'Thư viện của tôi', true);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
@@ -241,7 +272,7 @@ export const DesktopLibraryPage: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div ref={likedListRef} className="space-y-1">
               <div className="flex items-center px-4 py-2 text-xs font-semibold text-white/40 uppercase tracking-wider border-b border-white/5">
                 <span className="w-12 text-center">#</span>
                 <span className="flex-1">Bài hát</span>
@@ -249,11 +280,18 @@ export const DesktopLibraryPage: React.FC = () => {
                 <span className="w-24 text-center">Định dạng</span>
                 <span className="w-24 text-right">Hành động</span>
               </div>
-              {paginatedLikedSongs.map((song, idx) => (
+              {paginatedLikedSongs.map((song, idx) => {
+                const isCurrent = currentSong?.id === song.id;
+                return (
                 <div
                   key={song.id}
+                  data-song-id={song.id}
                   onClick={() => playSong(song)}
-                  className="flex items-center px-4 py-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/5 cursor-pointer group transition-all select-none"
+                  className={`flex items-center px-4 py-3 rounded-2xl border cursor-pointer group transition-all select-none ${
+                    isCurrent
+                      ? 'bg-[#9b4de0]/20 border-[#9b4de0]/40'
+                      : 'hover:bg-white/5 border-transparent hover:border-white/5'
+                  }`}
                 >
                   <span className="w-12 text-center text-xs text-white/40 group-hover:text-white font-bold">
                     {(likedPage - 1) * PAGE_SIZE + idx + 1}
@@ -303,7 +341,8 @@ export const DesktopLibraryPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {/* Pagination (Requirement 21) */}
               {totalLikedPages > 1 && (
@@ -527,12 +566,19 @@ export const DesktopLibraryPage: React.FC = () => {
               <p className="text-xs text-white/50 mt-1">Hãy ghé thăm Cửa Hàng để mua nhạc bản quyền full chất lượng.</p>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              {paginatedPurchasedSongs.map((song, idx) => (
+            <div ref={purchasedListRef} className="space-y-1.5">
+              {paginatedPurchasedSongs.map((song, idx) => {
+                const isCurrent = currentSong?.id === song.id;
+                return (
                 <div
                   key={song.id}
+                  data-song-id={song.id}
                   onClick={() => playSong(song)}
-                  className="flex items-center px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer group transition-all"
+                  className={`flex items-center px-4 py-3 rounded-2xl border cursor-pointer group transition-all ${
+                    isCurrent
+                      ? 'bg-[#9b4de0]/20 border-[#9b4de0]/50'
+                      : 'bg-white/5 hover:bg-white/10 border-white/10'
+                  }`}
                 >
                   <span className="w-10 text-center text-xs text-emerald-400 font-bold">
                     #{(purchasedPage - 1) * PAGE_SIZE + idx + 1}
@@ -566,7 +612,8 @@ export const DesktopLibraryPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {/* Pagination (Requirement 21) */}
               {totalPurchasedPages > 1 && (

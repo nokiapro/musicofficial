@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Monitor,
   Smartphone,
@@ -33,6 +33,7 @@ import { ChatBoxView } from '../chat/ChatBoxView';
 import { PlaylistDetailView } from '../playlist/PlaylistDetailView';
 import { ArtistBioPageView } from '../artists/ArtistBioPageView';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAutoScrollToSong } from '../../hooks/useAutoScrollToSong';
 
 export const MobileAppLayout: React.FC = () => {
   const {
@@ -81,6 +82,11 @@ export const MobileAppLayout: React.FC = () => {
   const [activeMenuSongId, setActiveMenuSongId] = useState<string | null>(null);
   const [menuPositionMap, setMenuPositionMap] = useState<Record<string, 'down' | 'up'>>({});
   const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
+  const discoverListRef = useRef<HTMLDivElement | null>(null);
+  const chartListRef = useRef<HTMLDivElement | null>(null);
+  const likedListRef = useRef<HTMLDivElement | null>(null);
+  const purchasedListRef = useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     if (!currentUser && activeMobileTab === 'chat') {
@@ -108,6 +114,7 @@ export const MobileAppLayout: React.FC = () => {
     const listToPlay = sortedDiscoverSongs.length > 0 ? sortedDiscoverSongs : songs;
     if (listToPlay.length === 0) return;
     playCustomPool(listToPlay, 'Danh sách bài hát', false, listToPlay[0]);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
@@ -115,6 +122,7 @@ export const MobileAppLayout: React.FC = () => {
     const listToPlay = sortedDiscoverSongs.length > 0 ? sortedDiscoverSongs : songs;
     if (listToPlay.length === 0) return;
     playCustomPool(listToPlay, 'Danh sách bài hát', true);
+    setScrollTrigger((t) => t + 1);
     setIsPlayMenuOpen(false);
   };
 
@@ -174,6 +182,54 @@ export const MobileAppLayout: React.FC = () => {
     }
   }, [purchasedPage, totalPurchasedPages]);
   const paginatedOwnedSongs = ownedSongs.slice((purchasedPage - 1) * PAGE_SIZE, purchasedPage * PAGE_SIZE);
+
+  useAutoScrollToSong({
+    containerRef: discoverListRef,
+    songId: currentSong?.id,
+    enabled: activeMobileTab === 'discover',
+    viewKey: 'mobile-discover',
+    paginatedList: sortedDiscoverSongs,
+    pageSize: PAGE_SIZE,
+    currentPage: discoverPage,
+    onPageChange: setDiscoverPage,
+    manualTrigger: scrollTrigger,
+  });
+
+  useAutoScrollToSong({
+    containerRef: chartListRef,
+    songId: currentSong?.id,
+    enabled: activeMobileTab === 'chart',
+    viewKey: 'mobile-chart',
+    paginatedList: rankedSongs,
+    pageSize: PAGE_SIZE,
+    currentPage: chartPage,
+    onPageChange: setChartPage,
+    manualTrigger: scrollTrigger,
+  });
+
+  useAutoScrollToSong({
+    containerRef: likedListRef,
+    songId: currentSong?.id,
+    enabled: activeMobileTab === 'library' && librarySubTab === 'liked',
+    viewKey: 'mobile-library-liked',
+    paginatedList: likedSongs,
+    pageSize: PAGE_SIZE,
+    currentPage: likedPage,
+    onPageChange: setLikedPage,
+    manualTrigger: scrollTrigger,
+  });
+
+  useAutoScrollToSong({
+    containerRef: purchasedListRef,
+    songId: currentSong?.id,
+    enabled: activeMobileTab === 'library' && librarySubTab === 'purchased' && Boolean(currentUser),
+    viewKey: 'mobile-library-purchased',
+    paginatedList: ownedSongs,
+    pageSize: PAGE_SIZE,
+    currentPage: purchasedPage,
+    onPageChange: setPurchasedPage,
+    manualTrigger: scrollTrigger,
+  });
 
 
 
@@ -291,7 +347,7 @@ export const MobileAppLayout: React.FC = () => {
             )}
 
             {/* Songs List */}
-            <div className="space-y-2">
+            <div ref={discoverListRef} className="space-y-2">
               {paginatedDiscoverSongs.map((song, idx) => {
                 const isCurrent = currentSong ? currentSong.id === song.id : false;
                 const isPurchased = isSongPurchased(song.id);
@@ -300,6 +356,7 @@ export const MobileAppLayout: React.FC = () => {
                 return (
                   <div
                     key={song.id}
+                    data-song-id={song.id}
                     onClick={() => {
                       if (song.isAlbumTrack) {
                         const found = exclusiveAlbums.find((a) => a.id === song.albumId || a.title === song.album);
@@ -630,13 +687,14 @@ export const MobileAppLayout: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div ref={chartListRef} className="space-y-2">
               {paginatedChartSongs.map((song, i) => {
                 const rank = (chartPage - 1) * PAGE_SIZE + i + 1;
                 const isCurrent = currentSong?.id === song.id;
                 return (
                   <div
                     key={song.id}
+                    data-song-id={song.id}
                     onClick={() => {
                       setPlaybackSource('#xuankenchart');
                       playSong(song);
@@ -782,7 +840,7 @@ export const MobileAppLayout: React.FC = () => {
 
             {/* Subtab 1: Yêu thích */}
             {librarySubTab === 'liked' && (
-              <div className="space-y-2">
+              <div ref={likedListRef} className="space-y-2">
                 {!currentUser && likedSongs.length > 0 && (
                   <div className="p-2.5 rounded-xl bg-purple-600/15 border border-purple-500/30 text-[11px] text-purple-200 flex items-center justify-between gap-2 shadow-sm">
                     <span>💡 Đăng nhập để đồng bộ bài hát yêu thích sang thiết bị khác!</span>
@@ -800,14 +858,21 @@ export const MobileAppLayout: React.FC = () => {
                     Chưa có bài hát yêu thích. Hãy bấm icon tim để lưu bài hát!
                   </div>
                 ) : (
-                  paginatedLikedSongs.map((song) => (
+                  paginatedLikedSongs.map((song) => {
+                    const isCurrent = currentSong?.id === song.id;
+                    return (
                     <div
                       key={song.id}
+                      data-song-id={song.id}
                       onClick={() => {
                         setPlaybackSource('Thư viện cá nhân');
                         playSong(song);
                       }}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 active:bg-white/10 cursor-pointer gap-2.5"
+                      className={`flex items-center justify-between p-2.5 rounded-xl border active:bg-white/10 cursor-pointer gap-2.5 ${
+                        isCurrent
+                          ? 'bg-[#9b4de0]/20 border-[#9b4de0]/50'
+                          : 'bg-white/5 border-transparent'
+                      }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
                         <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow relative">
@@ -844,7 +909,8 @@ export const MobileAppLayout: React.FC = () => {
                         </button>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 )}
 
                 {/* Liked Pagination (Requirement 21) */}
@@ -1015,20 +1081,27 @@ export const MobileAppLayout: React.FC = () => {
             )}
 
             {librarySubTab === 'purchased' && currentUser && (
-              <div className="space-y-2">
+              <div ref={purchasedListRef} className="space-y-2">
                 {ownedSongs.length === 0 ? (
                   <div className="py-12 text-center text-white/40 text-xs bg-white/5 rounded-2xl border border-white/5">
                     Chưa có bài hát bản quyền nào được mua.
                   </div>
                 ) : (
-                  paginatedOwnedSongs.map((song) => (
+                  paginatedOwnedSongs.map((song) => {
+                    const isCurrent = currentSong?.id === song.id;
+                    return (
                     <div
                       key={song.id}
+                      data-song-id={song.id}
                       onClick={() => {
                         setPlaybackSource('Thư viện cá nhân');
                         playSong(song);
                       }}
-                      className="flex items-center justify-between p-2.5 rounded-2xl bg-white/5 border border-white/10 cursor-pointer gap-2.5"
+                      className={`flex items-center justify-between p-2.5 rounded-2xl border cursor-pointer gap-2.5 ${
+                        isCurrent
+                          ? 'bg-[#9b4de0]/20 border-[#9b4de0]/50'
+                          : 'bg-white/5 border-white/10'
+                      }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
                         <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow relative">
@@ -1066,7 +1139,8 @@ export const MobileAppLayout: React.FC = () => {
                         </button>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 )}
 
                 {/* Purchased Pagination (Requirement 21) */}
