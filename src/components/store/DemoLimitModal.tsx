@@ -3,6 +3,7 @@ import { X, Lock, ShoppingCart, Tag } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Voucher } from '../../types/music';
 import { formatArtistsString } from '../../utils/artistUtils';
+import { useAnimatedData } from '../../hooks/useAnimatedPresence';
 
 export const DemoLimitModal: React.FC = () => {
   const {
@@ -28,9 +29,14 @@ export const DemoLimitModal: React.FC = () => {
   const targetSong = songToBuy || currentSong;
   const isOpen = (isDemoLimitModalOpen || isBuyModalOpen) && !!targetSong;
 
-  if (!isOpen || !targetSong) return null;
+  const { activeData: activeSong, shouldRender, isClosing } = useAnimatedData(
+    isOpen ? targetSong : null,
+    220
+  );
 
-  const originalPrice = targetSong.price && targetSong.price > 0 ? targetSong.price : 20000;
+  if (!shouldRender || !activeSong) return null;
+
+  const originalPrice = activeSong.price && activeSong.price > 0 ? activeSong.price : 20000;
   const finalPrice = Math.max(0, originalPrice - discountAmount);
 
   const handleApplyCoupon = (codeToApply?: string) => {
@@ -69,7 +75,7 @@ export const DemoLimitModal: React.FC = () => {
       return;
     }
 
-    const result = buySong(targetSong, finalPrice, appliedVoucher?.code);
+    const result = buySong(activeSong, finalPrice, appliedVoucher?.code);
     if (result.success) {
       handleClose();
     }
@@ -78,15 +84,21 @@ export const DemoLimitModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out select-none"
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-350 ease-out"
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 max-h-[92vh] flex flex-col ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+        }`}
       >
         {/* Header with Close */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
@@ -102,7 +114,7 @@ export const DemoLimitModal: React.FC = () => {
           </div>
           <button
             onClick={handleClose}
-            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -112,22 +124,22 @@ export const DemoLimitModal: React.FC = () => {
           {/* Song Info */}
           <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10">
             <div className="w-14 h-14 rounded-xl overflow-hidden bg-purple-900/40 border border-white/10 shrink-0 flex items-center justify-center">
-              {targetSong.coverImage ? (
+              {activeSong.coverImage ? (
                 <img
-                  src={targetSong.coverImage}
-                  alt={targetSong.title}
+                  src={activeSong.coverImage}
+                  alt={activeSong.title}
                   className="w-full h-full object-cover"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
-                <span className="font-black text-sm text-white/70">{targetSong.audioFormat}</span>
+                <span className="font-black text-sm text-white/70">{activeSong.audioFormat}</span>
               )}
             </div>
             <div className="truncate flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-white truncate">{targetSong.title}</h3>
-              <p className="text-xs text-white/60 truncate mt-0.5">{formatArtistsString(targetSong.artists)}</p>
+              <h3 className="text-sm font-bold text-white truncate">{activeSong.title}</h3>
+              <p className="text-xs text-white/60 truncate mt-0.5">{formatArtistsString(activeSong.artists)}</p>
               <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#9b4de0]/20 text-[#c273ed] border border-[#9b4de0]/40">
-                Định dạng {targetSong.audioFormat} Full Lossless
+                Định dạng {activeSong.audioFormat} Full Lossless
               </span>
             </div>
           </div>

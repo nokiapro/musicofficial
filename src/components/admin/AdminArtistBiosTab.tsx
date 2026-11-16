@@ -19,6 +19,7 @@ import { useMusic } from '../../context/MusicContext';
 import { ArtistBio } from '../../types/music';
 import { DEFAULT_ARTIST_BIOS } from '../../services/musicService';
 import { formatArtistName } from '../../utils/artistUtils';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const AdminArtistBiosTab: React.FC = () => {
   const {
@@ -52,6 +53,8 @@ export const AdminArtistBiosTab: React.FC = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; error?: boolean } | null>(null);
+
+  const { shouldRender: shouldRenderModal, isClosing: isClosingModal } = useAnimatedPresence(isModalOpen, 220);
 
   const handleOpenAdd = () => {
     setEditingId(null);
@@ -351,9 +354,19 @@ export const AdminArtistBiosTab: React.FC = () => {
       </div>
 
       {/* Modal: Add / Edit Artist Bio */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/15 bg-[#170f23] p-6 text-white shadow-2xl">
+      {shouldRenderModal && (
+        <div
+          onClick={() => setIsModalOpen(false)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm ${
+            isClosingModal ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/15 bg-[#170f23] p-6 text-white shadow-2xl ${
+              isClosingModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
+          >
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Mic2 className="w-5 h-5 text-purple-400" />
@@ -364,7 +377,7 @@ export const AdminArtistBiosTab: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

@@ -2,16 +2,26 @@ import React, { useState } from 'react';
 import { X, Copy, Check, Share2, Facebook, Send, Link as LinkIcon } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { formatArtistsString } from '../../utils/artistUtils';
+import { useAnimatedData } from '../../hooks/useAnimatedPresence';
 
 export const ShareModal: React.FC = () => {
   const { isShareModalOpen, setIsShareModalOpen, songToShare, theme } = useMusic();
   const [copied, setCopied] = useState(false);
 
-  if (!isShareModalOpen || !songToShare) return null;
+  const { activeData: activeSong, shouldRender, isClosing } = useAnimatedData(
+    isShareModalOpen ? songToShare : null,
+    220
+  );
+
+  if (!shouldRender || !activeSong) return null;
+
+  const handleClose = () => {
+    setIsShareModalOpen(false);
+  };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://xuanken.name.vn';
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const shareUrl = `${origin}${pathname}?song=${encodeURIComponent(songToShare.id)}`;
+  const shareUrl = `${origin}${pathname}?song=${encodeURIComponent(activeSong.id)}`;
 
   const handleCopy = () => {
     try {
@@ -27,8 +37,8 @@ export const ShareModal: React.FC = () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: `XuanKen Music - ${songToShare.title}`,
-          text: `Nghe ngay bài hát "${songToShare.title}" của ${formatArtistsString(songToShare.artists)} trên XuanKen Music!`,
+          title: `XuanKen Music - ${activeSong.title}`,
+          text: `Nghe ngay bài hát "${activeSong.title}" của ${formatArtistsString(activeSong.artists)} trên XuanKen Music!`,
           url: shareUrl,
         });
       } catch (e) {}
@@ -47,7 +57,7 @@ export const ShareModal: React.FC = () => {
 
   const handleShareTelegram = () => {
     try {
-      window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Nghe "${songToShare.title}" trên XuanKen Music`)}`, '_blank', 'noopener,noreferrer');
+      window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Nghe "${activeSong.title}" trên XuanKen Music`)}`, '_blank', 'noopener,noreferrer');
     } catch (e) {
       handleCopy();
     }
@@ -56,15 +66,21 @@ export const ShareModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out select-none"
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 animate-in zoom-in-95 duration-350 ease-out"
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -78,8 +94,8 @@ export const ShareModal: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={() => setIsShareModalOpen(false)}
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white"
+            onClick={handleClose}
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -88,16 +104,16 @@ export const ShareModal: React.FC = () => {
         {/* Song Mini Card */}
         <div className="mt-4 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl overflow-hidden bg-purple-900/40 border border-white/10 shrink-0">
-            {songToShare.coverImage ? (
-              <img src={songToShare.coverImage} alt={songToShare.title} className="w-full h-full object-cover" />
+            {activeSong.coverImage ? (
+              <img src={activeSong.coverImage} alt={activeSong.title} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center font-bold text-xs text-white/60">XK</div>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold truncate text-white">{songToShare.title}</h3>
-            <p className="text-xs text-white/60 truncate">{formatArtistsString(songToShare.artists)}</p>
-            <span className="text-[10px] text-purple-400 font-semibold">{songToShare.audioFormat} • XuanKen Music</span>
+            <h3 className="text-sm font-bold truncate text-white">{activeSong.title}</h3>
+            <p className="text-xs text-white/60 truncate">{formatArtistsString(activeSong.artists)}</p>
+            <span className="text-[10px] text-purple-400 font-semibold">{activeSong.audioFormat} • XuanKen Music</span>
           </div>
         </div>
 

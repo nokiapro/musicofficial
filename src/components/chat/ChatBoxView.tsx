@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ChatMessage, Song } from '../../types/music';
+import { useAnimatedData, useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const ChatBoxView: React.FC = () => {
   const {
@@ -75,6 +76,20 @@ export const ChatBoxView: React.FC = () => {
 
   // Toast notice
   const [toastNotice, setToastNotice] = useState<string | null>(null);
+
+  const {
+    activeData: activeMobileModal,
+    shouldRender: shouldRenderMobileAction,
+    isClosing: isClosingMobileAction,
+  } = useAnimatedData(mobileActionModal.isOpen ? mobileActionModal : null, 220);
+  const {
+    shouldRender: shouldRenderEditModal,
+    isClosing: isClosingEditModal,
+  } = useAnimatedPresence(Boolean(editingMessage), 220);
+  const {
+    shouldRender: shouldRenderSongSelector,
+    isClosing: isClosingSongSelector,
+  } = useAnimatedPresence(isSongSelectorOpen, 220);
 
   const showToast = (msg: string) => {
     setToastNotice(msg);
@@ -844,36 +859,40 @@ export const ChatBoxView: React.FC = () => {
       )}
 
       {/* Mobile Long-Press Action Sheet Modal */}
-      {mobileActionModal.isOpen && (
+      {shouldRenderMobileAction && activeMobileModal && (
         <div
           onClick={() => setMobileActionModal({ isOpen: false, type: 'bubble' })}
-          className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex flex-col justify-end p-4 animate-in fade-in duration-150"
+          className={`fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex flex-col justify-end p-4 ${
+            isClosingMobileAction ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm mx-auto rounded-3xl bg-zinc-900 border border-white/15 p-4 shadow-2xl space-y-2 animate-in slide-in-from-bottom duration-200 text-xs"
+            className={`w-full max-w-sm mx-auto rounded-3xl bg-zinc-900 border border-white/15 p-4 shadow-2xl space-y-2 text-xs ${
+              isClosingMobileAction ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
+            }`}
           >
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <span className="font-bold text-white/80">
-                {mobileActionModal.type === 'bubble' ? 'Tùy chọn tin nhắn' : `Tùy chọn: ${mobileActionModal.targetUserName}`}
+                {activeMobileModal.type === 'bubble' ? 'Tùy chọn tin nhắn' : `Tùy chọn: ${activeMobileModal.targetUserName}`}
               </span>
               <button
                 type="button"
                 onClick={() => setMobileActionModal({ isOpen: false, type: 'bubble' })}
-                className="p-1 rounded-full text-white/60 hover:text-white"
+                className="p-1 rounded-full text-white/60 hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {mobileActionModal.type === 'bubble' && mobileActionModal.targetMsg && (
+            {activeMobileModal.type === 'bubble' && activeMobileModal.targetMsg && (
               <>
-                {(isAdmin || (currentUser && mobileActionModal.targetMsg.userId === currentUser.uid)) && (
+                {(isAdmin || (currentUser && activeMobileModal.targetMsg.userId === currentUser.uid)) && (
                   <button
                     type="button"
                     onClick={() => {
-                      setEditingMessage(mobileActionModal.targetMsg!);
-                      setEditContentInput(mobileActionModal.targetMsg!.content);
+                      setEditingMessage(activeMobileModal.targetMsg!);
+                      setEditContentInput(activeMobileModal.targetMsg!.content);
                       setMobileActionModal({ isOpen: false, type: 'bubble' });
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold"
@@ -883,11 +902,11 @@ export const ChatBoxView: React.FC = () => {
                   </button>
                 )}
 
-                {(isAdmin || (currentUser && mobileActionModal.targetMsg.userId === currentUser.uid)) && (
+                {(isAdmin || (currentUser && activeMobileModal.targetMsg.userId === currentUser.uid)) && (
                   <button
                     type="button"
                     onClick={() => {
-                      deleteChatMessage(mobileActionModal.targetMsg!.id);
+                      deleteChatMessage(activeMobileModal.targetMsg!.id);
                       showToast('Đã xóa tin nhắn!');
                       setMobileActionModal({ isOpen: false, type: 'bubble' });
                     }}
@@ -902,20 +921,20 @@ export const ChatBoxView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      togglePinChatMessage(mobileActionModal.targetMsg!.id, !mobileActionModal.targetMsg!.isPinned);
-                      showToast(mobileActionModal.targetMsg!.isPinned ? 'Đã bỏ ghim' : 'Đã ghim tin nhắn!');
+                      togglePinChatMessage(activeMobileModal.targetMsg!.id, !activeMobileModal.targetMsg!.isPinned);
+                      showToast(activeMobileModal.targetMsg!.isPinned ? 'Đã bỏ ghim' : 'Đã ghim tin nhắn!');
                       setMobileActionModal({ isOpen: false, type: 'bubble' });
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/5 text-amber-300 font-bold"
                   >
                     <Pin className="w-4 h-4" />
-                    <span>{mobileActionModal.targetMsg.isPinned ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn'}</span>
+                    <span>{activeMobileModal.targetMsg.isPinned ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn'}</span>
                   </button>
                 )}
 
                 <button
                   type="button"
-                  onClick={() => handleCopyText(mobileActionModal.targetMsg!.content)}
+                  onClick={() => handleCopyText(activeMobileModal.targetMsg!.content)}
                   className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/5 text-white/80 font-bold"
                 >
                   <Copy className="w-4 h-4 text-white/60" />
@@ -924,25 +943,25 @@ export const ChatBoxView: React.FC = () => {
               </>
             )}
 
-            {mobileActionModal.type === 'avatar' && mobileActionModal.targetUserId && mobileActionModal.targetUserName && (
+            {activeMobileModal.type === 'avatar' && activeMobileModal.targetUserId && activeMobileModal.targetUserName && (
               <>
                 <button
                   type="button"
-                  onClick={() => handleTagUser(mobileActionModal.targetUserName!)}
+                  onClick={() => handleTagUser(activeMobileModal.targetUserName!)}
                   className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/5 text-white font-bold"
                 >
                   <AtSign className="w-4 h-4 text-[#38ef7d]" />
-                  <span>Tag tên (@{mobileActionModal.targetUserName})</span>
+                  <span>Tag tên (@{activeMobileModal.targetUserName})</span>
                 </button>
 
-                {isAdmin && mobileActionModal.targetUserId !== currentUser?.uid && (
+                {isAdmin && activeMobileModal.targetUserId !== currentUser?.uid && (
                   <div className="pt-2 border-t border-white/10 space-y-1.5">
                     <p className="text-[11px] font-bold text-red-400 uppercase">Quyền Admin: Cấm Chat</p>
 
-                    {bannedMembers[mobileActionModal.targetUserId] ? (
+                    {bannedMembers[activeMobileModal.targetUserId] ? (
                       <button
                         type="button"
-                        onClick={() => handleUnbanMember(mobileActionModal.targetUserId!, mobileActionModal.targetUserName!)}
+                        onClick={() => handleUnbanMember(activeMobileModal.targetUserId!, activeMobileModal.targetUserName!)}
                         className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 font-bold"
                       >
                         <UserCheck className="w-4 h-4" />
@@ -952,28 +971,28 @@ export const ChatBoxView: React.FC = () => {
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
-                          onClick={() => handleBanMember(mobileActionModal.targetUserId!, mobileActionModal.targetUserName!, 5)}
+                          onClick={() => handleBanMember(activeMobileModal.targetUserId!, activeMobileModal.targetUserName!, 5)}
                           className="p-2 rounded-xl bg-red-500/15 text-red-300 font-bold text-center"
                         >
                           Ban 5 phút
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleBanMember(mobileActionModal.targetUserId!, mobileActionModal.targetUserName!, 15)}
+                          onClick={() => handleBanMember(activeMobileModal.targetUserId!, activeMobileModal.targetUserName!, 15)}
                           className="p-2 rounded-xl bg-red-500/15 text-red-300 font-bold text-center"
                         >
                           Ban 15 phút
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleBanMember(mobileActionModal.targetUserId!, mobileActionModal.targetUserName!, 60)}
+                          onClick={() => handleBanMember(activeMobileModal.targetUserId!, activeMobileModal.targetUserName!, 60)}
                           className="p-2 rounded-xl bg-red-500/15 text-red-300 font-bold text-center"
                         >
                           Ban 60 phút
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleBanMember(mobileActionModal.targetUserId!, mobileActionModal.targetUserName!, null)}
+                          onClick={() => handleBanMember(activeMobileModal.targetUserId!, activeMobileModal.targetUserName!, null)}
                           className="p-2 rounded-xl bg-red-600/30 text-red-400 font-black text-center"
                         >
                           Ban vĩnh viễn
@@ -989,9 +1008,19 @@ export const ChatBoxView: React.FC = () => {
       )}
 
       {/* Edit Message Modal */}
-      {editingMessage && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-3xl bg-zinc-900 border border-white/15 p-5 shadow-2xl flex flex-col space-y-4">
+      {shouldRenderEditModal && (
+        <div
+          onClick={() => setEditingMessage(null)}
+          className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm ${
+            isClosingEditModal ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-md rounded-3xl bg-zinc-900 border border-white/15 p-5 shadow-2xl flex flex-col space-y-4 ${
+              isClosingEditModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
+          >
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div className="flex items-center gap-2 text-white font-bold text-sm">
                 <Edit3 className="w-4 h-4 text-sky-400" />
@@ -1000,7 +1029,7 @@ export const ChatBoxView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setEditingMessage(null)}
-                className="p-1 rounded-full text-white/60 hover:text-white"
+                className="p-1 rounded-full text-white/60 hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1036,9 +1065,19 @@ export const ChatBoxView: React.FC = () => {
       )}
 
       {/* Song Selector Modal */}
-      {isSongSelectorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-3xl bg-zinc-900 border border-white/15 p-5 shadow-2xl flex flex-col max-h-[80vh]">
+      {shouldRenderSongSelector && (
+        <div
+          onClick={() => setIsSongSelectorOpen(false)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm ${
+            isClosingSongSelector ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-lg rounded-3xl bg-zinc-900 border border-white/15 p-5 shadow-2xl flex flex-col max-h-[80vh] ${
+              isClosingSongSelector ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
+          >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Music className="w-5 h-5 text-[#c273ed]" />
@@ -1046,7 +1085,7 @@ export const ChatBoxView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsSongSelectorOpen(false)}
-                className="p-1 rounded-full text-white/60 hover:text-white"
+                className="p-1 rounded-full text-white/60 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

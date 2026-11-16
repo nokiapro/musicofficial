@@ -291,99 +291,106 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
         )}
 
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 via-black/40 to-black/80 p-5 sm:p-6 md:p-8 backdrop-blur-md">
+        <div className="glass-panel relative overflow-hidden rounded-3xl p-5 sm:p-7 md:p-8">
           {/* Background image backdrop */}
           {currentArtistBio.bannerUrl && (
-            <div className="pointer-events-none absolute inset-0 -z-10 opacity-20">
+            <div className="pointer-events-none absolute inset-0 -z-10 opacity-25">
               <img
                 src={currentArtistBio.bannerUrl}
                 alt=""
+                referrerPolicy="no-referrer"
                 className="h-full w-full object-cover blur-sm"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#120e24] via-[#120e24]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/75 to-transparent" />
             </div>
           )}
 
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
             {/* Avatar & Verified Badge */}
             <div className="flex flex-col items-center sm:items-start shrink-0">
-              <div className="h-28 w-28 overflow-hidden rounded-full border-2 border-purple-400/50 shadow-2xl sm:h-36 sm:w-36 md:h-44 md:w-44">
-                <img
-                  src={currentArtistBio.avatarUrl}
-                  alt={formatArtistName(currentArtistBio.name)}
-                  className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+              <div className="relative">
+                <div
+                  aria-hidden="true"
+                  className="absolute -inset-2 rounded-full blur-xl opacity-45 pointer-events-none"
+                  style={{ backgroundColor: 'var(--color-accent)' }}
                 />
+                <div className="relative h-28 w-28 overflow-hidden rounded-full ring-2 ring-white/20 shadow-2xl sm:h-36 sm:w-36 md:h-44 md:w-44 bg-zinc-900">
+                  <img
+                    src={currentArtistBio.avatarUrl}
+                    alt={formatArtistName(currentArtistBio.name)}
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                  />
+                </div>
               </div>
 
-              {/* Requirement 1: Badge màu xanh lá cây ở bên dưới avatar là ĐÃ XÁC MINH */}
+              {/* Badge màu xanh lá cây ở bên dưới avatar là ĐÃ XÁC MINH */}
               {currentArtistBio.isVerified && (
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] font-bold tracking-wider uppercase shadow-md">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-[11px] font-bold tracking-wider uppercase shadow-sm">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span>ĐÃ XÁC MINH</span>
                 </div>
               )}
             </div>
 
             {/* Information */}
-            <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
+            <div className="min-w-0 flex-1 space-y-2.5 text-center sm:text-left">
               {currentArtistBio.isVerified ? (
                 <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <CheckCircle2 className="h-3.5 w-3.5" />
                   <span>Nghệ Sĩ Được Xác Minh</span>
                 </div>
               ) : (
-                <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-semibold uppercase tracking-wider text-purple-400/70">
+                <div style={{ color: 'var(--color-accent)' }} className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-semibold uppercase tracking-wider opacity-85">
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>Nghệ Sĩ</span>
                 </div>
               )}
 
-              <h1 className="truncate text-2xl font-black text-white sm:text-4xl md:text-5xl">
+              <h1 className="font-display truncate text-2xl font-black text-white sm:text-4xl md:text-5xl">
                 {formatArtistName(currentArtistBio.name)}
               </h1>
 
               {currentArtistBio.realName && (
                 <p className="text-sm font-medium text-white/70">
-                  Tên thật: <span className="text-white">{currentArtistBio.realName}</span>
+                  Tên thật: <span className="text-white font-semibold">{currentArtistBio.realName}</span>
                 </p>
               )}
 
               {/* Quick Metadata tags */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-white/60">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 text-xs text-white/65">
                 {currentArtistBio.birthDate && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5 text-purple-400" />
+                  <span className="flex items-center gap-1.5 tabular-nums">
+                    <Calendar style={{ color: 'var(--color-accent)' }} className="h-3.5 w-3.5" />
                     <span>{currentArtistBio.birthDate}</span>
                   </span>
                 )}
                 {currentArtistBio.hometown && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 text-purple-400" />
+                  <span className="flex items-center gap-1.5">
+                    <MapPin style={{ color: 'var(--color-accent)' }} className="h-3.5 w-3.5" />
                     <span>{currentArtistBio.hometown}</span>
                   </span>
                 )}
                 {currentArtistBio.debutYear && (
-                  <span className="flex items-center gap-1">
-                    <Award className="h-3.5 w-3.5 text-purple-400" />
+                  <span className="flex items-center gap-1.5 tabular-nums">
+                    <Award style={{ color: 'var(--color-accent)' }} className="h-3.5 w-3.5" />
                     <span>Ra mắt: {currentArtistBio.debutYear}</span>
                   </span>
                 )}
-                <span className="flex items-center gap-1">
-                  <Music className="h-3.5 w-3.5 text-purple-400" />
+                <span className="flex items-center gap-1.5 tabular-nums">
+                  <Music style={{ color: 'var(--color-accent)' }} className="h-3.5 w-3.5" />
                   <span>{artistSongs.length} bài hát</span>
                 </span>
               </div>
 
-              {/* Genres */}
+              {/* Genres as clean typographic metadata */}
               {currentArtistBio.genres && currentArtistBio.genres.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 pt-0.5 text-xs text-white/60">
                   {currentArtistBio.genres.map((g, idx) => (
-                    <span
-                      key={idx}
-                      className="rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/80"
-                    >
-                      {g}
-                    </span>
+                    <React.Fragment key={idx}>
+                      {idx > 0 && <span aria-hidden="true" className="text-white/30">·</span>}
+                      <span className="font-medium text-white/80">{g}</span>
+                    </React.Fragment>
                   ))}
                 </div>
               )}
@@ -391,14 +398,14 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
           </div>
 
           {/* Action buttons */}
-          <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 border-t border-white/10 pt-5">
+          <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 border-t border-white/[0.08] pt-5">
             <button
               type="button"
               onClick={() => handlePlayAll(false)}
               disabled={artistSongs.length === 0}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-purple-600/30 transition-all hover:scale-105 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-sm active:scale-95 cursor-pointer"
+              className="accent-glow-btn flex items-center justify-center gap-2 rounded-full px-7 py-3 font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50 text-sm active:scale-95 cursor-pointer"
             >
-              <Play className="h-5 w-5 fill-white" />
+              <Play className="h-4 w-4 fill-white" />
               <span>{isPlayingCurrentPool ? 'Tiếp tục phát' : 'Phát tất cả'}</span>
             </button>
 
@@ -406,7 +413,7 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
               type="button"
               onClick={() => handlePlayAll(true)}
               disabled={artistSongs.length === 0}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 font-medium text-white transition-all hover:bg-white/20 disabled:opacity-50 text-sm active:scale-95 cursor-pointer"
+              className="flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-6 py-3 font-semibold text-white transition-all hover:bg-white/[0.14] disabled:opacity-50 text-sm active:scale-95 cursor-pointer"
             >
               <Shuffle className="h-4 w-4" />
               <span>Phát ngẫu nhiên</span>
@@ -417,9 +424,9 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
         {/* Biography & Achievements Grid */}
         <div className="grid grid-cols-1 gap-5 lg:gap-6 lg:grid-cols-3">
           {/* Biography narrative (2 columns) */}
-          <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-6 backdrop-blur-md lg:col-span-2">
-            <div className="flex items-center gap-2 text-lg font-bold text-white">
-              <Mic2 className="h-5 w-5 text-purple-400" />
+          <div className="glass-panel space-y-4 rounded-3xl p-5 sm:p-6 lg:col-span-2">
+            <div className="flex items-center gap-2 font-display text-lg font-bold text-white">
+              <Mic2 style={{ color: 'var(--color-accent)' }} className="h-5 w-5" />
               <span>Tiểu Sử & Sự Nghiệp</span>
             </div>
 
@@ -429,16 +436,16 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
 
             {/* Achievements */}
             {currentArtistBio.achievements && currentArtistBio.achievements.length > 0 && (
-              <div className="space-y-2 pt-3">
-                <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-purple-400">
+              <div className="space-y-2.5 pt-3 border-t border-white/[0.06]">
+                <div style={{ color: 'var(--color-accent)' }} className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
                   <Award className="h-4 w-4" />
                   <span>Thành Tích & Dấu Ấn Tiêu Biểu</span>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {currentArtistBio.achievements.map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex items-start gap-2.5 rounded-xl bg-white/5 p-2.5 text-xs text-white/90"
+                      className="flex items-start gap-2.5 rounded-xl bg-white/[0.04] border border-white/[0.05] p-3 text-xs text-white/90"
                     >
                       <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
                       <span>{item}</span>
@@ -450,41 +457,41 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
           </div>
 
           {/* Social Links & Meta sidebar (1 column) */}
-          <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-            <div className="text-base font-bold text-white">Thông Tin Chi Tiết</div>
+          <div className="glass-panel space-y-4 rounded-3xl p-5 sm:p-6">
+            <div className="font-display text-base font-bold text-white">Thông Tin Chi Tiết</div>
 
             <div className="space-y-3 text-xs">
-              <div className="flex justify-between border-b border-white/10 pb-2">
+              <div className="flex justify-between border-b border-white/[0.07] pb-2">
                 <span className="text-white/50">Nghệ danh</span>
-                <span className="font-semibold text-white">{currentArtistBio.name}</span>
+                <span className="font-semibold text-white">{formatArtistName(currentArtistBio.name)}</span>
               </div>
               {currentArtistBio.realName && (
-                <div className="flex justify-between border-b border-white/10 pb-2">
+                <div className="flex justify-between border-b border-white/[0.07] pb-2">
                   <span className="text-white/50">Tên khai sinh</span>
                   <span className="font-semibold text-white">{currentArtistBio.realName}</span>
                 </div>
               )}
               {currentArtistBio.birthDate && (
-                <div className="flex justify-between border-b border-white/10 pb-2">
+                <div className="flex justify-between border-b border-white/[0.07] pb-2">
                   <span className="text-white/50">Ngày sinh</span>
-                  <span className="font-semibold text-white">{currentArtistBio.birthDate}</span>
+                  <span className="font-semibold text-white tabular-nums">{currentArtistBio.birthDate}</span>
                 </div>
               )}
               {currentArtistBio.hometown && (
-                <div className="flex justify-between border-b border-white/10 pb-2">
+                <div className="flex justify-between border-b border-white/[0.07] pb-2">
                   <span className="text-white/50">Quê quán</span>
                   <span className="font-semibold text-white">{currentArtistBio.hometown}</span>
                 </div>
               )}
               {currentArtistBio.debutYear && (
-                <div className="flex justify-between border-b border-white/10 pb-2">
+                <div className="flex justify-between border-b border-white/[0.07] pb-2">
                   <span className="text-white/50">Khởi nghiệp</span>
-                  <span className="font-semibold text-white">{currentArtistBio.debutYear}</span>
+                  <span className="font-semibold text-white tabular-nums">{currentArtistBio.debutYear}</span>
                 </div>
               )}
-              <div className="flex justify-between border-b border-white/10 pb-2">
+              <div className="flex justify-between border-b border-white/[0.07] pb-2">
                 <span className="text-white/50">Số bài hát trên hệ thống</span>
-                <span className="font-semibold text-purple-400">{artistSongs.length} bài</span>
+                <span style={{ color: 'var(--color-accent)' }} className="font-semibold tabular-nums">{artistSongs.length} bài</span>
               </div>
             </div>
 
@@ -533,11 +540,11 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
         </div>
 
         {/* Discography / Songs list featuring this artist */}
-        <div className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
+        <div className="glass-panel space-y-4 rounded-3xl p-5 sm:p-6">
           <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
             <div>
-              <h2 className="text-lg font-bold text-white">
-                Bài Hát Của {currentArtistBio.name} ({artistSongs.length})
+              <h2 className="font-display text-lg font-bold text-white tabular-nums">
+                Bài Hát Của {formatArtistName(currentArtistBio.name)} ({artistSongs.length})
               </h2>
               <p className="text-xs text-white/60">
                 Bao gồm các ca khúc solo và các ca khúc kết hợp cùng nghệ sĩ khác
@@ -548,7 +555,8 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
               <button
                 type="button"
                 onClick={() => handlePlayAll(false)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-purple-400 hover:text-purple-300"
+                style={{ color: 'var(--color-accent)' }}
+                className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80 transition-opacity cursor-pointer"
               >
                 <Play className="h-3.5 w-3.5 fill-current" />
                 <span>Phát danh sách này</span>
@@ -557,11 +565,11 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
           </div>
 
           {artistSongs.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center text-sm text-white/50">
+            <div className="rounded-2xl border border-dashed border-white/15 py-12 text-center text-sm text-white/50">
               Chưa có bài hát nào của nghệ sĩ này trong hệ thống.
             </div>
           ) : (
-            <div ref={artistSongsListRef} className="divide-y divide-white/5">
+            <div ref={artistSongsListRef} className="divide-y divide-white/[0.05]">
               {artistSongs.map((song, index) => {
                 const isCur = currentSong?.id === song.id;
                 const isSongPlaying = isCur && isPlaying;
@@ -572,22 +580,32 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
                     key={song.id}
                     data-song-id={song.id}
                     onClick={() => handleSongClick(song)}
-                    className={`group flex items-center justify-between gap-3 rounded-xl p-2.5 transition-colors cursor-pointer hover:bg-white/10 ${
-                      isCur ? 'bg-purple-600/20 text-purple-300' : 'text-white'
+                    style={
+                      isCur
+                        ? {
+                            backgroundColor: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                            boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 32%, transparent)',
+                          }
+                        : undefined
+                    }
+                    className={`group flex items-center justify-between gap-3 rounded-xl p-2.5 transition-all cursor-pointer ${
+                      isCur ? 'text-white' : 'text-white hover:bg-white/[0.06]'
                     }`}
                   >
                     {/* Index or Equalizer / Play indicator */}
-                    <div className="flex w-6 shrink-0 items-center justify-center text-xs text-white/40">
+                    <div className="flex w-7 shrink-0 items-center justify-center text-xs text-white/45 font-mono tabular-nums">
                       {isSongPlaying ? (
-                        <div className="flex items-end gap-0.5 h-3.5">
-                          <span className="w-0.5 bg-purple-400 h-full animate-pulse" />
-                          <span className="w-0.5 bg-purple-400 h-2/3 animate-pulse" />
-                          <span className="w-0.5 bg-purple-400 h-4/5 animate-pulse" />
+                        <div className="flex items-end gap-0.5 h-4">
+                          <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-1" />
+                          <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-2" />
+                          <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-3" />
                         </div>
                       ) : (
-                        <span className="group-hover:hidden">{index + 1}</span>
+                        <>
+                          <span className="group-hover:hidden">{(index + 1).toString().padStart(2, '0')}</span>
+                          <Play className="hidden h-3.5 w-3.5 fill-current text-white group-hover:block" />
+                        </>
                       )}
-                      <Play className="hidden h-3.5 w-3.5 fill-current text-white group-hover:block" />
                     </div>
 
                     {/* Cover & Title */}
@@ -595,32 +613,38 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
                       <img
                         src={song.coverImage || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'}
                         alt={song.title}
-                        className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                        referrerPolicy="no-referrer"
+                        className="h-10 w-10 shrink-0 rounded-lg object-cover border border-white/10 shadow-sm"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="truncate text-sm font-semibold">{song.title}</span>
+                          <span
+                            style={isCur ? { color: 'var(--color-accent)' } : undefined}
+                            className="truncate text-sm font-semibold"
+                          >
+                            {song.title}
+                          </span>
                           {song.isAlbumTrack && (
-                            <span className="shrink-0 rounded bg-indigo-500/30 px-1.5 py-0.2 text-[10px] font-medium text-indigo-300">
-                              Album
+                            <span className="shrink-0 text-[10px] font-medium text-indigo-300">
+                              · Album
                             </span>
                           )}
-                          <span className="shrink-0 rounded bg-white/10 px-1 py-0.2 text-[9px] uppercase text-white/70">
+                          <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.2 text-[9px] uppercase text-white/70 font-mono">
                             {song.audioFormat || 'MP3'}
                           </span>
                         </div>
-                        <div className="text-xs text-white/50">
+                        <div className="text-xs text-white/55">
                           <ArtistNames
                             artists={song.artists}
                             className="text-xs"
-                            linkClassName="text-white/60 hover:text-purple-300"
+                            linkClassName="text-white/60 hover:text-white transition-colors"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Plays count (desktop) */}
-                    <div className="hidden text-xs text-white/40 md:block">
+                    <div className="hidden text-xs text-white/45 md:block tabular-nums">
                       {song.plays || `${(song.playCount || 0).toLocaleString('vi-VN')} lượt`}
                     </div>
 
@@ -680,11 +704,11 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
   return (
     <div className="w-full space-y-6 pb-28 pt-2 text-white">
       {/* Header Banner */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center border-b border-white/[0.08] pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <Mic2 className="h-6 w-6 text-purple-400" />
-            <h1 className="text-2xl font-black text-white sm:text-3xl">Tiểu Sử Ca Sĩ</h1>
+          <div className="flex items-center gap-2.5">
+            <Mic2 style={{ color: 'var(--color-accent)' }} className="h-6 w-6" />
+            <h1 className="font-display text-2xl font-extrabold text-white sm:text-3xl">Tiểu Sử Ca Sĩ</h1>
           </div>
           <p className="mt-1 text-xs text-white/60 sm:text-sm">
             Khám phá câu chuyện âm nhạc, cuộc đời và toàn bộ bài hát của các nghệ sĩ hàng đầu trên XuanKen Music
@@ -693,20 +717,20 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
 
         {/* Search input */}
         <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm kiếm ca sĩ, nghệ danh..."
-            className="w-full rounded-2xl border border-white/15 bg-white/10 py-2.5 pl-9 pr-4 text-xs text-white placeholder-white/40 outline-none transition-colors focus:border-purple-400 focus:bg-white/15"
+            className="w-full rounded-full border border-white/15 bg-white/[0.07] py-2.5 pl-10 pr-4 text-xs text-white placeholder-white/45 outline-none transition-all focus:border-[var(--color-accent)] focus:bg-white/[0.11]"
           />
         </div>
       </div>
 
       {/* Grid of Artists */}
       {filteredArtists.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-white/15 py-16 text-center text-sm text-white/50">
+        <div className="glass-panel rounded-3xl border border-dashed border-white/15 py-16 text-center text-sm text-white/55">
           Không tìm thấy ca sĩ nào khớp với từ khóa "{searchQuery}".
         </div>
       ) : (
@@ -715,33 +739,34 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
             <div
               key={artist.id}
               onClick={() => setSelectedArtistName(artist.name)}
-              className="group relative flex flex-col items-center rounded-2xl border border-white/10 bg-white/5 p-4 text-center transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:border-purple-500/40 hover:bg-white/10 hover:shadow-xl hover:shadow-purple-900/20"
+              className="glass-panel group relative flex flex-col items-center rounded-2xl p-4 text-center transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:border-white/20"
             >
               {/* Circular Avatar */}
-              <div className="relative mb-2 h-24 w-24 overflow-hidden rounded-full border-2 border-white/20 shadow-md transition-all duration-300 group-hover:scale-105 group-hover:border-purple-400 sm:h-28 sm:w-28 shrink-0">
+              <div className="relative mb-2.5 h-24 w-24 overflow-hidden rounded-full ring-2 ring-white/15 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:ring-[var(--color-accent)] sm:h-28 sm:w-28 shrink-0 bg-zinc-900">
                 <img
                   src={artist.avatarUrl}
                   alt={formatArtistName(artist.name)}
+                  referrerPolicy="no-referrer"
                   className="h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black/20 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
-                  <div className="rounded-full bg-purple-600 p-2 text-white shadow-lg">
-                    <Play className="h-4 w-4 fill-white" />
+                <div className="absolute inset-0 bg-black/25 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
+                  <div className="accent-glow-btn rounded-full p-2.5 text-white shadow-lg">
+                    <Play className="h-4 w-4 fill-white ml-0.5" />
                   </div>
                 </div>
               </div>
 
-              {/* Requirement 1: Badge màu xanh lá cây ở bên dưới avatar là ĐÃ XÁC MINH */}
+              {/* Badge màu xanh lá cây ở bên dưới avatar là ĐÃ XÁC MINH */}
               {artist.isVerified && (
-                <div className="mb-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[9px] font-bold tracking-wider uppercase shadow-sm">
-                  <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                <div className="mb-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-[9px] font-bold tracking-wider uppercase shadow-sm">
+                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
                   <span>ĐÃ XÁC MINH</span>
                 </div>
               )}
 
               {/* Stage Name */}
               <div className="flex items-center justify-center gap-1 w-full">
-                <span className="truncate text-sm font-bold text-white transition-colors group-hover:text-purple-300">
+                <span className="font-display truncate text-sm font-bold text-white transition-colors group-hover:text-white">
                   {formatArtistName(artist.name)}
                 </span>
               </div>
@@ -752,11 +777,11 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
               )}
 
               {/* Songs count & Genre */}
-              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-white/60">
-                <span className="font-semibold text-purple-400">{artist.songCount} bài hát</span>
+              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-white/60 tabular-nums">
+                <span style={{ color: 'var(--color-accent)' }} className="font-semibold">{artist.songCount} bài hát</span>
                 {artist.genres && artist.genres[0] && (
                   <>
-                    <span>•</span>
+                    <span aria-hidden="true">·</span>
                     <span className="truncate">{artist.genres[0]}</span>
                   </>
                 )}

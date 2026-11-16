@@ -165,38 +165,35 @@ export const DesktopSongListView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20 select-none font-['Roboto_Condensed']">
+    <div className="space-y-6 pb-20 select-none">
       {/* Header with Title and MP3 / WAV Global Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-white/[0.08]">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight uppercase font-display">
               Danh Sách Bài Hát
             </h1>
-            <p className="text-xs text-white/60 mt-1">
-              Tổng cộng {totalSongs} bài hát • Đã mua: <span className="text-emerald-400 font-bold">{purchasedCount} bài</span> • Chưa mua: <span className="text-amber-400 font-bold">{unpurchasedCount} bài</span>
+            <p className="text-xs text-white/55 mt-1 tabular-nums">
+              Tổng cộng <span className="text-white/90 font-semibold">{totalSongs}</span> bài hát • Đã mua: <span className="text-emerald-400 font-bold">{purchasedCount} bài</span> • Chưa mua: <span className="text-amber-400 font-bold">{unpurchasedCount} bài</span>
             </p>
           </div>
 
-          {/* Requirement 2: Circular Play button with Play Order / Random Dropdown */}
+          {/* Circular Play button with Play Order / Random Dropdown */}
           <div className="relative" ref={playMenuRef}>
             <button
               onClick={() => setIsPlayMenuOpen(!isPlayMenuOpen)}
               disabled={sortedSongs.length === 0}
-              className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white flex items-center justify-center shadow-xl shadow-amber-600/30 transition-transform active:scale-95 disabled:opacity-40 shrink-0 ml-1"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-full accent-glow-btn text-white flex items-center justify-center transition-all active:scale-95 disabled:opacity-40 shrink-0 ml-1 cursor-pointer"
               title="Phát nhạc (Theo thứ tự hoặc Ngẫu nhiên)"
             >
               <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current ml-0.5 text-white" />
             </button>
 
             {isPlayMenuOpen && (
-              <div
-                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                className="absolute left-0 top-14 w-56 rounded-2xl border shadow-2xl p-2 z-50 animate-in zoom-in-95 duration-150 space-y-1"
-              >
+              <div className="absolute left-0 top-14 w-56 glass-panel rounded-2xl p-2 z-50 animate-in zoom-in-95 duration-150 space-y-1">
                 <button
                   onClick={handlePlayInOrder}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.08] text-left transition-colors group cursor-pointer"
                 >
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <Play className="w-4 h-4 fill-current ml-0.5" />
@@ -209,9 +206,15 @@ export const DesktopSongListView: React.FC = () => {
 
                 <button
                   onClick={handlePlayRandom}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors group"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.08] text-left transition-colors group cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-[#c273ed] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                      color: 'var(--color-accent)',
+                    }}
+                  >
                     <Shuffle className="w-4 h-4" />
                   </div>
                   <div>
@@ -226,13 +229,13 @@ export const DesktopSongListView: React.FC = () => {
 
         {/* MP3 & WAV Audio Format Switcher */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 text-xs shadow-sm">
+          <div className="flex items-center p-1 bg-black/30 rounded-2xl border border-white/[0.08] text-xs shadow-inner">
             <button
               onClick={() => setPreferredAudioFormat('MP3')}
-              className={`px-4 py-1.5 rounded-xl font-bold transition-all ${
+              className={`px-4 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
                 preferredAudioFormat === 'MP3'
-                  ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400/40'
-                  : 'text-white/60 hover:text-white'
+                  ? 'bg-sky-600 text-white shadow-md ring-1 ring-sky-400/40'
+                  : 'text-white/55 hover:text-white'
               }`}
               title="Phát tất cả ở định dạng MP3 (320kbps)"
             >
@@ -240,10 +243,10 @@ export const DesktopSongListView: React.FC = () => {
             </button>
             <button
               onClick={() => setPreferredAudioFormat('WAV')}
-              className={`px-4 py-1.5 rounded-xl font-bold transition-all ${
+              className={`px-4 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
                 preferredAudioFormat === 'WAV'
                   ? 'bg-amber-600 text-white shadow-md ring-1 ring-amber-400/40'
-                  : 'text-white/60 hover:text-white'
+                  : 'text-white/55 hover:text-white'
               }`}
               title="Phát tất cả ở định dạng WAV chất lượng cao"
             >
@@ -253,15 +256,12 @@ export const DesktopSongListView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Table: STT - TÊN BÀI - TÊN CA SỸ - LRC - THỜI LƯỢNG - MP3 HAY WAV - MUA - THAO TÁC */}
-      <div
-        className="rounded-2xl border overflow-hidden shadow-2xl transition-colors duration-200"
-        style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
-      >
+      {/* Main Table: STT - TÊN BÀI - TÊN CA SỸ - LRC - THỜI LƯỢNG - MP3 HAY WAV - MUA - THÊM */}
+      <div className="glass-panel rounded-2xl overflow-hidden transition-colors duration-200">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-white/10 bg-white/5 text-[11px] font-bold text-white/60 uppercase tracking-wider">
+              <tr className="border-b border-white/[0.08] bg-white/[0.03] text-[11px] font-bold text-white/55 uppercase tracking-wider">
                 <th className="py-3.5 px-4 text-center w-14 whitespace-nowrap">STT</th>
                 <th className="py-3.5 px-4 min-w-[220px] whitespace-nowrap">TÊN BÀI</th>
                 <th className="py-3.5 px-4 min-w-[160px] whitespace-nowrap">TÊN CA SỸ</th>
@@ -272,7 +272,7 @@ export const DesktopSongListView: React.FC = () => {
                 <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[90px]">THÊM</th>
               </tr>
             </thead>
-            <tbody ref={tableBodyRef} className="divide-y divide-white/5 text-sm">
+            <tbody ref={tableBodyRef} className="divide-y divide-white/[0.05] text-sm">
               {paginatedSongs.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-white/50">
@@ -281,7 +281,7 @@ export const DesktopSongListView: React.FC = () => {
                     <p className="text-xs text-white/50 mt-1">Dữ liệu demo đã xóa. Hãy vào trang Admin để thêm bài hát mới.</p>
                     <button
                       onClick={() => setActiveDesktopTab('admin')}
-                      className="mt-4 px-4 py-2 rounded-xl bg-[#9b4de0] text-white text-xs font-bold shadow hover:bg-[#8539c9] transition-colors"
+                      className="mt-4 px-4 py-2 rounded-xl accent-glow-btn text-white text-xs font-bold transition-all cursor-pointer"
                     >
                       + Vào Quản Trị Thêm Bài Hát
                     </button>
@@ -300,25 +300,28 @@ export const DesktopSongListView: React.FC = () => {
                       key={song.id}
                       data-song-id={song.id}
                       onClick={() => handlePlayOrPause(song)}
-                      className={`cursor-pointer transition-colors group ${
+                      style={
                         isCurrent
-                          ? 'bg-[#9b4de0]/15 hover:bg-[#9b4de0]/20'
-                          : 'hover:bg-white/5'
+                          ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' }
+                          : undefined
+                      }
+                      className={`cursor-pointer transition-colors group ${
+                        isCurrent ? '' : 'hover:bg-white/[0.04]'
                       }`}
                     >
                       {/* 1: STT */}
-                      <td className="py-3.5 px-4 text-center text-xs font-bold text-white/50 group-hover:text-white font-mono">
+                      <td className="py-3.5 px-4 text-center text-xs font-bold text-white/50 group-hover:text-white font-mono tabular-nums">
                         {isCurrentPlaying ? (
-                          <div className="w-6 h-6 rounded-full bg-[#9b4de0] text-white flex items-center justify-center mx-auto shadow">
+                          <div className="w-7 h-7 rounded-full accent-glow-btn text-white flex items-center justify-center mx-auto">
                             <Pause className="w-3.5 h-3.5 fill-current" />
                           </div>
                         ) : (
-                          <span className="group-hover:hidden font-so text-sm">
+                          <span className="group-hover:hidden font-so text-sm tabular-nums">
                             {globalIndex + 1}
                           </span>
                         )}
                         {!isCurrentPlaying && (
-                          <div className="hidden group-hover:flex w-6 h-6 rounded-full bg-white text-slate-900 items-center justify-center mx-auto shadow">
+                          <div className="hidden group-hover:flex w-7 h-7 rounded-full bg-white text-slate-900 items-center justify-center mx-auto shadow">
                             <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
                           </div>
                         )}
@@ -326,14 +329,15 @@ export const DesktopSongListView: React.FC = () => {
 
                       {/* 2: TÊN BÀI */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3.5">
                           <div
-                            className={`w-11 h-11 rounded-xl bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center shrink-0 shadow-md relative overflow-hidden border border-white/10`}
+                            className={`w-11 h-11 rounded-xl bg-gradient-to-tr ${song.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center shrink-0 shadow-md relative overflow-hidden border border-white/10 group-hover:scale-105 transition-transform duration-200`}
                           >
                             {song.coverImage ? (
                               <img
                                 src={song.coverImage}
                                 alt={song.title}
+                                referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover"
                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
                               />
@@ -343,13 +347,14 @@ export const DesktopSongListView: React.FC = () => {
                           </div>
                           <div className="truncate">
                             <p
+                              style={isCurrent ? { color: 'var(--color-accent)' } : undefined}
                               className={`font-bold truncate ${
-                                isCurrent ? 'text-[#c273ed]' : 'text-white'
+                                isCurrent ? '' : 'text-white group-hover:text-white'
                               }`}
                             >
                               {song.title}
                             </p>
-                            <p className="text-[11px] text-white/40 truncate mt-0.5">
+                            <p className="text-[11px] text-white/45 truncate mt-0.5">
                               Album: {song.album || 'XuanKen Official'}
                             </p>
                           </div>
@@ -357,10 +362,10 @@ export const DesktopSongListView: React.FC = () => {
                       </td>
 
                       {/* 3: TÊN CA SỸ */}
-                      <td className="py-3.5 px-4 font-medium text-white/80 truncate">
+                      <td className="py-3.5 px-4 font-medium text-white/75 truncate">
                         <ArtistNames
                           artists={song.artists}
-                          linkClassName="text-white/80 hover:text-purple-300"
+                          linkClassName="text-white/75 hover:text-white"
                         />
                       </td>
 
@@ -373,10 +378,10 @@ export const DesktopSongListView: React.FC = () => {
                         }}
                       >
                         <button
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-500/20 border border-purple-500/40 text-[#c273ed] hover:bg-purple-600 hover:text-white hover:border-transparent text-xs font-bold transition-all shadow-sm group/lrc"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/[0.06] border border-white/[0.12] text-white/85 hover:bg-white/[0.14] hover:text-white text-xs font-bold transition-all shadow-sm group/lrc cursor-pointer"
                           title="Bấm để xem và tải tệp lời (.lrc)"
                         >
-                          <FileText className="w-3.5 h-3.5 text-[#c273ed] group-hover/lrc:text-white" />
+                          <FileText className="w-3.5 h-3.5 text-[var(--color-accent)] group-hover/lrc:text-white transition-colors" />
                           <span className="font-semibold tracking-wide">LRC</span>
                         </button>
                       </td>
@@ -388,15 +393,15 @@ export const DesktopSongListView: React.FC = () => {
 
                       {/* 6: MP3 HAY WAV */}
                       <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex items-center p-0.5 rounded-xl bg-black/40 border border-white/10 text-[11px] font-bold">
+                        <div className="inline-flex items-center p-0.5 rounded-xl bg-black/35 border border-white/[0.09] text-[11px] font-bold">
                           <button
                             onClick={() => {
                               setSongAudioFormat(song.id, 'MP3');
                               playSong(song, 'MP3');
                             }}
-                            className={`px-2.5 py-1 rounded-lg transition-all ${
+                            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                               activeFormat === 'MP3'
-                                ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/50'
+                                ? 'bg-sky-600 text-white shadow-sm ring-1 ring-sky-400/50'
                                 : 'text-white/50 hover:text-white hover:bg-white/5'
                             }`}
                             title="Nghe bài này theo MP3 (320kbps)"
@@ -408,7 +413,7 @@ export const DesktopSongListView: React.FC = () => {
                               setSongAudioFormat(song.id, 'WAV');
                               playSong(song, 'WAV');
                             }}
-                            className={`px-2.5 py-1 rounded-lg transition-all ${
+                            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                               activeFormat === 'WAV'
                                 ? 'bg-amber-600 text-white shadow-sm ring-1 ring-amber-400/50'
                                 : 'text-white/50 hover:text-white hover:bg-white/5'
@@ -420,10 +425,10 @@ export const DesktopSongListView: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* 7: MUA (Item 1: luôn trên 1 dòng, không bị xuống dòng) */}
+                      {/* 7: MUA */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         {isPurchased ? (
-                          <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap shrink-0">
+                          <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap shrink-0">
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                             <span className="whitespace-nowrap">Đã mua</span>
                           </span>
@@ -433,7 +438,7 @@ export const DesktopSongListView: React.FC = () => {
                               setSongToBuy(song);
                               setIsDemoLimitModalOpen(true);
                             }}
-                            className="px-3 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer inline-flex items-center justify-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0"
+                            className="px-3 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/35 text-xs font-bold transition-all shadow-sm cursor-pointer inline-flex items-center justify-center gap-1.5 active:scale-95 whitespace-nowrap shrink-0"
                             title="Bấm để mua bản quyền full bài hát"
                           >
                             <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
@@ -442,11 +447,11 @@ export const DesktopSongListView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* 8: THAO TÁC (Requirement 2: mục Thao tác bên phải) */}
+                      {/* 8: THAO TÁC */}
                       <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={(e) => handleToggleMenu(e, song.id)}
-                          className={`p-1.5 rounded-lg transition-colors ${
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                             activeMenuSongId === song.id
                               ? 'bg-white/20 text-white'
                               : 'hover:bg-white/10 text-white/60 hover:text-white'
@@ -464,7 +469,7 @@ export const DesktopSongListView: React.FC = () => {
           </table>
         </div>
 
-        {/* Fixed Dropdown Menu for 3-dots: Includes Heart / Tim bài hát (Requirement 12) */}
+        {/* Fixed Dropdown Menu for 3-dots */}
         {activeMenuSongId && menuPosition && (() => {
           const targetSong = sortedSongs.find((s) => s.id === activeMenuSongId);
           if (!targetSong) return null;
@@ -477,21 +482,18 @@ export const DesktopSongListView: React.FC = () => {
               style={{
                 top: menuPosition.top,
                 right: menuPosition.right,
-                backgroundColor: 'var(--bg-surface)',
-                borderColor: 'var(--border-color)',
                 color: 'var(--text-primary)',
               }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed w-52 rounded-2xl border shadow-2xl p-1.5 z-[999] text-xs space-y-1 animate-in fade-in duration-150"
+              className="fixed w-52 glass-panel rounded-2xl p-1.5 z-[999] text-xs space-y-1 animate-in fade-in duration-150"
             >
-              {/* Requirement 12: Tim bài hát */}
               <button
                 onClick={() => {
                   toggleLike(targetSong.id);
                   setActiveMenuSongId(null);
                   setMenuPosition(null);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors cursor-pointer"
               >
                 <Heart className={`w-4 h-4 ${isTargetLiked ? 'text-red-500 fill-red-500' : 'text-white/70'}`} />
                 <span>{isTargetLiked ? 'Bỏ tim bài hát' : 'Tim bài hát'}</span>
@@ -519,7 +521,7 @@ export const DesktopSongListView: React.FC = () => {
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors cursor-pointer"
                 >
-                  <ListPlus className="w-4 h-4 text-[#c273ed] shrink-0" />
+                  <ListPlus className="w-4 h-4 text-[var(--color-accent)] shrink-0" />
                   <span>Thêm vào playlist</span>
                 </button>
               )}
@@ -530,7 +532,7 @@ export const DesktopSongListView: React.FC = () => {
                   setActiveMenuSongId(null);
                   setMenuPosition(null);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium transition-colors cursor-pointer"
               >
                 <Share2 className="w-4 h-4 text-cyan-400" />
                 <span>Chia sẻ bài hát</span>
@@ -543,7 +545,7 @@ export const DesktopSongListView: React.FC = () => {
                     setActiveMenuSongId(null);
                     setMenuPosition(null);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium text-emerald-300 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left font-medium text-emerald-300 transition-colors cursor-pointer"
                 >
                   <Download className="w-4 h-4 text-emerald-400" />
                   <span>Tải nhạc về (MP3/WAV)</span>
@@ -553,17 +555,17 @@ export const DesktopSongListView: React.FC = () => {
           );
         })()}
 
-        {/* Requirement 21: Pagination Controls (20 bài 1 trang) */}
+        {/* Pagination Controls (20 bài 1 trang) */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-3.5 border-t border-white/10 bg-white/[0.02]">
-            <p className="text-xs text-white/50">
+          <div className="flex items-center justify-between px-6 py-3.5 border-t border-white/[0.08] bg-white/[0.02]">
+            <p className="text-xs text-white/50 tabular-nums">
               Hiển thị {(validCurrentPage - 1) * PAGE_SIZE + 1} - {Math.min(validCurrentPage * PAGE_SIZE, totalSongs)} trong tổng số {totalSongs} bài hát (20 bài/trang)
             </p>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={validCurrentPage === 1}
-                className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4 text-white" />
               </button>
@@ -571,9 +573,10 @@ export const DesktopSongListView: React.FC = () => {
                 <button
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                  style={validCurrentPage === pageNum ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                  className={`w-7 h-7 rounded-lg text-xs font-bold tabular-nums transition-all cursor-pointer ${
                     validCurrentPage === pageNum
-                      ? 'bg-[#9b4de0] text-white shadow'
+                      ? 'text-white shadow'
                       : 'border border-white/10 hover:bg-white/10 text-white/70'
                   }`}
                 >
@@ -583,7 +586,7 @@ export const DesktopSongListView: React.FC = () => {
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={validCurrentPage === totalPages}
-                className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4 text-white" />
               </button>

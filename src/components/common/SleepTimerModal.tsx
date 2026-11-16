@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Clock, BellOff } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const SleepTimerModal: React.FC = () => {
   const {
@@ -16,7 +17,11 @@ export const SleepTimerModal: React.FC = () => {
   const [customMinutes, setCustomMinutes] = useState<string>('20');
   const [customSeconds, setCustomSeconds] = useState<string>('0');
 
-  if (!isSleepTimerModalOpen) return null;
+  const { shouldRender, isClosing } = useAnimatedPresence(isSleepTimerModalOpen, 220);
+
+  if (!shouldRender) return null;
+
+  const handleClose = () => setIsSleepTimerModalOpen(false);
 
   const quickPresets = [
     { label: '15 phút', fullLabel: '00:15:00', totalSeconds: 15 * 60 },
@@ -58,15 +63,21 @@ export const SleepTimerModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out select-none"
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 animate-in zoom-in-95 duration-350 ease-out"
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+        }`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2.5">
@@ -82,8 +93,8 @@ export const SleepTimerModal: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={() => setIsSleepTimerModalOpen(false)}
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+            onClick={handleClose}
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

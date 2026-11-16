@@ -36,6 +36,7 @@ import { audioEngine } from '../../services/audioEngine';
 import { testFirebaseConnection } from '../../services/firebase';
 import { AdminCuratedAlbumsTab } from './AdminCuratedAlbumsTab';
 import { AdminArtistBiosTab } from './AdminArtistBiosTab';
+import { useAnimatedData, useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const AdminPageView: React.FC = () => {
   const {
@@ -218,6 +219,16 @@ export const AdminPageView: React.FC = () => {
     details: string[];
   } | null>(null);
   const [isTestingFirebase, setIsTestingFirebase] = useState(false);
+
+  const {
+    activeData: activeEditingMember,
+    shouldRender: shouldRenderMemberModal,
+    isClosing: isClosingMemberModal,
+  } = useAnimatedData(editingMember, 220);
+  const {
+    shouldRender: shouldRenderSongModal,
+    isClosing: isClosingSongModal,
+  } = useAnimatedPresence(isSongModalOpen, 220);
 
   const handleTestFirebase = async () => {
     setIsTestingFirebase(true);
@@ -2171,21 +2182,27 @@ service firebase.storage {
       )}
 
       {/* MODAL: CHỈNH SỬA THÀNH VIÊN (Tên hiển thị, vai trò, số tiền - Requirement 3) */}
-      {editingMember && (
+      {shouldRenderMemberModal && activeEditingMember && (
         <div
           data-theme={theme}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setEditingMember(null)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${
+            isClosingMemberModal ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-            className="w-full max-w-md border rounded-3xl shadow-2xl p-6 text-xs animate-in zoom-in-95 duration-200"
+            className={`w-full max-w-md border rounded-3xl shadow-2xl p-6 text-xs ${
+              isClosingMemberModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h2 className="text-base font-bold flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#c273ed]" />
                 <span>Chỉnh Sửa Thành Viên</span>
               </h2>
-              <button onClick={() => setEditingMember(null)} className="p-1 text-white/60 hover:text-white">
+              <button onClick={() => setEditingMember(null)} className="p-1 text-white/60 hover:text-white cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -2193,8 +2210,8 @@ service firebase.storage {
             <form onSubmit={handleSaveMember} className="mt-4 space-y-4">
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                 <p className="text-white/60">Tài khoản Email:</p>
-                <p className="font-bold text-white text-sm font-mono mt-0.5">{editingMember.email}</p>
-                <p className="text-[10px] text-white/40 font-mono mt-0.5">UID: {editingMember.uid}</p>
+                <p className="font-bold text-white text-sm font-mono mt-0.5">{activeEditingMember.email}</p>
+                <p className="text-[10px] text-white/40 font-mono mt-0.5">UID: {activeEditingMember.uid}</p>
               </div>
 
               {/* 1. Tên hiển thị */}
@@ -2304,20 +2321,26 @@ service firebase.storage {
       )}
 
       {/* MODAL: THÊM / SỬA BÀI HÁT (Requirements 2 & 3) */}
-      {isSongModalOpen && (
+      {shouldRenderSongModal && (
         <div
           data-theme={theme}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setIsSongModalOpen(false)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${
+            isClosingSongModal ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-            className="w-full max-w-xl border rounded-3xl shadow-2xl p-6 max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+            className={`w-full max-w-xl border rounded-3xl shadow-2xl p-6 max-h-[92vh] overflow-y-auto ${
+              isClosingSongModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h2 className="text-lg font-bold">
                 {editingSongId ? 'Chỉnh Sửa Bài Hát' : 'Thêm Bài Hát Mới'}
               </h2>
-              <button onClick={() => setIsSongModalOpen(false)} className="p-1 text-white/60 hover:text-white">
+              <button onClick={() => setIsSongModalOpen(false)} className="p-1 text-white/60 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>

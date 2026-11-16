@@ -3,6 +3,7 @@ import { X, ShoppingBag, Tag, Check } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Voucher } from '../../types/music';
 import { formatArtistsString } from '../../utils/artistUtils';
+import { useAnimatedData } from '../../hooks/useAnimatedPresence';
 
 export const BuySongModal: React.FC = () => {
   const {
@@ -22,10 +23,23 @@ export const BuySongModal: React.FC = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [voucherMsg, setVoucherMsg] = useState<{ text: string; isError: boolean } | null>(null);
 
-  if (!isBuyModalOpen || !songToBuy) return null;
+  const { activeData: activeSong, shouldRender, isClosing } = useAnimatedData(
+    isBuyModalOpen ? songToBuy : null,
+    220
+  );
 
-  const originalPrice = typeof songToBuy.price === 'number' ? songToBuy.price : (Number(songToBuy.price) || 20000);
+  if (!shouldRender || !activeSong) return null;
+
+  const originalPrice = typeof activeSong.price === 'number' ? activeSong.price : (Number(activeSong.price) || 20000);
   const finalPrice = Math.max(0, originalPrice - discountAmount);
+
+  const handleClose = () => {
+    setIsBuyModalOpen(false);
+    setSongToBuy(null);
+    setAppliedVoucher(null);
+    setDiscountAmount(0);
+    setVoucherMsg(null);
+  };
 
   const handleApplyCoupon = (codeToApply?: string) => {
     const code = codeToApply || couponCode;
@@ -45,7 +59,7 @@ export const BuySongModal: React.FC = () => {
 
   const handleConfirmBuy = () => {
     // If discount was applied, adjust the price temporarily or buy with discounted price
-    const modifiedSong = { ...songToBuy, price: finalPrice };
+    const modifiedSong = { ...activeSong, price: finalPrice };
     const res = buySong(modifiedSong);
     if (!res.success && userBalance < finalPrice) {
       setIsBuyModalOpen(false);
@@ -59,8 +73,18 @@ export const BuySongModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out select-none">
-      <div className="w-full max-w-md bg-[var(--bg-surface)] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-6 text-white max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-350 ease-out">
+    <div
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-md bg-[var(--bg-surface)] border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-6 text-white max-h-[92vh] flex flex-col ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2">
@@ -68,14 +92,8 @@ export const BuySongModal: React.FC = () => {
             <h2 className="text-base font-bold">Xác Nhận Mua Nhạc</h2>
           </div>
           <button
-            onClick={() => {
-              setIsBuyModalOpen(false);
-              setSongToBuy(null);
-              setAppliedVoucher(null);
-              setDiscountAmount(0);
-              setVoucherMsg(null);
-            }}
-            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white"
+            onClick={handleClose}
+            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -85,17 +103,17 @@ export const BuySongModal: React.FC = () => {
           {/* Song Info */}
           <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
             <div className="w-14 h-14 rounded-xl overflow-hidden bg-purple-900/40 border border-white/10 shrink-0 flex items-center justify-center">
-              {songToBuy.coverImage ? (
-                <img src={songToBuy.coverImage} alt={songToBuy.title} className="w-full h-full object-cover" />
+              {activeSong.coverImage ? (
+                <img src={activeSong.coverImage} alt={activeSong.title} className="w-full h-full object-cover" />
               ) : (
-                <span className="font-black text-sm text-white/70">{songToBuy.audioFormat}</span>
+                <span className="font-black text-sm text-white/70">{activeSong.audioFormat}</span>
               )}
             </div>
             <div className="truncate flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-white truncate">{songToBuy.title}</h3>
-              <p className="text-xs text-white/60 truncate mt-0.5">{formatArtistsString(songToBuy.artists)}</p>
+              <h3 className="text-sm font-bold text-white truncate">{activeSong.title}</h3>
+              <p className="text-xs text-white/60 truncate mt-0.5">{formatArtistsString(activeSong.artists)}</p>
               <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#9b4de0]/20 text-[#c273ed] border border-[#9b4de0]/40">
-                Định dạng {songToBuy.audioFormat} Full Lossless
+                Định dạng {activeSong.audioFormat} Full Lossless
               </span>
             </div>
           </div>

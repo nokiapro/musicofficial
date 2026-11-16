@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lock, Mail, Key, LogIn, AlertCircle } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const LoginModal: React.FC = () => {
   const { isLoginModalOpen, setIsLoginModalOpen, loginWithEmail, theme } = useMusic();
@@ -9,7 +10,14 @@ export const LoginModal: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  if (!isLoginModalOpen) return null;
+  const { shouldRender, isClosing } = useAnimatedPresence(isLoginModalOpen, 220);
+
+  if (!shouldRender) return null;
+
+  const handleClose = () => {
+    setIsLoginModalOpen(false);
+    setErrorMsg('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,15 +38,21 @@ export const LoginModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out"
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-350 ease-out"
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+        }`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -49,11 +63,8 @@ export const LoginModal: React.FC = () => {
             <h2 className="text-lg font-bold">Đăng Nhập Tài Khoản</h2>
           </div>
           <button
-            onClick={() => {
-              setIsLoginModalOpen(false);
-              setErrorMsg('');
-            }}
-            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white"
+            onClick={handleClose}
+            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

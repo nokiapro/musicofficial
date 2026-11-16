@@ -47,18 +47,18 @@ export const StorePageView: React.FC = () => {
   const paginatedSongs = sortedSongs.slice(startIndex, startIndex + PAGE_SIZE);
 
   return (
-    <div className="space-y-6 pb-20 select-none font-['Roboto_Condensed']">
+    <div className="space-y-6 pb-20 select-none">
 
       {/* Tabs */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-3">
-        <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10">
+      <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+        <div className="flex items-center p-1 bg-black/30 rounded-2xl border border-white/[0.08] gap-1">
           <button
             onClick={() => {
               setActiveTab('catalog');
               setCurrentPage(1);
             }}
             style={activeTab === 'catalog' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'catalog'
                 ? 'text-white shadow'
                 : 'text-white/60 hover:text-white'
@@ -72,7 +72,7 @@ export const StorePageView: React.FC = () => {
               setCurrentPage(1);
             }}
             style={activeTab === 'owned' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'owned'
                 ? 'text-white shadow'
                 : 'text-white/60 hover:text-white'
@@ -85,20 +85,17 @@ export const StorePageView: React.FC = () => {
 
       {/* List / Table View */}
       {paginatedSongs.length === 0 ? (
-        <div className="py-16 text-center rounded-2xl border border-dashed border-white/15 bg-white/5">
+        <div className="py-16 text-center rounded-2xl glass-panel">
           <ShoppingBag className="w-12 h-12 text-white/30 mx-auto mb-2" />
           <h3 className="text-base font-bold text-white">Chưa Có Bài Hát Nào Trong Cửa Hàng</h3>
           <p className="text-xs text-white/50 mt-1">Dữ liệu demo đã được xóa. Quản trị viên có thể thêm bài hát tại trang Admin.</p>
         </div>
       ) : (
-        <div
-          className="rounded-2xl border overflow-hidden shadow-2xl transition-colors duration-200"
-          style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
-        >
+        <div className="glass-panel rounded-2xl overflow-hidden transition-colors duration-200">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5 text-[11px] font-bold text-white/60 uppercase tracking-wider">
+                <tr className="border-b border-white/[0.08] bg-white/[0.03] text-[11px] font-bold text-white/55 uppercase tracking-wider">
                   <th className="py-3.5 px-4 text-center w-14 whitespace-nowrap">STT</th>
                   <th className="py-3.5 px-4 min-w-[220px] whitespace-nowrap">BÀI HÁT</th>
                   <th className="py-3.5 px-4 min-w-[160px] whitespace-nowrap">CA SỸ</th>
@@ -109,7 +106,7 @@ export const StorePageView: React.FC = () => {
                   <th className="py-3.5 px-4 text-center whitespace-nowrap min-w-[100px]">TẢI VỀ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-sm">
+              <tbody className="divide-y divide-white/[0.05] text-sm">
                 {paginatedSongs.map((song, index) => {
                   const isPurchased = isSongPurchased(song.id);
                   const isCurrent = currentSong?.id === song.id;
@@ -123,21 +120,26 @@ export const StorePageView: React.FC = () => {
                         if (isCurrent) togglePlay();
                         else playSong(song);
                       }}
+                      style={
+                        isCurrent
+                          ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' }
+                          : undefined
+                      }
                       className={`cursor-pointer transition-colors group ${
-                        isCurrent ? 'bg-[#9b4de0]/15 hover:bg-[#9b4de0]/20' : 'hover:bg-white/5'
+                        isCurrent ? '' : 'hover:bg-white/[0.04]'
                       }`}
                     >
                       {/* STT */}
-                      <td className="py-3.5 px-4 text-center text-xs font-bold text-white/50 group-hover:text-white font-mono">
+                      <td className="py-3.5 px-4 text-center text-xs font-bold text-white/50 group-hover:text-white font-mono tabular-nums">
                         {isCurrentPlaying ? (
-                          <div className="w-6 h-6 rounded-full bg-[#9b4de0] text-white flex items-center justify-center mx-auto shadow">
+                          <div className="w-7 h-7 rounded-full accent-glow-btn text-white flex items-center justify-center mx-auto shadow">
                             <Pause className="w-3.5 h-3.5 fill-current" />
                           </div>
                         ) : (
-                          <span className="group-hover:hidden">{globalIdx + 1}</span>
+                          <span className="group-hover:hidden tabular-nums">{globalIdx + 1}</span>
                         )}
                         {!isCurrentPlaying && (
-                          <div className="hidden group-hover:flex w-6 h-6 rounded-full bg-white text-slate-900 items-center justify-center mx-auto shadow">
+                          <div className="hidden group-hover:flex w-7 h-7 rounded-full bg-white text-slate-900 items-center justify-center mx-auto shadow">
                             <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
                           </div>
                         )}
@@ -145,16 +147,17 @@ export const StorePageView: React.FC = () => {
 
                       {/* Bài hát */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3.5">
                           <div
                             className={`w-11 h-11 rounded-xl bg-gradient-to-tr ${
                               song.coverGradient || 'from-purple-600 to-indigo-800'
-                            } flex items-center justify-center shrink-0 shadow-md relative overflow-hidden border border-white/10`}
+                            } flex items-center justify-center shrink-0 shadow-md relative overflow-hidden border border-white/10 group-hover:scale-105 transition-transform`}
                           >
                             {song.coverImage ? (
                               <img
                                 src={song.coverImage}
                                 alt={song.title}
+                                referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
@@ -166,13 +169,14 @@ export const StorePageView: React.FC = () => {
                           </div>
                           <div className="truncate">
                             <p
+                              style={isCurrent ? { color: 'var(--color-accent)' } : undefined}
                               className={`font-bold truncate ${
-                                isCurrent ? 'text-[#c273ed]' : 'text-white'
+                                isCurrent ? '' : 'text-white'
                               }`}
                             >
                               {song.title}
                             </p>
-                            <p className="text-[11px] text-white/40 truncate mt-0.5">
+                            <p className="text-[11px] text-white/45 truncate mt-0.5">
                               Album: {song.album || 'XuanKen Official'}
                             </p>
                           </div>
@@ -180,8 +184,8 @@ export const StorePageView: React.FC = () => {
                       </td>
 
                       {/* Ca sỹ */}
-                      <td className="py-3.5 px-4 font-medium text-white/80 truncate">
-                        <ArtistNames artists={song.artists} linkClassName="text-white/80 hover:text-purple-300" />
+                      <td className="py-3.5 px-4 font-medium text-white/75 truncate">
+                        <ArtistNames artists={song.artists} linkClassName="text-white/75 hover:text-white" />
                       </td>
 
                       {/* LRC */}
@@ -193,10 +197,10 @@ export const StorePageView: React.FC = () => {
                         }}
                       >
                         <button
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white/80 hover:text-white text-xs font-semibold transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/[0.12] hover:bg-white/[0.14] text-white/85 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
                           title="Bấm để xem và tải file lời (.lrc)"
                         >
-                          <FileText className="w-3.5 h-3.5 text-[#c273ed] group-hover:text-white" />
+                          <FileText className="w-3.5 h-3.5 text-[var(--color-accent)]" />
                           <span>LRC</span>
                         </button>
                       </td>
@@ -204,10 +208,10 @@ export const StorePageView: React.FC = () => {
                       {/* Định dạng */}
                       <td className="py-3.5 px-4 text-center">
                         <span
-                          className={`inline-block px-2.5 py-1 rounded-md text-xs font-black tracking-wider ${
+                          className={`inline-block px-2.5 py-1 rounded-md text-xs font-black tracking-wider font-mono ${
                             song.audioFormat === 'WAV'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                              : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/35'
+                              : 'bg-sky-500/15 text-sky-300 border border-sky-500/35'
                           }`}
                         >
                           {song.audioFormat}
@@ -215,14 +219,14 @@ export const StorePageView: React.FC = () => {
                       </td>
 
                       {/* Giá bản quyền */}
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-amber-300 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-amber-300 whitespace-nowrap tabular-nums">
                         <span className="whitespace-nowrap">{(song.price ?? 20000).toLocaleString('vi-VN')}&nbsp;đ</span>
                       </td>
 
-                      {/* MUA (Requirement 6) */}
+                      {/* MUA */}
                       <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         {isPurchased ? (
-                          <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-xs inline-flex items-center gap-1 shadow-sm">
+                          <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/35 text-emerald-400 font-bold text-xs inline-flex items-center gap-1 shadow-sm">
                             <CheckCircle className="w-3.5 h-3.5" />
                             <span>Đã mua</span>
                           </span>
@@ -232,7 +236,7 @@ export const StorePageView: React.FC = () => {
                               setSongToBuy(song);
                               setIsDemoLimitModalOpen(true);
                             }}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl accent-glow-btn text-white text-xs font-bold transition-all active:scale-95 cursor-pointer"
                           >
                             <ShoppingCart className="w-3.5 h-3.5" />
                             <span>Mua Ngay</span>
@@ -240,12 +244,12 @@ export const StorePageView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* TẢI VỀ (Requirement 6) */}
+                      {/* TẢI VỀ */}
                       <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         {isPurchased ? (
                           <button
                             onClick={() => openDownloadModal(song)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition-colors active:scale-95"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition-colors active:scale-95 cursor-pointer"
                             title="Tải bài hát (MP3 hoặc WAV)"
                           >
                             <Download className="w-3.5 h-3.5" />
@@ -262,17 +266,17 @@ export const StorePageView: React.FC = () => {
             </table>
           </div>
 
-          {/* Requirement 21: Pagination Controls */}
+          {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3.5 border-t border-white/10 bg-white/[0.02]">
-              <p className="text-xs text-white/50">
+            <div className="flex items-center justify-between px-6 py-3.5 border-t border-white/[0.08] bg-white/[0.02]">
+              <p className="text-xs text-white/50 tabular-nums">
                 Hiển thị {startIndex + 1} - {Math.min(startIndex + PAGE_SIZE, totalSongs)} trong tổng số {totalSongs} bài hát (20 bài/trang)
               </p>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={validCurrentPage === 1}
-                  className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4 text-white" />
                 </button>
@@ -280,9 +284,10 @@ export const StorePageView: React.FC = () => {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                    style={validCurrentPage === pageNum ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                    className={`w-7 h-7 rounded-lg text-xs font-bold tabular-nums transition-all cursor-pointer ${
                       validCurrentPage === pageNum
-                        ? 'bg-[#9b4de0] text-white shadow'
+                        ? 'text-white shadow'
                         : 'border border-white/10 hover:bg-white/10 text-white/70'
                     }`}
                   >
@@ -292,7 +297,7 @@ export const StorePageView: React.FC = () => {
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={validCurrentPage === totalPages}
-                  className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  className="p-1.5 rounded-lg border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                 >
                   <ChevronRight className="w-4 h-4 text-white" />
                 </button>

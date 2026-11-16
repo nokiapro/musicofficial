@@ -245,15 +245,15 @@ export const MobileAppLayout: React.FC = () => {
     switch (activeMobileTab) {
       case 'discover':
         return (
-          <div className="space-y-3 px-3 pb-32 pt-2 select-none">
+          <div className="space-y-3.5 px-3 pb-32 pt-2.5 select-none">
             {/* Header with song count, purchase statistics & circular Play button */}
             <div className="flex items-center justify-between pb-1 gap-2">
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg font-black text-[var(--text-primary)] uppercase tracking-tight truncate">
+                <h1 className="font-display text-lg font-extrabold text-[var(--text-primary)] tracking-tight truncate">
                   Danh Sách Bài Hát
                 </h1>
-                <p className="text-[10px] text-[var(--text-secondary)] truncate">
-                  Tổng cộng {totalSongs} bài hát • Đã mua: <span className="text-emerald-400 font-bold">{purchasedCount} bài</span> • Chưa mua: <span className="text-amber-400 font-bold">{unpurchasedCount} bài</span>
+                <p className="text-[11px] text-[var(--text-secondary)] truncate tabular-nums">
+                  Tổng cộng {totalSongs} bài hát · Đã mua: <span className="text-emerald-400 font-bold">{purchasedCount} bài</span> · Chưa mua: <span className="text-amber-400 font-bold">{unpurchasedCount} bài</span>
                 </p>
               </div>
 
@@ -262,7 +262,7 @@ export const MobileAppLayout: React.FC = () => {
                 <button
                   onClick={() => setIsPlayMenuOpen(!isPlayMenuOpen)}
                   disabled={songs.length === 0}
-                  className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white flex items-center justify-center shadow-lg shadow-amber-600/30 transition-transform active:scale-95 disabled:opacity-40 shrink-0 cursor-pointer"
+                  className="accent-glow-btn w-10 h-10 rounded-full text-white flex items-center justify-center transition-transform active:scale-95 disabled:opacity-40 shrink-0 cursor-pointer"
                   title="Phát nhạc (Theo thứ tự hoặc Ngẫu nhiên)"
                 >
                   <Play className="w-5 h-5 fill-current ml-0.5 text-white" />
@@ -275,12 +275,12 @@ export const MobileAppLayout: React.FC = () => {
                       onClick={() => setIsPlayMenuOpen(false)}
                     />
                     <div
-                      style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                      className="absolute right-0 top-12 w-56 rounded-2xl border shadow-2xl p-2 z-50 animate-in zoom-in-95 duration-150 space-y-1"
+                      style={{ color: 'var(--text-primary)' }}
+                      className="glass-panel absolute right-0 top-12 w-56 rounded-2xl shadow-2xl p-2 z-50 animate-in zoom-in-95 duration-150 space-y-1"
                     >
                       <button
                         onClick={handlePlayInOrder}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-surface-hover)] text-left transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
                       >
                         <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                           <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
@@ -293,7 +293,7 @@ export const MobileAppLayout: React.FC = () => {
 
                       <button
                         onClick={handlePlayRandom}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[var(--bg-surface-hover)] text-left transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
                       >
                         <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-[#c273ed] flex items-center justify-center shrink-0">
                           <Shuffle className="w-3.5 h-3.5" />
@@ -309,10 +309,9 @@ export const MobileAppLayout: React.FC = () => {
               </div>
             </div>
 
-
-            {/* MP3 & WAV Audio Format Switcher - 50/50 Grid with crisp visible text */}
+            {/* MP3 & WAV Audio Format Switcher */}
             <div className="w-full">
-              <div className="grid grid-cols-2 p-1 bg-white/5 rounded-2xl border border-white/10 text-xs shadow-sm w-full">
+              <div className="grid grid-cols-2 p-1 bg-black/30 rounded-2xl border border-white/10 text-xs shadow-sm w-full">
                 <button
                   onClick={() => setPreferredAudioFormat('MP3')}
                   className={`py-2 rounded-xl font-bold transition-all text-center flex items-center justify-center cursor-pointer ${
@@ -368,23 +367,32 @@ export const MobileAppLayout: React.FC = () => {
                         else playSong(song);
                       }
                     }}
-                    className={`relative p-2.5 rounded-2xl border transition-colors cursor-pointer flex items-center justify-between gap-2.5 ${
+                    style={
                       isCurrent
-                        ? 'bg-[#9b4de0]/20 border-[#9b4de0]/50 shadow-md'
-                        : 'bg-white/5 border-white/5 active:bg-white/10'
+                        ? {
+                            backgroundColor: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                            borderColor: 'color-mix(in srgb, var(--color-accent) 45%, transparent)',
+                          }
+                        : undefined
+                    }
+                    className={`relative p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                      isCurrent
+                        ? 'shadow-md'
+                        : 'bg-white/[0.04] border-white/[0.06] active:bg-white/10'
                     }`}
                   >
                     {/* Left Info: STT, Cover, Title, Artist */}
                     <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
-                      <span className="w-5 text-center text-sm font-bold text-white/50 font-so">
-                        {(discoverPage - 1) * PAGE_SIZE + idx + 1}
+                      <span className="w-6 text-center text-xs font-bold text-white/45 font-mono tabular-nums shrink-0">
+                        {((discoverPage - 1) * PAGE_SIZE + idx + 1).toString().padStart(2, '0')}
                       </span>
 
-                      <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow bg-zinc-900 border border-white/10">
+                      <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-sm bg-zinc-900 border border-white/10">
                         {song.coverImage ? (
                           <img
                             src={song.coverImage}
                             alt={song.title}
+                            referrerPolicy="no-referrer"
                             className="w-full h-full object-cover"
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
@@ -402,14 +410,13 @@ export const MobileAppLayout: React.FC = () => {
 
                       <div className="truncate flex-1 min-w-0">
                         <p
-                          className={`text-xs font-bold truncate ${
-                            isCurrent ? 'text-[#c273ed]' : 'text-white'
-                          }`}
+                          style={isCurrent ? { color: 'var(--color-accent)' } : undefined}
+                          className={`text-xs font-bold truncate ${isCurrent ? '' : 'text-white'}`}
                         >
                           {song.title}
                         </p>
                         <div className="text-[10px] text-white/60 truncate mt-0.5">
-                          <ArtistNames artists={song.artists} linkClassName="text-white/60 hover:text-purple-300" />
+                          <ArtistNames artists={song.artists} linkClassName="text-white/60 hover:text-white transition-colors" />
                         </div>
                       </div>
                     </div>
@@ -418,9 +425,10 @@ export const MobileAppLayout: React.FC = () => {
                     <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={(e) => handleToggleSongMenu(e, song.id)}
+                        style={activeMenuSongId === song.id ? { backgroundColor: 'var(--color-accent)' } : undefined}
                         className={`p-1.5 rounded-xl transition-all cursor-pointer ${
                           activeMenuSongId === song.id
-                            ? 'bg-[#9b4de0] text-white shadow-md'
+                            ? 'text-white shadow-md'
                             : 'hover:bg-white/10 text-white/60 hover:text-white'
                         }`}
                         title="Tùy chọn bài hát"
@@ -428,7 +436,7 @@ export const MobileAppLayout: React.FC = () => {
                         <MoreVertical className="w-4 h-4" />
                       </button>
 
-                      {/* 3-dots Popup Dropdown Menu with Smart Auto-Positioning (Requirement 3 & 5 & 8) */}
+                      {/* 3-dots Popup Dropdown Menu */}
                       {activeMenuSongId === song.id && (
                         <>
                           <div
@@ -439,12 +447,12 @@ export const MobileAppLayout: React.FC = () => {
                             }}
                           />
                           <div
-                            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                            className={`absolute right-0 ${
+                            style={{ color: 'var(--text-primary)' }}
+                            className={`glass-panel absolute right-0 ${
                               menuPositionMap[song.id] === 'up'
                                 ? 'bottom-9 origin-bottom-right'
                                 : 'top-9 origin-top-right'
-                            } w-48 border rounded-2xl shadow-2xl p-1.5 z-40 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150`}
+                            } w-48 rounded-2xl shadow-2xl p-1.5 z-40 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150`}
                           >
                             {/* 1. Yêu thích (Tim) */}
                             <button
@@ -575,7 +583,7 @@ export const MobileAppLayout: React.FC = () => {
 
       case 'store':
         return (
-          <div className="space-y-3 px-3 pb-32 pt-2 select-none">
+          <div className="space-y-3 px-3 pb-32 pt-2.5 select-none">
             {/* Songs in Store */}
             <div className="space-y-2">
               {paginatedStoreSongs.map((song) => {
@@ -583,24 +591,23 @@ export const MobileAppLayout: React.FC = () => {
                 return (
                   <div
                     key={song.id}
-                    className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-2.5"
+                    className="glass-panel p-3.5 rounded-2xl flex items-center justify-between gap-2.5"
                   >
                     <div className="truncate flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold text-white truncate">{song.title}</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded font-black bg-white/10 text-white shrink-0">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-white/10 text-white/80 shrink-0">
                           {song.audioFormat}
                         </span>
                       </div>
-                      <div className="text-[10px] text-white/50 truncate mt-0.5">
-                        <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                      <div className="text-[10px] text-white/55 truncate mt-0.5">
+                        <ArtistNames artists={song.artists} linkClassName="text-white/55 hover:text-white transition-colors" />
                       </div>
-                      {/* Item 10: Cho chữ đ cùng 1 hàng đừng xuống dòng */}
                       <p className="text-xs font-bold text-amber-400 mt-1 whitespace-nowrap">
                         {isPurchased ? (
                           <span className="text-emerald-400 font-extrabold whitespace-nowrap">ĐÃ SỞ HỮU</span>
                         ) : (
-                          <span className="whitespace-nowrap font-mono">
+                          <span className="whitespace-nowrap font-mono tabular-nums">
                             {(song.price ?? 20000).toLocaleString('vi-VN')}&nbsp;đ
                           </span>
                         )}
@@ -622,7 +629,7 @@ export const MobileAppLayout: React.FC = () => {
                             setSongToBuy(song);
                             setIsDemoLimitModalOpen(true);
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow active:scale-95 transition-all"
+                          className="accent-glow-btn px-3.5 py-1.5 rounded-full text-white text-xs font-bold active:scale-95 transition-all cursor-pointer"
                         >
                           Mua ngay
                         </button>
@@ -633,17 +640,17 @@ export const MobileAppLayout: React.FC = () => {
               })}
             </div>
 
-            {/* Store Pagination (Requirement 21) */}
+            {/* Store Pagination */}
             {totalStorePages > 1 && (
-              <div className="flex items-center justify-between pt-3 pb-2 text-xs">
-                <span className="text-white/40 text-[11px]">
+              <div className="flex items-center justify-between pt-3 pb-2 text-xs tabular-nums">
+                <span className="text-white/45 text-[11px]">
                   Trang {storePage} / {totalStorePages}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
                     disabled={storePage === 1}
                     onClick={() => setStorePage((p) => Math.max(1, p - 1))}
-                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                    className="px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs cursor-pointer"
                   >
                     Trước
                   </button>
@@ -651,10 +658,11 @@ export const MobileAppLayout: React.FC = () => {
                     <button
                       key={pg}
                       onClick={() => setStorePage(pg)}
-                      className={`w-7 h-7 rounded-xl text-xs font-bold transition-all ${
+                      style={storePage === pg ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                      className={`w-7 h-7 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         storePage === pg
-                          ? 'bg-[#9b4de0] text-white shadow'
-                          : 'bg-white/5 text-white/60'
+                          ? 'text-white shadow'
+                          : 'bg-white/[0.06] text-white/60 hover:text-white'
                       }`}
                     >
                       {pg}
@@ -663,7 +671,7 @@ export const MobileAppLayout: React.FC = () => {
                   <button
                     disabled={storePage === totalStorePages}
                     onClick={() => setStorePage((p) => Math.min(totalStorePages, p + 1))}
-                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                    className="px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs cursor-pointer"
                   >
                     Sau
                   </button>
@@ -675,15 +683,20 @@ export const MobileAppLayout: React.FC = () => {
 
       case 'chart': {
         return (
-          <div className="space-y-3 px-3 pb-32 pt-2 select-none">
+          <div className="space-y-3 px-3 pb-32 pt-2.5 select-none">
             <div className="flex items-center justify-between pb-1">
               <div>
-                <h1 className="text-base font-black text-white uppercase tracking-tight flex items-center gap-1.5">
-                  <span className="bg-gradient-to-r from-[#9b4de0] to-cyan-400 bg-clip-text text-transparent">
+                <h1 className="font-display text-lg font-black text-white tracking-tight flex items-center gap-1.5">
+                  <span
+                    style={{
+                      backgroundImage: 'linear-gradient(90deg, var(--color-accent), #22d3ee)',
+                    }}
+                    className="bg-clip-text text-transparent"
+                  >
                     #xuankenchart
                   </span>
                 </h1>
-                <p className="text-[10px] text-white/50">Xếp hạng bài hát nghe nhiều nhất thời gian thực</p>
+                <p className="text-[11px] text-white/55">Xếp hạng bài hát nghe nhiều nhất thời gian thực</p>
               </div>
             </div>
 
@@ -699,52 +712,63 @@ export const MobileAppLayout: React.FC = () => {
                       setPlaybackSource('#xuankenchart');
                       playSong(song);
                     }}
-                    className={`flex items-center justify-between p-2.5 rounded-2xl border transition-colors cursor-pointer ${
+                    style={
                       isCurrent
-                        ? 'bg-[#9b4de0]/20 border-purple-500/50 shadow'
-                        : 'bg-white/5 border-white/5 active:bg-white/10'
+                        ? {
+                            backgroundColor: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                            borderColor: 'color-mix(in srgb, var(--color-accent) 45%, transparent)',
+                          }
+                        : undefined
+                    }
+                    className={`flex items-center justify-between p-2.5 rounded-2xl border transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'shadow'
+                        : 'bg-white/[0.04] border-white/[0.06] active:bg-white/10'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate min-w-0 flex-1">
-                      <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-black text-xs shrink-0 font-so ${
+                      <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-black text-xs shrink-0 font-mono tabular-nums ${
                         rank === 1
-                          ? 'border-amber-400/50 text-amber-300 bg-amber-500/10'
+                          ? 'border-amber-400/50 text-amber-300 bg-amber-500/15'
                           : rank === 2
-                          ? 'border-sky-400/50 text-sky-300 bg-sky-500/10'
+                          ? 'border-sky-400/50 text-sky-300 bg-sky-500/15'
                           : rank === 3
-                          ? 'border-rose-400/50 text-rose-300 bg-rose-500/10'
-                          : 'border-transparent text-white/40'
+                          ? 'border-rose-400/50 text-rose-300 bg-rose-500/15'
+                          : 'border-transparent text-white/45'
                       }`}>
                         {rank === 1 ? <Crown className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> : rank}
                       </div>
 
-                      <div className="w-9 h-9 rounded-lg overflow-hidden bg-purple-900/40 shrink-0 relative">
+                      <div className="w-9 h-9 rounded-lg overflow-hidden bg-purple-900/40 shrink-0 relative border border-white/10">
                         {song.coverImage ? (
-                          <img src={song.coverImage} alt={song.title} className="w-full h-full object-cover" />
+                          <img src={song.coverImage} alt={song.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-white/50">XK</div>
                         )}
                       </div>
 
                       <div className="truncate">
-                        <p className={`text-xs font-bold truncate ${isCurrent ? 'text-[#c273ed]' : 'text-white'}`}>
+                        <p
+                          style={isCurrent ? { color: 'var(--color-accent)' } : undefined}
+                          className={`text-xs font-bold truncate ${isCurrent ? '' : 'text-white'}`}
+                        >
                           {song.title}
                         </p>
-                        <div className="text-[10px] text-white/50 truncate">
-                          <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                        <div className="text-[10px] text-white/55 truncate">
+                          <ArtistNames artists={song.artists} linkClassName="text-white/55 hover:text-white transition-colors" />
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <span className="text-[10px] font-mono font-bold text-emerald-400 flex items-center gap-0.5">
-                        <Headphones className="w-3 h-3 text-emerald-400/70" />
+                      <span className="text-[10px] font-mono tabular-nums font-bold text-emerald-400 flex items-center gap-0.5">
+                        <Headphones className="w-3 h-3 text-emerald-400/75" />
                         {(song.playCount || 0).toLocaleString('vi-VN')}
                       </span>
 
                       <button
                         onClick={() => openShareModal(song)}
-                        className="p-1 text-white/40 hover:text-white"
+                        className="p-1 text-white/45 hover:text-white cursor-pointer"
                         title="Chia sẻ link bài hát"
                       >
                         <Share2 className="w-3.5 h-3.5" />
@@ -800,14 +824,15 @@ export const MobileAppLayout: React.FC = () => {
         const userPlaylists = playlists.filter((p) => !p.userId || (currentUser && p.userId === currentUser.uid));
 
         return (
-          <div className="space-y-3 px-3 pb-32 pt-2 select-none">
-            {/* Sub-tabs: Yêu thích, Playlists, Đã mua (Lịch sử removed per Req 9) */}
-            <div className="flex items-center p-1 bg-white/5 border border-white/10 rounded-xl gap-1 overflow-x-auto no-scrollbar text-xs">
+          <div className="space-y-3 px-3 pb-32 pt-2.5 select-none">
+            {/* Sub-tabs: Yêu thích, Playlists, Đã mua */}
+            <div className="flex items-center p-1 bg-black/30 border border-white/10 rounded-xl gap-1 overflow-x-auto no-scrollbar text-xs">
               <button
                 onClick={() => setLibrarySubTab('liked')}
-                className={`flex-1 py-1 px-2.5 rounded-lg font-bold transition-all whitespace-nowrap text-center ${
+                style={librarySubTab === 'liked' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold transition-all whitespace-nowrap text-center cursor-pointer tabular-nums ${
                   librarySubTab === 'liked'
-                    ? 'bg-[#9b4de0] text-white shadow'
+                    ? 'text-white shadow'
                     : 'text-white/60 hover:text-white'
                 }`}
               >
@@ -818,9 +843,10 @@ export const MobileAppLayout: React.FC = () => {
                   setLibrarySubTab('playlists');
                   setSelectedPlaylist(null);
                 }}
-                className={`flex-1 py-1 px-2.5 rounded-lg font-bold transition-all whitespace-nowrap text-center ${
+                style={librarySubTab === 'playlists' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold transition-all whitespace-nowrap text-center cursor-pointer tabular-nums ${
                   librarySubTab === 'playlists'
-                    ? 'bg-[#9b4de0] text-white shadow'
+                    ? 'text-white shadow'
                     : 'text-white/60 hover:text-white'
                 }`}
               >
@@ -828,9 +854,10 @@ export const MobileAppLayout: React.FC = () => {
               </button>
               <button
                 onClick={() => setLibrarySubTab('purchased')}
-                className={`flex-1 py-1 px-2.5 rounded-lg font-bold transition-all whitespace-nowrap text-center ${
+                style={librarySubTab === 'purchased' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold transition-all whitespace-nowrap text-center cursor-pointer tabular-nums ${
                   librarySubTab === 'purchased'
-                    ? 'bg-[#9b4de0] text-white shadow'
+                    ? 'text-white shadow'
                     : 'text-white/60 hover:text-white'
                 }`}
               >
@@ -842,11 +869,11 @@ export const MobileAppLayout: React.FC = () => {
             {librarySubTab === 'liked' && (
               <div ref={likedListRef} className="space-y-2">
                 {!currentUser && likedSongs.length > 0 && (
-                  <div className="p-2.5 rounded-xl bg-purple-600/15 border border-purple-500/30 text-[11px] text-purple-200 flex items-center justify-between gap-2 shadow-sm">
-                    <span>💡 Đăng nhập để đồng bộ bài hát yêu thích sang thiết bị khác!</span>
+                  <div className="glass-panel p-3 rounded-xl text-[11px] text-white/85 flex items-center justify-between gap-2">
+                    <span>Đăng nhập để đồng bộ bài hát yêu thích sang thiết bị khác.</span>
                     <button
                       onClick={() => setIsLoginModalOpen(true)}
-                      className="px-2 py-0.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-[10px] shrink-0"
+                      className="accent-glow-btn px-2.5 py-1 rounded-lg text-white font-bold text-[10px] shrink-0 cursor-pointer"
                     >
                       Đăng nhập
                     </button>
@@ -854,7 +881,7 @@ export const MobileAppLayout: React.FC = () => {
                 )}
 
                 {likedSongs.length === 0 ? (
-                  <div className="py-12 text-center text-white/40 text-xs bg-white/5 rounded-2xl border border-white/5">
+                  <div className="glass-panel py-12 text-center text-white/50 text-xs rounded-2xl">
                     Chưa có bài hát yêu thích. Hãy bấm icon tim để lưu bài hát!
                   </div>
                 ) : (
@@ -868,10 +895,18 @@ export const MobileAppLayout: React.FC = () => {
                         setPlaybackSource('Thư viện cá nhân');
                         playSong(song);
                       }}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border active:bg-white/10 cursor-pointer gap-2.5 ${
+                      style={
                         isCurrent
-                          ? 'bg-[#9b4de0]/20 border-[#9b4de0]/50'
-                          : 'bg-white/5 border-transparent'
+                          ? {
+                              backgroundColor: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                              borderColor: 'color-mix(in srgb, var(--color-accent) 45%, transparent)',
+                            }
+                          : undefined
+                      }
+                      className={`flex items-center justify-between p-2.5 rounded-xl border active:bg-white/10 cursor-pointer gap-2.5 transition-all ${
+                        isCurrent
+                          ? 'shadow'
+                          : 'bg-white/[0.04] border-white/[0.06]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
@@ -880,6 +915,7 @@ export const MobileAppLayout: React.FC = () => {
                             <img
                               src={song.coverImage}
                               alt={song.title}
+                              referrerPolicy="no-referrer"
                               className="w-full h-full object-cover"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
@@ -891,21 +927,21 @@ export const MobileAppLayout: React.FC = () => {
                           </div>
                         </div>
                         <div className="truncate">
-                          <p className="text-xs font-bold text-white truncate">{song.title}</p>
-                          <div className="text-[10px] text-white/50 truncate mt-0.5">
-                            <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                          <p style={isCurrent ? { color: 'var(--color-accent)' } : undefined} className="text-xs font-bold text-white truncate">{song.title}</p>
+                          <div className="text-[10px] text-white/55 truncate mt-0.5">
+                            <ArtistNames artists={song.artists} linkClassName="text-white/55 hover:text-white transition-colors" />
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => openShareModal(song)}
-                          className="p-1 text-white/40 hover:text-white"
+                          className="p-1 text-white/45 hover:text-white cursor-pointer"
                         >
                           <Share2 className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => toggleLike(song.id)} className="p-1 text-red-500">
-                          <Heart className="w-4 h-4 fill-red-500" />
+                        <button onClick={() => toggleLike(song.id)} className="p-1 text-rose-500 cursor-pointer">
+                          <Heart className="w-4 h-4 fill-rose-500" />
                         </button>
                       </div>
                     </div>
@@ -913,17 +949,17 @@ export const MobileAppLayout: React.FC = () => {
                   })
                 )}
 
-                {/* Liked Pagination (Requirement 21) */}
+                {/* Liked Pagination */}
                 {totalLikedPages > 1 && (
-                  <div className="flex items-center justify-between pt-3 pb-2 text-xs">
-                    <span className="text-white/40 text-[11px]">
+                  <div className="flex items-center justify-between pt-3 pb-2 text-xs tabular-nums">
+                    <span className="text-white/45 text-[11px]">
                       Trang {likedPage} / {totalLikedPages}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <button
                         disabled={likedPage === 1}
                         onClick={() => setLikedPage((p) => Math.max(1, p - 1))}
-                        className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                        className="px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs cursor-pointer"
                       >
                         Trước
                       </button>
@@ -931,10 +967,11 @@ export const MobileAppLayout: React.FC = () => {
                         <button
                           key={pg}
                           onClick={() => setLikedPage(pg)}
-                          className={`w-7 h-7 rounded-xl text-xs font-bold transition-all ${
+                          style={likedPage === pg ? { backgroundColor: 'var(--color-accent)' } : undefined}
+                          className={`w-7 h-7 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                             likedPage === pg
-                              ? 'bg-[#9b4de0] text-white shadow'
-                              : 'bg-white/5 text-white/60'
+                              ? 'text-white shadow'
+                              : 'bg-white/[0.06] text-white/60'
                           }`}
                         >
                           {pg}
@@ -943,7 +980,7 @@ export const MobileAppLayout: React.FC = () => {
                       <button
                         disabled={likedPage === totalLikedPages}
                         onClick={() => setLikedPage((p) => Math.min(totalLikedPages, p + 1))}
-                        className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs"
+                        className="px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all text-xs cursor-pointer"
                       >
                         Sau
                       </button>
@@ -955,13 +992,13 @@ export const MobileAppLayout: React.FC = () => {
 
             {/* Subtab 2: Custom Playlists */}
             {librarySubTab === 'playlists' && !currentUser && (
-              <div className="py-12 px-4 flex flex-col items-center justify-center text-center select-none bg-white/5 rounded-2xl border border-white/5">
-                <FolderPlus className="w-8 h-8 text-purple-400 mb-2" />
-                <p className="text-sm font-bold text-white mb-1">Playlist Cá Nhân</p>
-                <p className="text-xs text-white/50 max-w-xs mb-3">Đăng nhập để tạo và lưu danh sách bài hát yêu thích.</p>
+              <div className="glass-panel py-12 px-4 flex flex-col items-center justify-center text-center select-none rounded-2xl">
+                <FolderPlus style={{ color: 'var(--color-accent)' }} className="w-8 h-8 mb-2" />
+                <p className="font-display text-sm font-bold text-white mb-1">Playlist Cá Nhân</p>
+                <p className="text-xs text-white/55 max-w-xs mb-3">Đăng nhập để tạo và lưu danh sách bài hát yêu thích.</p>
                 <button
                   onClick={() => setIsLoginModalOpen(true)}
-                  className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow cursor-pointer active:scale-95"
+                  className="accent-glow-btn px-4 py-1.5 rounded-full text-white font-bold text-xs cursor-pointer active:scale-95"
                 >
                   Đăng Nhập Ngay
                 </button>
@@ -975,10 +1012,10 @@ export const MobileAppLayout: React.FC = () => {
             {librarySubTab === 'playlists' && currentUser && !selectedPlaylist && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white/70 uppercase">Danh sách phát cá nhân</span>
+                  <span className="text-xs font-bold text-white/70 uppercase tracking-wider">Danh sách phát cá nhân</span>
                   <button
                     onClick={() => setIsCreatingPl(true)}
-                    className="px-3 py-1 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-xs flex items-center gap-1 shadow"
+                    className="accent-glow-btn px-3.5 py-1.5 rounded-full text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
                   >
                     <FolderPlus className="w-3.5 h-3.5" />
                     <span>+ Tạo mới</span>
@@ -986,26 +1023,26 @@ export const MobileAppLayout: React.FC = () => {
                 </div>
 
                 {isCreatingPl && (
-                  <form onSubmit={handleCreatePlaylist} className="p-3 rounded-2xl bg-white/5 border border-purple-500/30 space-y-2">
+                  <form onSubmit={handleCreatePlaylist} className="glass-panel p-3.5 rounded-2xl space-y-2.5">
                     <input
                       type="text"
                       required
                       value={newPlaylistName}
                       onChange={(e) => setNewPlaylistName(e.target.value)}
                       placeholder="Nhập tên playlist mới..."
-                      className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#9b4de0]"
+                      className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[var(--color-accent)]"
                     />
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => setIsCreatingPl(false)}
-                        className="px-3 py-1 text-xs text-white/60"
+                        className="px-3 py-1 text-xs text-white/60 cursor-pointer"
                       >
                         Hủy
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1 rounded-xl bg-[#9b4de0] text-white font-bold text-xs shadow"
+                        className="accent-glow-btn px-4 py-1 rounded-xl text-white font-bold text-xs cursor-pointer"
                       >
                         Tạo
                       </button>
@@ -1014,29 +1051,28 @@ export const MobileAppLayout: React.FC = () => {
                 )}
 
                 {userPlaylists.length === 0 ? (
-                  <div className="py-12 text-center text-white/40 text-xs bg-white/5 rounded-2xl border border-white/5">
+                  <div className="glass-panel py-12 text-center text-white/50 text-xs rounded-2xl">
                     Chưa có playlist nào. Hãy bấm "+ Tạo mới" để tạo danh sách phát riêng!
                   </div>
                 ) : (
                   userPlaylists.map((pl) => (
                     <div
                       key={pl.id}
-                      className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-2"
+                      className="glass-panel p-3.5 rounded-2xl flex items-center justify-between gap-2"
                     >
                       <div
                         className="truncate min-w-0 flex-1 cursor-pointer active:opacity-70"
                         onClick={() => setSelectedPlaylist(pl)}
                         title="Xem danh sách bài hát trong playlist"
                       >
-                        <h4 className="text-xs font-bold text-white truncate hover:text-[#c273ed]">{pl.name}</h4>
-                        <p className="text-[10px] text-white/50">{Array.isArray(pl.songIds) ? pl.songIds.length : 0} bài hát &bull; Chạm để xem</p>
+                        <h4 className="font-display text-xs font-bold text-white truncate">{pl.name}</h4>
+                        <p className="text-[10px] text-white/55 tabular-nums">{Array.isArray(pl.songIds) ? pl.songIds.length : 0} bài hát · Chạm để xem</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Requirement 3: Phát theo thứ tự và phát random */}
                         <button
                           onClick={() => playPlaylist(pl, 'order')}
                           disabled={!Array.isArray(pl.songIds) || pl.songIds.length === 0}
-                          className="px-2.5 py-1 rounded-lg bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-[10px] flex items-center gap-1 disabled:opacity-30 active:scale-95 transition-all shadow-sm cursor-pointer"
+                          className="accent-glow-btn px-2.5 py-1 rounded-lg text-white font-bold text-[10px] flex items-center gap-1 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
                           title="Phát theo thứ tự"
                         >
                           <Play className="w-3 h-3 fill-current ml-0.5" />
@@ -1045,7 +1081,7 @@ export const MobileAppLayout: React.FC = () => {
                         <button
                           onClick={() => playPlaylist(pl, 'shuffle')}
                           disabled={!Array.isArray(pl.songIds) || pl.songIds.length === 0}
-                          className="px-2.5 py-1 rounded-lg bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/40 text-[#c273ed] hover:text-white font-bold text-[10px] flex items-center gap-1 disabled:opacity-30 active:scale-95 transition-all shadow-sm cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-white/[0.08] hover:bg-white/[0.16] border border-white/15 text-white font-bold text-[10px] flex items-center gap-1 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
                           title="Phát ngẫu nhiên"
                         >
                           <Shuffle className="w-3 h-3" />
@@ -1053,7 +1089,7 @@ export const MobileAppLayout: React.FC = () => {
                         </button>
                         <button
                           onClick={() => deletePlaylist(pl.id)}
-                          className="p-1 text-white/40 hover:text-red-400 cursor-pointer"
+                          className="p-1 text-white/45 hover:text-red-400 cursor-pointer"
                           title="Xóa playlist"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1067,13 +1103,13 @@ export const MobileAppLayout: React.FC = () => {
 
             {/* Subtab 3: Đã mua (Download MP3/WAV) */}
             {librarySubTab === 'purchased' && !currentUser && (
-              <div className="py-12 px-4 flex flex-col items-center justify-center text-center select-none bg-white/5 rounded-2xl border border-white/5">
+              <div className="glass-panel py-12 px-4 flex flex-col items-center justify-center text-center select-none rounded-2xl">
                 <FolderHeart className="w-8 h-8 text-emerald-400 mb-2" />
-                <p className="text-sm font-bold text-white mb-1">Kho Nhạc Bản Quyền</p>
-                <p className="text-xs text-white/50 max-w-xs mb-3">Đăng nhập tài khoản để xem các bài hát đã mua của bạn.</p>
+                <p className="font-display text-sm font-bold text-white mb-1">Kho Nhạc Bản Quyền</p>
+                <p className="text-xs text-white/55 max-w-xs mb-3">Đăng nhập tài khoản để xem các bài hát đã mua của bạn.</p>
                 <button
                   onClick={() => setIsLoginModalOpen(true)}
-                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow cursor-pointer active:scale-95"
+                  className="px-4 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow cursor-pointer active:scale-95"
                 >
                   Đăng Nhập Ngay
                 </button>
@@ -1083,7 +1119,7 @@ export const MobileAppLayout: React.FC = () => {
             {librarySubTab === 'purchased' && currentUser && (
               <div ref={purchasedListRef} className="space-y-2">
                 {ownedSongs.length === 0 ? (
-                  <div className="py-12 text-center text-white/40 text-xs bg-white/5 rounded-2xl border border-white/5">
+                  <div className="glass-panel py-12 text-center text-white/50 text-xs rounded-2xl">
                     Chưa có bài hát bản quyền nào được mua.
                   </div>
                 ) : (
@@ -1097,10 +1133,18 @@ export const MobileAppLayout: React.FC = () => {
                         setPlaybackSource('Thư viện cá nhân');
                         playSong(song);
                       }}
-                      className={`flex items-center justify-between p-2.5 rounded-2xl border cursor-pointer gap-2.5 ${
+                      style={
                         isCurrent
-                          ? 'bg-[#9b4de0]/20 border-[#9b4de0]/50'
-                          : 'bg-white/5 border-white/10'
+                          ? {
+                              backgroundColor: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                              borderColor: 'color-mix(in srgb, var(--color-accent) 45%, transparent)',
+                            }
+                          : undefined
+                      }
+                      className={`flex items-center justify-between p-2.5 rounded-2xl border cursor-pointer gap-2.5 transition-all ${
+                        isCurrent
+                          ? 'shadow'
+                          : 'bg-white/[0.04] border-white/[0.06]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
@@ -1109,6 +1153,7 @@ export const MobileAppLayout: React.FC = () => {
                             <img
                               src={song.coverImage}
                               alt={song.title}
+                              referrerPolicy="no-referrer"
                               className="w-full h-full object-cover"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
@@ -1120,14 +1165,14 @@ export const MobileAppLayout: React.FC = () => {
                           </div>
                         </div>
                         <div className="truncate">
-                          <p className="text-xs font-bold text-white truncate">{song.title}</p>
-                          <div className="text-[10px] text-white/50 truncate mt-0.5">
-                            <ArtistNames artists={song.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                          <p style={isCurrent ? { color: 'var(--color-accent)' } : undefined} className="text-xs font-bold text-white truncate">{song.title}</p>
+                          <div className="text-[10px] text-white/55 truncate mt-0.5">
+                            <ArtistNames artists={song.artists} linkClassName="text-white/55 hover:text-white transition-colors" />
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
                           {song.audioFormat} Full
                         </span>
                         <button
@@ -1225,22 +1270,20 @@ export const MobileAppLayout: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="h-[100dvh] w-full text-[var(--text-primary)] flex flex-col items-center justify-start sm:py-4 transition-colors duration-300 overflow-hidden font-['Roboto_Condensed']"
+      className="h-[100dvh] w-full text-[var(--text-primary)] flex flex-col items-center justify-start sm:py-4 transition-colors duration-300 overflow-hidden"
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
       {/* Top Banner on Desktop when viewing Mobile App mode */}
       <div
-        className="hidden sm:flex items-center justify-between w-full max-w-[460px] px-4 py-2 mb-2 rounded-xl border text-xs text-[var(--text-primary)] shrink-0"
-        style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
+        className="hidden sm:flex items-center justify-between w-full max-w-[460px] px-4 py-2 mb-2 rounded-xl glass-panel text-xs text-[var(--text-primary)] shrink-0"
       >
         <div className="flex items-center gap-2">
-          <Smartphone className="w-4 h-4 text-[#c273ed]" />
+          <Smartphone style={{ color: 'var(--color-accent)' }} className="w-4 h-4" />
           <span className="font-semibold">XuanKen Music - Giao diện Mobile App</span>
         </div>
         <button
           onClick={() => setViewMode('pc')}
-          style={{ backgroundColor: 'var(--color-accent)' }}
-          className="flex items-center gap-1.5 px-3 py-1 text-white rounded-lg font-medium transition-colors"
+          className="accent-glow-btn flex items-center gap-1.5 px-3 py-1 text-white rounded-lg font-medium transition-all cursor-pointer"
         >
           <Monitor className="w-3.5 h-3.5" />
           <span>Về Web PC</span>
@@ -1263,7 +1306,7 @@ export const MobileAppLayout: React.FC = () => {
 
         {/* Main Content Area: Chat Box has overflow-hidden and fills height */}
         <main
-          className={`flex-1 min-h-0 flex flex-col ${
+          className={`flex-1 min-h-0 flex flex-col ambient-page-glow ${
             activeMobileTab === 'chat' ? 'overflow-hidden' : 'overflow-y-auto no-scrollbar'
           }`}
         >

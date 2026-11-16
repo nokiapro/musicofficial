@@ -28,6 +28,7 @@ import { MobilePlayerActionSheet } from './MobilePlayerActionSheet';
 import { cleanLyricText } from '../../utils/lyricUtils';
 import { SoundWaveIcon } from '../common/SoundWaveIcon';
 import { formatArtistName, formatArtistsString } from '../../utils/artistUtils';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const MobileFullPlayerModal: React.FC = () => {
   const {
@@ -67,13 +68,21 @@ export const MobileFullPlayerModal: React.FC = () => {
   // 3 Slides: 'info' (left) <-> 'disc' (center default) <-> 'lyrics' (right)
   const [activeTab, setActiveTab] = useState<'info' | 'disc' | 'lyrics'>('disc');
   const [showQueueSheet, setShowQueueSheet] = useState(false);
-  const [isClosingQueueSheet, setIsClosingQueueSheet] = useState(false);
-
   const [showQualitySheet, setShowQualitySheet] = useState(false);
-  const [isClosingQualitySheet, setIsClosingQualitySheet] = useState(false);
-
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
-  const [isClosingPlayer, setIsClosingPlayer] = useState(false);
+
+  const { shouldRender: shouldRenderPlayer, isClosing: isClosingPlayer } = useAnimatedPresence(
+    isMobileFullPlayerOpen && !!currentSong,
+    280
+  );
+  const { shouldRender: shouldRenderQueueSheet, isClosing: isClosingQueueSheet } = useAnimatedPresence(
+    showQueueSheet,
+    220
+  );
+  const { shouldRender: shouldRenderQualitySheet, isClosing: isClosingQualitySheet } = useAnimatedPresence(
+    showQualitySheet,
+    220
+  );
 
   // Scrubber dragging state
   const scrubTrackRef = useRef<HTMLDivElement | null>(null);
@@ -112,30 +121,15 @@ export const MobileFullPlayerModal: React.FC = () => {
   };
 
   const handleClosePlayer = () => {
-    if (isClosingPlayer) return;
-    setIsClosingPlayer(true);
-    setTimeout(() => {
-      setIsMobileFullPlayerOpen(false);
-      setIsClosingPlayer(false);
-    }, 280);
+    setIsMobileFullPlayerOpen(false);
   };
 
   const handleCloseQueue = () => {
-    if (isClosingQueueSheet) return;
-    setIsClosingQueueSheet(true);
-    setTimeout(() => {
-      setShowQueueSheet(false);
-      setIsClosingQueueSheet(false);
-    }, 200);
+    setShowQueueSheet(false);
   };
 
   const handleCloseQuality = () => {
-    if (isClosingQualitySheet) return;
-    setIsClosingQualitySheet(true);
-    setTimeout(() => {
-      setShowQualitySheet(false);
-      setIsClosingQualitySheet(false);
-    }, 200);
+    setShowQualitySheet(false);
   };
 
   // Parse raw lyrics from song.lyrics or fallback parse from song.lrcRaw
@@ -180,7 +174,7 @@ export const MobileFullPlayerModal: React.FC = () => {
     }
   }, [activeLyricIdx, activeTab, isMobileFullPlayerOpen]);
 
-  if (!isMobileFullPlayerOpen || !currentSong) return null;
+  if (!shouldRenderPlayer || !currentSong) return null;
 
   const isLiked = likedSongIds.includes(currentSong.id);
   const currentFormat = songFormatMap[currentSong.id] || preferredAudioFormat;
@@ -241,24 +235,35 @@ export const MobileFullPlayerModal: React.FC = () => {
           background: 'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-primary) 55%, var(--bg-sidebar) 100%)',
           color: 'var(--text-primary)',
         }}
-        className={`fixed inset-0 z-50 flex flex-col select-none duration-350 ease-out overflow-hidden font-['Roboto_Condensed'] ${
+        className={`fixed inset-0 z-50 flex flex-col select-none duration-350 ease-out overflow-hidden ${
           isClosingPlayer ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
         }`}
       >
-        {/* Ambient background glow matching theme accent */}
-        <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
+        {/* Subtle blurred cover atmospheric layer + theme ambient glow */}
+        {currentSong.coverImage && (
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
+            <img
+              src={currentSong.coverImage}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover blur-3xl scale-125"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/55 to-black/85" />
+          </div>
+        )}
+        <div className="absolute inset-0 pointer-events-none opacity-25 overflow-hidden">
           <div
             style={{ backgroundColor: 'var(--color-accent)' }}
-            className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[100px]"
+            className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[110px]"
           />
           <div
             style={{ backgroundColor: 'var(--color-accent)' }}
-            className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full blur-[100px]"
+            className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full blur-[110px]"
           />
         </div>
 
         {/* Top Header with 3 Page Indicators */}
-        <header className="relative z-20 px-4 pt-3 pb-2 flex items-center justify-between shrink-0 border-b border-[var(--border-color)]">
+        <header className="relative z-20 px-4 pt-3 pb-2 flex items-center justify-between shrink-0 border-b border-white/[0.08] glass-bar">
           <button
             onClick={handleClosePlayer}
             className="p-2 -ml-1 rounded-full text-[var(--text-primary)] hover:opacity-80 active:scale-95 transition-transform cursor-pointer"
@@ -339,16 +344,17 @@ export const MobileFullPlayerModal: React.FC = () => {
                   : 'translateX(-66.666666%)',
             }}
           >
-            {/* SLIDE 1 (LEFT): THÔNG TIN BÀI HÁT (Requirement 4: Lượt tim và Lượt nghe thời gian thực) */}
+            {/* SLIDE 1 (LEFT): THÔNG TIN BÀI HÁT */}
             <div className="w-1/3 h-full flex flex-col justify-center px-4 py-2 overflow-y-auto no-scrollbar">
-              <div className="w-full max-w-sm mx-auto p-5 rounded-3xl bg-[var(--bg-surface-hover)] border border-[var(--border-color)] shadow-2xl backdrop-blur-md space-y-4">
+              <div className="glass-panel w-full max-w-sm mx-auto p-5 rounded-3xl space-y-4">
                 {/* Top Row: Cover + Title, Artist, Real-time Likes, Real-time Listens */}
                 <div className="flex items-center gap-3.5">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border border-[var(--border-color)] bg-zinc-900 shrink-0 shadow-lg relative">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/15 bg-zinc-900 shrink-0 shadow-lg relative">
                     {currentSong.coverImage ? (
                       <img
                         src={currentSong.coverImage}
                         alt={currentSong.title}
+                        referrerPolicy="no-referrer"
                         className="w-full h-full object-cover"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
@@ -359,14 +365,13 @@ export const MobileFullPlayerModal: React.FC = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-black text-[var(--text-primary)] truncate leading-snug">
+                    <h3 className="font-display text-base font-extrabold text-[var(--text-primary)] truncate leading-snug">
                       {currentSong.title}
                     </h3>
                     <div className="text-xs text-[var(--text-secondary)] truncate mt-0.5 font-medium">
-                      <ArtistNames artists={currentSong.artists} linkClassName="text-[var(--text-secondary)] hover:text-purple-300" />
+                      <ArtistNames artists={currentSong.artists} linkClassName="text-[var(--text-secondary)] hover:text-white transition-colors" />
                     </div>
-                    {/* Requirement 4: Lượt tim và lượt nghe hiển thị đúng theo thời gian thực */}
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-[var(--text-secondary)]">
+                    <div className="flex items-center gap-3 mt-1.5 text-xs text-[var(--text-secondary)] tabular-nums">
                       <button
                         onClick={() => toggleLike(currentSong.id)}
                         className="flex items-center gap-1 font-semibold hover:opacity-80 active:scale-95 transition-transform cursor-pointer"
@@ -430,36 +435,47 @@ export const MobileFullPlayerModal: React.FC = () => {
               </div>
             </div>
 
-            {/* SLIDE 2 (CENTER): ẢNH BÌA (ĐĨA XOAY) - Viền mỏng bao quanh theo Yêu Cầu 5 */}
+            {/* SLIDE 2 (CENTER): ẢNH BÌA (ĐĨA XOAY) */}
             <div className="w-1/3 h-full flex flex-col items-center justify-center px-4 py-2 overflow-hidden">
-              <div
-                onClick={togglePlay}
-                className="relative w-[min(78vw,310px)] h-[min(78vw,310px)] aspect-square rounded-full shadow-[0_15px_50px_rgba(0,0,0,0.8)] border border-white/20 flex items-center justify-center p-1 bg-zinc-950 cursor-pointer select-none"
-              >
-                {/* Thin outer subtle ring */}
-                <div className="absolute inset-1 rounded-full border border-white/10 pointer-events-none" />
-
-                {/* Spinning Vinyl Disc */}
+              <div className="relative flex items-center justify-center">
                 <div
+                  aria-hidden="true"
+                  className="absolute -inset-6 rounded-full blur-3xl pointer-events-none transition-opacity duration-500"
                   style={{
-                    animation: 'spinSlow 20s linear infinite',
-                    animationPlayState: isPlaying ? 'running' : 'paused',
+                    background: 'radial-gradient(circle, color-mix(in srgb, var(--color-accent) 55%, transparent) 0%, transparent 72%)',
+                    opacity: isPlaying ? 0.65 : 0.3,
                   }}
-                  className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slower shadow-inner relative"
+                />
+                <div
+                  onClick={togglePlay}
+                  className="relative w-[min(78vw,310px)] h-[min(78vw,310px)] aspect-square rounded-full shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/20 flex items-center justify-center p-1 bg-zinc-950 cursor-pointer select-none"
                 >
-                  {currentSong.coverImage ? (
-                    <img
-                      src={currentSong.coverImage}
-                      alt={currentSong.title}
-                      className="w-full h-full object-cover rounded-full"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
-                  ) : (
-                    <Disc3 className="w-24 h-24 text-white/70" />
-                  )}
+                  {/* Thin outer subtle ring */}
+                  <div className="absolute inset-1 rounded-full border border-white/10 pointer-events-none" />
 
-                  {/* Specular light sheen for vinyl spin effect */}
-                  <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.25)_90deg,transparent_180deg,rgba(255,255,255,0.25)_270deg,transparent_360deg)] pointer-events-none opacity-60" />
+                  {/* Spinning Vinyl Disc */}
+                  <div
+                    style={{
+                      animation: 'spinSlow 20s linear infinite',
+                      animationPlayState: isPlaying ? 'running' : 'paused',
+                    }}
+                    className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slower shadow-inner relative"
+                  >
+                    {currentSong.coverImage ? (
+                      <img
+                        src={currentSong.coverImage}
+                        alt={currentSong.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover rounded-full"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <Disc3 className="w-24 h-24 text-white/70" />
+                    )}
+
+                    {/* Specular light sheen for vinyl spin effect */}
+                    <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.25)_90deg,transparent_180deg,rgba(255,255,255,0.25)_270deg,transparent_360deg)] pointer-events-none opacity-60" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -535,13 +551,13 @@ export const MobileFullPlayerModal: React.FC = () => {
 
           {/* Center: Title & Artist */}
           <div className="flex-1 min-w-0 text-center px-2">
-            <h2 className="text-base sm:text-lg font-black text-[var(--text-primary)] truncate leading-snug">
+            <h2 className="font-display text-base sm:text-lg font-extrabold text-[var(--text-primary)] truncate leading-snug">
               {currentSong.title}
             </h2>
             <div className="text-xs text-[var(--text-secondary)] truncate mt-0.5">
               <ArtistNames
                 artists={currentSong.artists}
-                linkClassName="text-[var(--text-secondary)] hover:text-purple-300"
+                linkClassName="text-[var(--text-secondary)] hover:text-white transition-colors"
                 onArtistClick={(name) => {
                   setIsMobileFullPlayerOpen(false);
                   navigateToArtist(name);
@@ -562,22 +578,21 @@ export const MobileFullPlayerModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Scrubber Progress Bar - Requirement 2: Smaller Thumb Knob (w-2.5 h-2.5) */}
+        {/* Scrubber Progress Bar */}
         <div className="relative z-10 px-6 mb-2 shrink-0">
           <div
             ref={scrubTrackRef}
             onPointerDown={handleScrubPointerDown}
             className="relative py-2 flex items-center cursor-pointer group"
           >
-            <div className="w-full h-1.5 bg-[var(--text-secondary)]/25 rounded-full relative overflow-visible">
+            <div className="w-full h-1.5 glass-track rounded-full relative overflow-visible">
               <div
-                className={`h-full rounded-full relative ${isScrubbing ? '' : 'transition-[width] duration-100 ease-linear'}`}
-                style={{ width: `${scrubPercent}%`, backgroundColor: 'var(--color-accent)' }}
+                className={`h-full rounded-full glass-fill relative ${isScrubbing ? '' : 'transition-[width] duration-100 ease-linear'}`}
+                style={{ width: `${scrubPercent}%` }}
               >
-                {/* Requirement 2: Smaller Thumb Knob */}
                 <div
                   style={{ backgroundColor: 'var(--color-accent)' }}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full shadow-[0_0_6px_var(--color-accent)] ring-1.5 ring-white -mr-1.5"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full shadow-[0_0_8px_var(--color-accent)] ring-2 ring-white -mr-1.5"
                 />
               </div>
             </div>
@@ -610,8 +625,7 @@ export const MobileFullPlayerModal: React.FC = () => {
           {/* Theme Accent Circle Play/Pause button */}
           <button
             onClick={togglePlay}
-            style={{ backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)' }}
-            className="w-16 h-16 rounded-full border-2 flex items-center justify-center text-white active:scale-95 transition-transform shadow-xl cursor-pointer hover:opacity-90"
+            className="accent-glow-btn w-16 h-16 rounded-full flex items-center justify-center text-white active:scale-95 transition-all cursor-pointer"
           >
             {isPlaying ? (
               <Pause className="w-7 h-7 fill-white" />
@@ -705,16 +719,16 @@ export const MobileFullPlayerModal: React.FC = () => {
         </footer>
 
         {/* Quality Selector Sheet for Mobile */}
-        {showQualitySheet && (
+        {shouldRenderQualitySheet && (
           <div
-            className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col justify-end duration-200 ${
+            className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col justify-end ${
               isClosingQualitySheet ? 'animate-out fade-out' : 'animate-in fade-in'
             }`}
             onClick={handleCloseQuality}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className={`w-full bg-[var(--bg-surface)] border-t border-[var(--border-color)] rounded-t-3xl p-5 shadow-2xl text-[var(--text-primary)] space-y-4 duration-350 ease-out ${
+              className={`glass-panel w-full rounded-t-3xl p-5 shadow-2xl text-[var(--text-primary)] space-y-4 ${
                 isClosingQualitySheet ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
               }`}
             >
@@ -722,7 +736,7 @@ export const MobileFullPlayerModal: React.FC = () => {
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
                 <div className="flex items-center gap-2">
                   <Waves className="w-4 h-4 text-[var(--color-accent)]" />
-                  <h3 className="text-sm font-bold">Chất lượng âm thanh</h3>
+                  <h3 className="font-display text-sm font-bold">Chất lượng âm thanh</h3>
                 </div>
                 <button
                   onClick={handleCloseQuality}
@@ -789,9 +803,9 @@ export const MobileFullPlayerModal: React.FC = () => {
         )}
 
         {/* Bottom Queue Sheet for Mobile */}
-        {showQueueSheet && (
+        {shouldRenderQueueSheet && (
           <div
-            className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex flex-col justify-end duration-200 ${
+            className={`fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex flex-col justify-end ${
               isClosingQueueSheet ? 'animate-out fade-out' : 'animate-in fade-in'
             }`}
             onClick={handleCloseQueue}
@@ -799,12 +813,8 @@ export const MobileFullPlayerModal: React.FC = () => {
             <div
               data-theme={theme}
               onClick={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)',
-              }}
-              className={`w-full max-w-md mx-auto rounded-t-3xl border-t p-4 flex flex-col shadow-2xl duration-350 ease-out max-h-[82vh] h-[540px] select-none ${
+              style={{ color: 'var(--text-primary)' }}
+              className={`glass-panel w-full max-w-md mx-auto rounded-t-3xl p-4 flex flex-col shadow-2xl max-h-[82vh] h-[540px] select-none ${
                 isClosingQueueSheet ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
               }`}
             >
@@ -812,7 +822,7 @@ export const MobileFullPlayerModal: React.FC = () => {
               <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)] shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <ListMusic style={{ color: 'var(--color-accent)' }} className="w-4 h-4 shrink-0" />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">
+                  <h3 className="font-display text-sm font-bold text-[var(--text-primary)] truncate tabular-nums">
                     Danh sách phát ({queue.length})
                   </h3>
                 </div>
@@ -839,10 +849,17 @@ export const MobileFullPlayerModal: React.FC = () => {
                           playSong(song);
                           handleCloseQueue();
                         }}
-                        style={{
-                          backgroundColor: isCurrent ? 'rgba(255, 255, 255, 0.12)' : 'var(--bg-surface-hover)',
-                          borderColor: isCurrent ? 'var(--color-accent)' : 'var(--border-color)',
-                        }}
+                        style={
+                          isCurrent
+                            ? {
+                                backgroundColor: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                                borderColor: 'color-mix(in srgb, var(--color-accent) 45%, transparent)',
+                              }
+                            : {
+                                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                                borderColor: 'rgba(255, 255, 255, 0.08)',
+                              }
+                        }
                         className="flex items-center justify-between p-2.5 rounded-xl hover:opacity-90 cursor-pointer border gap-2.5 transition-all"
                       >
                         <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
@@ -851,6 +868,7 @@ export const MobileFullPlayerModal: React.FC = () => {
                               <img
                                 src={song.coverImage}
                                 alt={song.title}
+                                referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover"
                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
                               />

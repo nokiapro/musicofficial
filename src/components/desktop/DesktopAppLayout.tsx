@@ -60,7 +60,7 @@ export const DesktopAppLayout: React.FC = () => {
 
   return (
     <div
-      className="flex h-screen w-screen overflow-hidden text-white flex-col select-none transition-colors duration-200 font-['Roboto_Condensed']"
+      className="flex h-screen w-screen overflow-hidden text-white flex-col select-none transition-colors duration-200"
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
       {/* Top Body Row (Sidebar + Main Content + Right Queue Drawer) */}
@@ -69,9 +69,9 @@ export const DesktopAppLayout: React.FC = () => {
         <DesktopSidebar />
 
         {/* Center Main Work Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
           <DesktopHeader />
-          <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5">
+          <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 ambient-page-glow">
             <div className="w-full max-w-full mx-auto">{renderContent()}</div>
           </main>
         </div>

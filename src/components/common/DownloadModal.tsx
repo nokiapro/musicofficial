@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Download, Music2, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { formatArtistsString } from '../../utils/artistUtils';
+import { useAnimatedData } from '../../hooks/useAnimatedPresence';
 
 export const DownloadModal: React.FC = () => {
   const {
@@ -16,19 +17,24 @@ export const DownloadModal: React.FC = () => {
   const [downloadingFormat, setDownloadingFormat] = useState<'MP3' | 'WAV' | null>(null);
   const [downloadMsg, setDownloadMsg] = useState<{ isError: boolean; text: string } | null>(null);
 
-  if (!isDownloadModalOpen || !songToDownload) return null;
+  const { activeData: activeSong, shouldRender, isClosing } = useAnimatedData(
+    isDownloadModalOpen ? songToDownload : null,
+    220
+  );
+
+  if (!shouldRender || !activeSong) return null;
 
   const isAlbumSong = Boolean(
-    songToDownload.isAlbumTrack ||
-    (exclusiveAlbums && exclusiveAlbums.some((a) => (a.songs || []).some((s) => s.id === songToDownload.id))) ||
-    (songToDownload.album && songToDownload.album.toLowerCase().includes('album'))
+    activeSong.isAlbumTrack ||
+    (exclusiveAlbums && exclusiveAlbums.some((a) => (a.songs || []).some((s) => s.id === activeSong.id))) ||
+    (activeSong.album && activeSong.album.toLowerCase().includes('album'))
   );
 
   const handleDownload = async (format: 'MP3' | 'WAV') => {
     setDownloadingFormat(format);
     setDownloadMsg(null);
     try {
-      const res = await downloadSong(songToDownload, format);
+      const res = await downloadSong(activeSong, format);
       if (res.success) {
         setDownloadMsg({ isError: false, text: `Đang tải bài hát ${isAlbumSong ? '128kbps' : format} về thiết bị!` });
       } else {
@@ -49,15 +55,21 @@ export const DownloadModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out select-none"
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 animate-in zoom-in-95 duration-350 ease-out"
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -74,7 +86,7 @@ export const DownloadModal: React.FC = () => {
           </div>
           <button
             onClick={handleClose}
-            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -83,21 +95,21 @@ export const DownloadModal: React.FC = () => {
         {/* Song Card */}
         <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10">
           <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-zinc-900 relative">
-            {songToDownload.coverImage ? (
+            {activeSong.coverImage ? (
               <img
-                src={songToDownload.coverImage}
-                alt={songToDownload.title}
+                src={activeSong.coverImage}
+                alt={activeSong.title}
                 className="w-full h-full object-cover"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : null}
-            <div className={`w-full h-full bg-gradient-to-tr ${songToDownload.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${songToDownload.coverImage ? 'absolute inset-0 -z-10' : ''}`}>
+            <div className={`w-full h-full bg-gradient-to-tr ${activeSong.coverGradient || 'from-purple-600 to-indigo-800'} flex items-center justify-center ${activeSong.coverImage ? 'absolute inset-0 -z-10' : ''}`}>
               <Music2 className="w-6 h-6 text-white/70" />
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-white truncate">{songToDownload.title}</h3>
-            <p className="text-xs text-white/60 truncate mt-0.5">{formatArtistsString(songToDownload.artists)}</p>
+            <h3 className="text-sm font-bold text-white truncate">{activeSong.title}</h3>
+            <p className="text-xs text-white/60 truncate mt-0.5">{formatArtistsString(activeSong.artists)}</p>
             <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               {isAlbumSong ? 'Album Nhạc Hay (128kbps)' : 'Đã mua bản quyền'}
             </span>

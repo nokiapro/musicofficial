@@ -86,10 +86,10 @@ export const MobileBottomNav: React.FC = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-md border-t px-1 select-none transition-colors duration-200"
+      className="fixed bottom-0 left-0 right-0 z-40 glass-bar border-t px-1 select-none transition-colors duration-200"
       style={{
-        backgroundColor: 'var(--bg-player)',
-        borderColor: 'var(--border-color)',
+        backgroundColor: 'color-mix(in srgb, var(--bg-player) 86%, transparent)',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
@@ -108,15 +108,18 @@ export const MobileBottomNav: React.FC = () => {
                   setSelectedPlaylist(null);
                 }
               }}
-              className={`flex flex-col items-center justify-center py-1 transition-all ${
+              className={`relative flex flex-col items-center justify-center py-1 transition-all cursor-pointer ${
                 isActive ? `${item.activeColor} ${item.glowColor}` : item.inactiveColor
               }`}
             >
-              <span className={`transition-transform duration-200 ${isActive ? 'scale-115' : 'scale-100'}`}>
+              {isActive && (
+                <span className={`absolute top-0.5 w-6 h-0.5 rounded-full ${item.dotColor} opacity-90`} />
+              )}
+              <span className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'scale-100'}`}>
                 {item.icon}
               </span>
-              <span className={`text-[10px] font-bold tracking-tight mt-0.5 truncate max-w-full px-0.5 ${
-                isActive ? 'font-black' : 'font-medium'
+              <span className={`text-[10px] tracking-tight mt-0.5 truncate max-w-full px-0.5 ${
+                isActive ? 'font-extrabold' : 'font-semibold'
               }`}>
                 {item.label}
               </span>

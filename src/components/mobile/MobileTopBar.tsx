@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, X, Settings, Palette, Waves, Clock, Disc3, MessageSquare, ListMusic, Mic2 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ThemeId } from '../../types/music';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const MobileTopBar: React.FC = () => {
   const {
@@ -27,6 +28,10 @@ export const MobileTopBar: React.FC = () => {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
+  const { shouldRender: shouldRenderSettings, isClosing: isClosingSettings } = useAnimatedPresence(
+    isSettingsOpen,
+    160
+  );
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -62,22 +67,26 @@ export const MobileTopBar: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="sticky top-0 z-30 backdrop-blur-md border-b text-[var(--text-primary)] select-none transition-colors duration-200"
-      style={{ backgroundColor: 'var(--bg-header)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+      className="sticky top-0 z-30 glass-bar border-b text-[var(--text-primary)] select-none transition-colors duration-200"
+      style={{
+        backgroundColor: 'color-mix(in srgb, var(--bg-header) 84%, transparent)',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        color: 'var(--text-primary)',
+      }}
     >
       {/* Top Search & Actions Row */}
       <div className="px-3.5 py-2.5 flex items-center justify-between gap-2.5">
         {/* User avatar - Click to go to Profile */}
         <button
           onClick={() => setActiveMobileTab('profile')}
-          style={{ borderColor: 'var(--color-accent)' }}
-          className="relative w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-purple-500 to-pink-500 ring-2 ring-[var(--color-accent)] flex items-center justify-center text-xs font-black text-white shrink-0 active:scale-95 transition-transform cursor-pointer"
+          className="relative w-8 h-8 rounded-full overflow-hidden accent-glow-btn ring-2 ring-white/20 flex items-center justify-center text-xs font-black text-white shrink-0 active:scale-95 transition-transform cursor-pointer"
           title="Xem trang Cá nhân"
         >
           {currentUser?.avatarUrl ? (
             <img
               src={currentUser.avatarUrl}
               alt={currentUser.displayName}
+              referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
@@ -89,7 +98,7 @@ export const MobileTopBar: React.FC = () => {
         </button>
 
         {/* Search Bar Input with Clear button */}
-        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-surface-hover)] border border-[var(--border-color)] text-xs focus-within:border-[var(--color-accent)] transition-all">
+        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.07] border border-white/10 text-xs focus-within:border-[var(--color-accent)] focus-within:bg-white/[0.11] transition-all">
           <Search className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" />
           <input
             type="text"
@@ -112,11 +121,10 @@ export const MobileTopBar: React.FC = () => {
         <div className="relative shrink-0" ref={settingsRef}>
           <button
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            style={isSettingsOpen ? { backgroundColor: 'var(--color-accent)' } : undefined}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               isSettingsOpen
-                ? 'text-white shadow-lg'
-                : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white'
+                ? 'accent-glow-btn text-white'
+                : 'bg-white/[0.08] border border-white/10 hover:bg-white/[0.15] text-white/85 hover:text-white'
             }`}
             title="Cài đặt hệ thống (Giao diện, Hẹn giờ, Crossfade)"
           >
@@ -126,16 +134,18 @@ export const MobileTopBar: React.FC = () => {
               }`}
             />
             {sleepTimerRemainingSeconds !== null && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full border border-black shadow" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full border border-black shadow" />
             )}
           </button>
 
           {/* Settings Dropdown Popover */}
-          {isSettingsOpen && (
+          {shouldRenderSettings && (
             <div
               data-theme={theme}
-              className="absolute right-0 top-10 w-72 border rounded-2xl shadow-2xl p-4 z-50 text-[var(--text-primary)] space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200"
-              style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+              className={`glass-panel absolute right-0 top-10 w-72 rounded-2xl shadow-2xl p-4 z-50 text-[var(--text-primary)] space-y-3.5 origin-top-right ${
+                isClosingSettings ? 'animate-out slide-out-to-top-2 duration-150' : 'animate-in slide-in-from-top-2 duration-200'
+              }`}
+              style={{ color: 'var(--text-primary)' }}
             >
               {/* Header */}
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
@@ -275,8 +285,8 @@ export const MobileTopBar: React.FC = () => {
           onClick={() => setActiveMobileTab('discover')}
           className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
             activeMobileTab === 'discover'
-              ? 'bg-[#f43f5e] text-white shadow-sm'
-              : 'bg-white/5 text-white/70 hover:text-white'
+              ? 'bg-[#f43f5e] text-white shadow-[0_4px_14px_rgba(244,63,94,0.45)]'
+              : 'bg-white/[0.06] border border-white/[0.07] text-white/75 hover:text-white'
           }`}
         >
           <ListMusic className="w-3.5 h-3.5" />
@@ -290,8 +300,8 @@ export const MobileTopBar: React.FC = () => {
           }}
           className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
             activeMobileTab === 'albums'
-              ? 'bg-[#9b4de0] text-white shadow-sm'
-              : 'bg-white/5 text-white/70 hover:text-white'
+              ? 'bg-[#9b4de0] text-white shadow-[0_4px_14px_rgba(155,77,224,0.45)]'
+              : 'bg-white/[0.06] border border-white/[0.07] text-white/75 hover:text-white'
           }`}
         >
           <Disc3 className="w-3.5 h-3.5" />
@@ -304,8 +314,8 @@ export const MobileTopBar: React.FC = () => {
           }}
           className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
             activeMobileTab === 'artists'
-              ? 'bg-[#ec4899] text-white shadow-sm'
-              : 'bg-white/5 text-white/70 hover:text-white'
+              ? 'bg-[#ec4899] text-white shadow-[0_4px_14px_rgba(236,72,153,0.45)]'
+              : 'bg-white/[0.06] border border-white/[0.07] text-white/75 hover:text-white'
           }`}
         >
           <Mic2 className="w-3.5 h-3.5" />
@@ -318,15 +328,13 @@ export const MobileTopBar: React.FC = () => {
               onClick={() => setActiveMobileTab('chat')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full whitespace-nowrap transition-all cursor-pointer ${
                 activeMobileTab === 'chat'
-                  ? 'bg-[#0284c7] text-white shadow-sm'
-                  : 'bg-white/5 text-white/70 hover:text-white'
+                  ? 'bg-[#0284c7] text-white shadow-[0_4px_14px_rgba(2,132,199,0.45)]'
+                  : 'bg-white/[0.06] border border-white/[0.07] text-white/75 hover:text-white'
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Chat Box</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
             </button>
-
           </div>
         )}
       </div>

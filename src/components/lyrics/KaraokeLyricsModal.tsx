@@ -15,6 +15,7 @@ import { useMusic } from '../../context/MusicContext';
 import { cleanLyricText } from '../../utils/lyricUtils';
 import { SoundWaveIcon } from '../common/SoundWaveIcon';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAnimatedData } from '../../hooks/useAnimatedPresence';
 
 export const KaraokeLyricsModal: React.FC = () => {
   const {
@@ -87,12 +88,17 @@ export const KaraokeLyricsModal: React.FC = () => {
     window.addEventListener('pointercancel', onPointerUp);
   };
 
+  const { activeData: activeSong, shouldRender, isClosing } = useAnimatedData(
+    isLyricsOpen ? currentSong : null,
+    240
+  );
+
   // Parse lyrics from song.lyrics or fallback parse from song.lrcRaw
   const rawLyrics =
-    currentSong?.lyrics && currentSong.lyrics.length > 0
-      ? currentSong.lyrics
-      : currentSong?.lrcRaw
-      ? currentSong.lrcRaw.split('\n').map((line, idx) => {
+    activeSong?.lyrics && activeSong.lyrics.length > 0
+      ? activeSong.lyrics
+      : activeSong?.lrcRaw
+      ? activeSong.lrcRaw.split('\n').map((line, idx) => {
           const timeMatch = line.match(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/);
           let time = idx * 5;
           if (timeMatch) {
@@ -131,13 +137,15 @@ export const KaraokeLyricsModal: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isLyricsOpen, setIsLyricsOpen]);
 
-  if (!isLyricsOpen || !currentSong) return null;
+  if (!shouldRender || !activeSong) return null;
 
   return (
     <div
       data-theme={theme}
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-      className="fixed inset-0 z-50 flex flex-col overflow-hidden animate-in fade-in duration-350 ease-out font-['Roboto_Condensed'] select-none transition-colors"
+      className={`fixed inset-0 z-50 flex flex-col overflow-hidden font-['Roboto_Condensed'] select-none transition-colors ${
+        isClosing ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
+      }`}
     >
       {/* Top Header - Badge 'Lời bài hát' removed as requested in earlier item */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)] backdrop-blur-md bg-black/25 shrink-0">
@@ -150,10 +158,10 @@ export const KaraokeLyricsModal: React.FC = () => {
           </div>
           <div className="min-w-0 truncate">
             <h1 className="text-base font-bold truncate max-w-xs md:max-w-md text-[var(--text-primary)]">
-              {currentSong.title}
+              {activeSong.title}
             </h1>
             <div className="text-xs text-[var(--text-secondary)] truncate">
-              <ArtistNames artists={currentSong.artists} linkClassName="text-[var(--text-secondary)] hover:text-purple-300" />
+              <ArtistNames artists={activeSong.artists} linkClassName="text-[var(--text-secondary)] hover:text-purple-300" />
             </div>
           </div>
         </div>
@@ -173,10 +181,10 @@ export const KaraokeLyricsModal: React.FC = () => {
         {/* Left Side (Desktop): Big Square Rounded Album Cover */}
         <div className="hidden lg:flex flex-col items-center justify-center shrink-0">
           <div className="relative w-72 h-72 md:w-80 md:h-80 lg:w-[320px] lg:h-[320px] rounded-2xl shadow-2xl overflow-hidden border border-white/10 bg-zinc-900 group">
-            {currentSong.coverImage ? (
+            {activeSong.coverImage ? (
               <img
-                src={currentSong.coverImage}
-                alt={currentSong.title}
+                src={activeSong.coverImage}
+                alt={activeSong.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
@@ -185,8 +193,8 @@ export const KaraokeLyricsModal: React.FC = () => {
             ) : null}
             <div
               className={`w-full h-full bg-gradient-to-tr ${
-                currentSong.coverGradient || 'from-purple-600 to-indigo-800'
-              } flex items-center justify-center ${currentSong.coverImage ? 'absolute inset-0 -z-10' : ''}`}
+                activeSong.coverGradient || 'from-purple-600 to-indigo-800'
+              } flex items-center justify-center ${activeSong.coverImage ? 'absolute inset-0 -z-10' : ''}`}
             >
               <Music className="w-20 h-20 text-white/50" />
             </div>

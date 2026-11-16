@@ -17,6 +17,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { Song } from '../../types/music';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 interface MobilePlayerActionSheetProps {
   isOpen: boolean;
@@ -57,9 +58,14 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportText, setReportText] = useState('');
   const [isSendingReport, setIsSendingReport] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
 
-  if (!isOpen) return null;
+  const { shouldRender, isClosing } = useAnimatedPresence(isOpen, 220);
+  const { shouldRender: shouldRenderReport, isClosing: isClosingReport } = useAnimatedPresence(
+    showReportModal,
+    220
+  );
+
+  if (!shouldRender) return null;
 
   const isLiked = likedSongIds.includes(song.id);
   const isPurchased = isSongPurchased(song.id);
@@ -68,11 +74,7 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
   const isAlreadyInPlaylist = playlists.some((p) => Array.isArray(p.songIds) && p.songIds.includes(song.id));
 
   const handleAnimatedClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 200);
+    onClose();
   };
 
   const showToast = (msg: string) => {
@@ -110,14 +112,14 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
 
   return (
     <div
-      className={`fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex flex-col justify-end select-none duration-200 ${
+      className={`fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex flex-col justify-end select-none ${
         isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
       }`}
       onClick={handleAnimatedClose}
     >
       <div
         data-theme={theme}
-        className={`w-full max-w-md mx-auto border-t rounded-t-3xl shadow-2xl p-5 max-h-[85vh] flex flex-col overflow-y-auto duration-200 ${
+        className={`w-full max-w-md mx-auto border-t rounded-t-3xl shadow-2xl p-5 max-h-[85vh] flex flex-col overflow-y-auto ${
           isClosing ? 'animate-out slide-out-to-bottom' : 'animate-in slide-in-from-bottom'
         }`}
         style={{
@@ -368,16 +370,20 @@ export const MobilePlayerActionSheet: React.FC<MobilePlayerActionSheetProps> = (
         </div>
 
         {/* Modal Báo Lỗi Bài Hát */}
-        {showReportModal && (
+        {shouldRenderReport && (
           <div
             data-theme={theme}
-            className="fixed inset-0 z-[100000] bg-black/85 flex items-center justify-center p-4"
+            className={`fixed inset-0 z-[100000] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 ${
+              isClosingReport ? 'animate-out fade-out' : 'animate-in fade-in'
+            }`}
             onClick={() => setShowReportModal(false)}
           >
             <form
               onSubmit={handleSendReport}
               style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-              className="w-full max-w-sm border rounded-3xl p-5 space-y-3 shadow-2xl"
+              className={`w-full max-w-sm border rounded-3xl p-5 space-y-3 shadow-2xl ${
+                isClosingReport ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">

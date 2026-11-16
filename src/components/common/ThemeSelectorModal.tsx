@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Check, Palette, Moon, Sun } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ThemeId } from '../../types/music';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 interface ThemeOption {
   id: ThemeId;
@@ -162,17 +163,13 @@ const LIGHT_THEMES: ThemeOption[] = [
 export const ThemeSelectorModal: React.FC = () => {
   const { theme, setTheme, isThemeModalOpen, setIsThemeModalOpen } = useMusic();
   const [activeCategory, setActiveCategory] = useState<'dark' | 'light'>('dark');
-  const [isClosing, setIsClosing] = useState(false);
 
-  if (!isThemeModalOpen) return null;
+  const { shouldRender, isClosing } = useAnimatedPresence(isThemeModalOpen, 220);
+
+  if (!shouldRender) return null;
 
   const handleClose = () => {
-    if (isClosing) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsThemeModalOpen(false);
-      setIsClosing(false);
-    }, 200);
+    setIsThemeModalOpen(false);
   };
 
   const currentThemeList = activeCategory === 'dark' ? DARK_THEMES : LIGHT_THEMES;
@@ -180,14 +177,14 @@ export const ThemeSelectorModal: React.FC = () => {
   return (
     <div
       onClick={handleClose}
-      className={`fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none duration-350 ease-out font-['Roboto_Condensed'] ${
+      className={`fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none font-['Roboto_Condensed'] ${
         isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
       }`}
     >
       <div
         data-theme={theme}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden p-4 sm:p-6 max-h-[90vh] flex flex-col duration-350 ease-out font-['Roboto_Condensed'] ${
+        className={`w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden p-4 sm:p-6 max-h-[90vh] flex flex-col font-['Roboto_Condensed'] ${
           isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
         }`}
         style={{

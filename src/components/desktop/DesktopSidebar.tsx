@@ -53,33 +53,35 @@ export const DesktopSidebar: React.FC = () => {
   return (
     <>
       <aside
-        className="w-64 h-full shrink-0 flex flex-col justify-between border-r text-white select-none z-20 transition-colors duration-200"
-        style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}
+        className="w-64 h-full shrink-0 flex flex-col justify-between border-r text-white select-none z-20 transition-colors duration-200 relative"
+        style={{
+          backgroundColor: 'color-mix(in srgb, var(--bg-sidebar) 94%, transparent)',
+          borderColor: 'rgba(255, 255, 255, 0.07)',
+        }}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col min-h-0 flex-1 overflow-y-auto">
           {/* Brand Logo */}
           <div
             onClick={() => setActiveDesktopTab('discover')}
-            className="px-6 py-5 flex items-center gap-2.5 cursor-pointer group"
+            className="px-5 pt-5 pb-4 flex items-center gap-3 cursor-pointer group"
           >
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform"
-              style={{ backgroundColor: 'var(--color-accent)' }}
-            >
-              <Disc className="w-6 h-6 text-white animate-spin-slow" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center accent-glow-btn group-hover:scale-105 transition-transform shrink-0">
+              <Disc className="w-5 h-5 text-white animate-spin-slow" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tight text-white uppercase leading-none font-['Roboto_Condensed']">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[19px] font-extrabold tracking-tight text-white uppercase leading-none font-display">
                 XuanKen <span style={{ color: 'var(--color-accent)' }}>Music</span>
               </span>
-              <span className="text-[10px] text-white/50 tracking-wider mt-0.5">
+              <span className="text-[10px] font-medium text-white/45 tracking-[0.08em] mt-1 truncate">
                 NGHE & MUA NHẠC BẢN QUYỀN
               </span>
             </div>
           </div>
 
+          <div className="mx-5 mb-3 h-px bg-white/[0.06]" />
+
           {/* Navigation items */}
-          <nav className="px-3 space-y-1.5 mt-2">
+          <nav className="px-3 space-y-1">
             {mainNavItems.map((item) => {
               const isActive = activeDesktopTab === item.id;
               return (
@@ -94,26 +96,35 @@ export const DesktopSidebar: React.FC = () => {
                       setSelectedPlaylist(null);
                     }
                   }}
-                  style={isActive ? { backgroundColor: 'var(--color-accent)' } : undefined}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                  style={
                     isActive
-                      ? 'text-white shadow-lg'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'
+                      ? {
+                          background:
+                            'linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 90%, transparent), color-mix(in srgb, var(--color-accent) 68%, #ffffff 18%))',
+                          boxShadow:
+                            '0 8px 22px -6px color-mix(in srgb, var(--color-accent) 55%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)',
+                        }
+                      : undefined
+                  }
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13.5px] font-semibold transition-all duration-150 cursor-pointer ${
+                    isActive
+                      ? 'text-white'
+                      : 'text-white/65 hover:text-white hover:bg-white/[0.06]'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={isActive ? 'text-white' : 'text-white/60'}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`transition-transform duration-150 ${isActive ? 'text-white scale-105' : 'text-white/60'}`}>
                       {item.icon}
                     </span>
-                    <span>{item.label}</span>
+                    <span className="truncate">{item.label}</span>
                   </div>
                   {item.isLive && (
-                    <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-red-500 text-white tracking-wider">
+                    <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md bg-rose-500/90 text-white tracking-wider shadow-sm">
                       LIVE
                     </span>
                   )}
                   {item.isHot && (
-                    <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-red-600 text-white tracking-wider shadow-sm">
+                    <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500 to-rose-500 text-white tracking-wider shadow-sm">
                       TOP 10
                     </span>
                   )}
@@ -123,20 +134,21 @@ export const DesktopSidebar: React.FC = () => {
           </nav>
         </div>
 
-        {/* User Card: Ảnh 1 ở giao diện PC badge admin ở bên phải nhưng căn giữa chữ admin với chỉnh sửa tài khoản */}
-        <div className="p-3 border-t border-white/5">
+        {/* User Card: giữ nguyên badge ADMIN bên phải căn giữa với chỉnh sửa tài khoản */}
+        <div className="p-3 border-t border-white/[0.06]">
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/40 text-left transition-all group"
+            className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-left transition-all group cursor-pointer"
             title="Quản lý thông tin cá nhân, đổi avatar và tên hiển thị"
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
               {/* User Avatar */}
-              <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/20 bg-zinc-900 shrink-0 flex items-center justify-center">
+              <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/15 bg-zinc-900 shrink-0 flex items-center justify-center shadow-sm">
                 {currentUser?.avatarUrl ? (
                   <img
                     src={currentUser.avatarUrl}
                     alt={currentUser.displayName}
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
@@ -154,18 +166,17 @@ export const DesktopSidebar: React.FC = () => {
 
               {/* User Info / Personal Label */}
               <div className="min-w-0 flex-1 flex flex-col justify-center">
-                <p className="text-xs font-bold text-white group-hover:text-[#c273ed] transition-colors truncate">
+                <p className="text-[13px] font-bold text-white group-hover:text-white transition-colors truncate">
                   {currentUser ? (currentUser.displayName || 'Cá Nhân') : 'Cá Nhân'}
                 </p>
-                <p className="text-[10px] text-white/50 truncate">
+                <p className="text-[11px] text-white/50 truncate">
                   {currentUser ? 'Chỉnh sửa tài khoản' : 'Đăng nhập / Hồ sơ'}
                 </p>
               </div>
             </div>
 
-            {/* Requirement 1: Badge ADMIN ở bên phải nhưng căn giữa chữ admin với chỉnh sửa tài khoản */}
             {currentUser && isAdmin && (
-              <span className="shrink-0 ml-2 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-600 text-white shadow-xs tracking-wider self-center">
+              <span className="shrink-0 ml-2 px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-red-600/90 border border-red-400/30 text-white shadow-xs tracking-wider self-center">
                 ADMIN
               </span>
             )}

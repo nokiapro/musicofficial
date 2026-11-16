@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Check, ListPlus, FolderPlus } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { formatArtistsString } from '../../utils/artistUtils';
+import { useAnimatedData } from '../../hooks/useAnimatedPresence';
 
 export const PlaylistModal: React.FC = () => {
   const {
@@ -19,16 +20,16 @@ export const PlaylistModal: React.FC = () => {
   const [newPlaylistDesc, setNewPlaylistDesc] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [isClosing, setIsClosing] = useState(false);
 
-  if (!isPlaylistModalOpen || !songForPlaylistModal) return null;
+  const { activeData: activeSong, shouldRender, isClosing } = useAnimatedData(
+    isPlaylistModalOpen ? songForPlaylistModal : null,
+    220
+  );
+
+  if (!shouldRender || !activeSong) return null;
 
   const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsPlaylistModalOpen(false);
-      setIsClosing(false);
-    }, 350);
+    setIsPlaylistModalOpen(false);
   };
 
   const showToast = (msg: string) => {
@@ -38,10 +39,10 @@ export const PlaylistModal: React.FC = () => {
 
   const handleToggleSong = async (playlistId: string, isAlreadyIn: boolean) => {
     if (isAlreadyIn) {
-      await removeSongFromPlaylist(playlistId, songForPlaylistModal.id);
+      await removeSongFromPlaylist(playlistId, activeSong.id);
       showToast('Đã xóa bài hát khỏi playlist');
     } else {
-      await addSongToPlaylist(playlistId, songForPlaylistModal.id);
+      await addSongToPlaylist(playlistId, activeSong.id);
       showToast('Đã thêm bài hát vào playlist');
     }
   };
@@ -51,7 +52,7 @@ export const PlaylistModal: React.FC = () => {
     if (!newPlaylistName.trim()) return;
 
     const created = await createPlaylist(newPlaylistName.trim(), newPlaylistDesc.trim());
-    await addSongToPlaylist(created.id, songForPlaylistModal.id);
+    await addSongToPlaylist(created.id, activeSong.id);
     setNewPlaylistName('');
     setNewPlaylistDesc('');
     setIsCreating(false);
@@ -59,22 +60,22 @@ export const PlaylistModal: React.FC = () => {
   };
 
   return (
-    <div 
+    <div
       data-theme={theme}
       onClick={handleClose}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none transition-opacity duration-350 ease-out ${
-        isClosing ? 'animate-out fade-out duration-350 ease-out' : 'animate-in fade-in duration-350 ease-out'
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
       }`}
     >
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 max-h-[90vh] flex flex-col transition-all duration-350 ease-out ${
-          isClosing ? 'animate-out zoom-out-95 fade-out duration-350 ease-out' : 'animate-in zoom-in-95 duration-350 ease-out'
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-5 max-h-[90vh] flex flex-col ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
         }`}
       >
         {/* Header */}
@@ -107,15 +108,15 @@ export const PlaylistModal: React.FC = () => {
         {/* Target Song Info */}
         <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-lg overflow-hidden bg-purple-900/40 shrink-0">
-            {songForPlaylistModal.coverImage ? (
-              <img src={songForPlaylistModal.coverImage} alt={songForPlaylistModal.title} className="w-full h-full object-cover" />
+            {activeSong.coverImage ? (
+              <img src={activeSong.coverImage} alt={activeSong.title} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white/50">XK</div>
             )}
           </div>
           <div className="min-w-0 flex-1 truncate">
-            <h3 className="text-xs font-bold text-white truncate">{songForPlaylistModal.title}</h3>
-            <p className="text-[10px] text-white/50 truncate">{formatArtistsString(songForPlaylistModal.artists)}</p>
+            <h3 className="text-xs font-bold text-white truncate">{activeSong.title}</h3>
+            <p className="text-[10px] text-white/50 truncate">{formatArtistsString(activeSong.artists)}</p>
           </div>
         </div>
 
@@ -131,7 +132,7 @@ export const PlaylistModal: React.FC = () => {
             <div className="space-y-1.5">
               {playlists.map((pl) => {
                 const plSongIds = Array.isArray(pl.songIds) ? pl.songIds : [];
-                const isAlreadyIn = plSongIds.includes(songForPlaylistModal.id);
+                const isAlreadyIn = plSongIds.includes(activeSong.id);
                 return (
                   <div
                     key={pl.id}

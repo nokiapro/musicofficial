@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Wallet, QrCode, ShieldAlert, Copy, Check, Mail } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const TopUpModal: React.FC = () => {
   const { isTopUpModalOpen, setIsTopUpModalOpen, userBalance, currentUser, theme } = useMusic();
@@ -8,7 +9,9 @@ export const TopUpModal: React.FC = () => {
   const [showContactNotice, setShowContactNotice] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  if (!isTopUpModalOpen) return null;
+  const { shouldRender, isClosing } = useAnimatedPresence(isTopUpModalOpen, 220);
+
+  if (!shouldRender) return null;
 
   const amounts = [50000, 100000, 200000, 500000, 1000000];
   const userIdentifier = currentUser?.email || 'Khach_Hang';
@@ -34,15 +37,21 @@ export const TopUpModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-350 ease-out select-none"
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
         }}
-        className="w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-350 ease-out"
+        className={`w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden p-6 ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+        }`}
       >
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -51,7 +60,7 @@ export const TopUpModal: React.FC = () => {
           </div>
           <button
             onClick={handleClose}
-            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white"
+            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

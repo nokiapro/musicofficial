@@ -15,6 +15,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { ThemeId } from '../../types/music';
 import { formatArtistsString } from '../../utils/artistUtils';
+import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const DesktopHeader: React.FC = () => {
   const {
@@ -46,6 +47,10 @@ export const DesktopHeader: React.FC = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
+  const { shouldRender: shouldRenderSettings, isClosing: isClosingSettings } = useAnimatedPresence(
+    isSettingsOpen,
+    160
+  );
 
   // Close settings dropdown when clicking outside
   useEffect(() => {
@@ -93,18 +98,21 @@ export const DesktopHeader: React.FC = () => {
 
   return (
     <header
-      className="h-16 px-8 grid grid-cols-[1fr_minmax(280px,580px)_1fr] items-center gap-4 border-b backdrop-blur-md sticky top-0 z-30 select-none transition-colors duration-200"
-      style={{ backgroundColor: 'var(--bg-header)', borderColor: 'var(--border-color)' }}
+      className="h-16 px-8 grid grid-cols-[1fr_minmax(280px,580px)_1fr] items-center gap-4 border-b glass-bar sticky top-0 z-30 select-none transition-colors duration-200"
+      style={{
+        backgroundColor: 'color-mix(in srgb, var(--bg-header) 78%, transparent)',
+        borderColor: 'rgba(255, 255, 255, 0.07)',
+      }}
     >
-      {/* Left: Folder / Page Navigation Arrows (Requirement 3: 2 mũi tên tiến lùi folder) */}
-      <div className="flex items-center gap-2.5">
+      {/* Left: Folder / Page Navigation Arrows */}
+      <div className="flex items-center gap-2">
         <button
           onClick={navigateBack}
           disabled={!canGoBack}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+          className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all ${
             canGoBack
-              ? 'bg-white/10 hover:bg-white/20 text-white cursor-pointer active:scale-95 shadow-sm'
-              : 'bg-white/5 text-white/25 cursor-not-allowed opacity-50'
+              ? 'bg-white/[0.06] hover:bg-white/[0.14] border-white/[0.1] text-white cursor-pointer active:scale-95 shadow-sm'
+              : 'bg-white/[0.03] border-white/[0.04] text-white/25 cursor-not-allowed opacity-50'
           }`}
           title="Quay lại (Folder / Album / Trang trước)"
           aria-label="Quay lại"
@@ -114,10 +122,10 @@ export const DesktopHeader: React.FC = () => {
         <button
           onClick={navigateForward}
           disabled={!canGoForward}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+          className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all ${
             canGoForward
-              ? 'bg-white/10 hover:bg-white/20 text-white cursor-pointer active:scale-95 shadow-sm'
-              : 'bg-white/5 text-white/25 cursor-not-allowed opacity-50'
+              ? 'bg-white/[0.06] hover:bg-white/[0.14] border-white/[0.1] text-white cursor-pointer active:scale-95 shadow-sm'
+              : 'bg-white/[0.03] border-white/[0.04] text-white/25 cursor-not-allowed opacity-50'
           }`}
           title="Tiến tới (Folder / Album / Trang sau)"
           aria-label="Tiến tới"
@@ -126,9 +134,9 @@ export const DesktopHeader: React.FC = () => {
         </button>
       </div>
 
-      {/* Center: Clean Search Bar (Item 5: Căn giữa khung tìm kiếm) */}
+      {/* Center: Clean Search Bar */}
       <div className="relative w-full max-w-2xl mx-auto">
-        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/10 border border-white/10 focus-within:border-[#9b4de0] focus-within:bg-[#231b2e] transition-all">
+        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.06] border border-white/[0.09] hover:border-white/20 focus-within:border-[var(--color-accent)] focus-within:bg-black/40 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] transition-all">
           <Search className="w-4 h-4 text-white/50 shrink-0" />
           <input
             type="text"
@@ -137,12 +145,12 @@ export const DesktopHeader: React.FC = () => {
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setTimeout(() => setIsSearchFocused(false), 250)}
             placeholder="Tìm kiếm bài hát, ca sỹ, file LRC..."
-            className="w-full bg-transparent text-sm text-white placeholder-white/40 focus:outline-none"
+            className="w-full bg-transparent text-[13.5px] text-white placeholder-white/40 focus:outline-none"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="text-white/40 hover:text-white"
+              className="text-white/40 hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -151,15 +159,12 @@ export const DesktopHeader: React.FC = () => {
 
         {/* Search Dropdown Results */}
         {isSearchFocused && searchQuery.trim() && (
-          <div
-            className="absolute top-12 left-0 right-0 max-h-96 overflow-y-auto border rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150"
-            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
-          >
-            <p className="text-xs font-semibold text-[var(--text-secondary)] px-2 py-1 uppercase tracking-wider">
+          <div className="absolute top-12 left-0 right-0 max-h-96 overflow-y-auto glass-panel rounded-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <p className="text-[11px] font-bold text-[var(--text-secondary)] px-2.5 py-1 uppercase tracking-wider">
               Kết quả tìm kiếm ({searchResults.length})
             </p>
             {searchResults.length === 0 ? (
-              <div className="p-4 text-center text-sm text-[var(--text-secondary)]">
+              <div className="p-6 text-center text-sm text-[var(--text-secondary)]">
                 Không tìm thấy bài hát hoặc nghệ sĩ phù hợp
               </div>
             ) : (
@@ -182,16 +187,15 @@ export const DesktopHeader: React.FC = () => {
                         }
                         setIsSearchFocused(false);
                       }}
-                      className="flex items-center justify-between p-2 rounded-xl hover:bg-white/10 cursor-pointer group transition-colors"
+                      className="flex items-center justify-between p-2 rounded-xl hover:bg-white/[0.08] cursor-pointer group transition-colors"
                     >
                       <div className="flex items-center gap-3 truncate">
-                        <div
-                          className="w-10 h-10 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow"
-                        >
+                        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow-md">
                           {song.coverImage ? (
                             <img
                               src={song.coverImage}
                               alt={song.title}
+                              referrerPolicy="no-referrer"
                               className="w-full h-full object-cover"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
@@ -203,8 +207,8 @@ export const DesktopHeader: React.FC = () => {
                           </div>
                         </div>
                         <div className="truncate">
-                          <p className="text-sm font-semibold text-white truncate group-hover:text-[#c273ed] transition-colors">{song.title}</p>
-                          <p className="text-xs text-white/60 truncate">
+                          <p className="text-sm font-semibold text-white truncate group-hover:text-[var(--color-accent)] transition-colors">{song.title}</p>
+                          <p className="text-xs text-white/55 truncate">
                             {formatArtistsString(song.artists)} {song.isAlbumTrack ? `• Album: ${song.album}` : ''}
                           </p>
                         </div>
@@ -212,10 +216,10 @@ export const DesktopHeader: React.FC = () => {
 
                       <div className="flex items-center gap-2">
                         <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold font-mono ${
                             song.audioFormat === 'WAV'
-                              ? 'bg-amber-500/20 text-amber-300'
-                              : 'bg-blue-500/20 text-blue-300'
+                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+                              : 'bg-sky-500/15 text-sky-300 border border-sky-500/20'
                           }`}
                         >
                           {song.audioFormat}
@@ -225,7 +229,7 @@ export const DesktopHeader: React.FC = () => {
                             e.stopPropagation();
                             toggleLike(song.id);
                           }}
-                          className="p-1.5 text-white/40 hover:text-red-400"
+                          className="p-1.5 text-white/40 hover:text-red-400 transition-colors"
                         >
                           <Heart
                             className={`w-4 h-4 ${
@@ -253,24 +257,24 @@ export const DesktopHeader: React.FC = () => {
               className="flex flex-col text-right cursor-pointer group"
               title="Chỉnh sửa tài khoản"
             >
-              <span className="text-xs font-bold text-white max-w-[130px] truncate leading-tight group-hover:text-[#c273ed] transition-colors">
+              <span className="text-xs font-bold text-white max-w-[130px] truncate leading-tight group-hover:text-[var(--color-accent)] transition-colors">
                 {currentUser.displayName || currentUser.email}
               </span>
-              <span className="text-[10px] text-[#c273ed] uppercase font-black">
+              <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: 'var(--color-accent)' }}>
                 {currentUser.role}
               </span>
             </div>
 
-            {/* Requirement 2: Ảnh 2 ở giao diện PC đồng bộ cả avatar nữa */}
             <button
               onClick={() => setIsProfileModalOpen(true)}
-              className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20 bg-zinc-900 shrink-0 flex items-center justify-center shadow-md cursor-pointer hover:ring-2 hover:ring-[#c273ed] transition-all"
+              className="relative w-9 h-9 rounded-full overflow-hidden border border-white/20 bg-zinc-900 shrink-0 flex items-center justify-center shadow-md cursor-pointer hover:ring-2 hover:ring-[var(--color-accent)] transition-all"
               title={`${currentUser.displayName || 'Tài khoản'} - Bấm để chỉnh sửa tài khoản & avatar`}
             >
               {currentUser.avatarUrl ? (
                 <img
                   src={currentUser.avatarUrl}
                   alt={currentUser.displayName}
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
@@ -289,8 +293,7 @@ export const DesktopHeader: React.FC = () => {
         ) : (
           <button
             onClick={() => setIsLoginModalOpen(true)}
-            style={{ backgroundColor: 'var(--color-accent)' }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md transition-transform active:scale-95 hover:opacity-90"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-bold accent-glow-btn transition-transform active:scale-95 cursor-pointer"
           >
             <span>Đăng Nhập</span>
           </button>
@@ -301,10 +304,10 @@ export const DesktopHeader: React.FC = () => {
           <button
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             style={isSettingsOpen ? { backgroundColor: 'var(--color-accent)' } : undefined}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
               isSettingsOpen
-                ? 'text-white shadow-lg'
-                : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white'
+                ? 'text-white border-white/20 shadow-lg'
+                : 'bg-white/[0.06] hover:bg-white/[0.14] border-white/[0.09] text-white/80 hover:text-white'
             }`}
             title="Cài đặt hệ thống (Giao diện, Hẹn giờ, Crossfade)"
           >
@@ -314,23 +317,30 @@ export const DesktopHeader: React.FC = () => {
               }`}
             />
             {sleepTimerRemainingSeconds !== null && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border border-black shadow" />
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-black shadow" />
             )}
           </button>
 
           {/* Settings Dropdown Popover */}
-          {isSettingsOpen && (
+          {shouldRenderSettings && (
             <div
-              className="absolute right-0 top-12 w-80 border rounded-3xl shadow-2xl p-5 z-50 text-white space-y-4 animate-in fade-in slide-in-from-top-2 duration-200"
-              style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' }}
+              className={`absolute right-0 top-12 w-80 glass-panel rounded-3xl p-5 z-50 text-white space-y-4 origin-top-right ${
+                isClosingSettings ? 'animate-out slide-out-to-top-2 duration-150' : 'animate-in slide-in-from-top-2 duration-200'
+              }`}
             >
               {/* Header */}
-              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#9b4de0]/20 text-[#c273ed] flex items-center justify-center">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                      color: 'var(--color-accent)',
+                    }}
+                  >
                     <Settings className="w-4 h-4" />
                   </div>
-                  <h3 className="text-sm font-bold">Cài Đặt Hệ Thống</h3>
+                  <h3 className="text-sm font-bold font-display">Cài Đặt Hệ Thống</h3>
                 </div>
                 <button
                   onClick={() => setIsSettingsOpen(false)}

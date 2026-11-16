@@ -1,18 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
 @import "tailwindcss";
 
 /* Base Default Theme (Zing MP3 Purple) */
 :root {
   --bg-primary: #170f23;
   --bg-sidebar: #120c1c;
-  --bg-header: rgba(23, 15, 35, 0.9);
-  --bg-player: #130d1d;
+  --bg-header: rgba(23, 15, 35, 0.78);
+  --bg-player: rgba(19, 13, 29, 0.88);
   --bg-surface: #231738;
   --bg-surface-hover: #2f1f4b;
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.7);
-  --border-color: rgba(255, 255, 255, 0.1);
+  --border-color: rgba(255, 255, 255, 0.09);
   --color-accent: #9b4de0;
+  --font-display: 'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
 /* 1. Purple (Zing MP3 Mặc định) */
@@ -259,10 +262,26 @@ html, body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  letter-spacing: -0.005em;
+}
+
+/* Smooth display headings & tabular numbers across app */
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.font-mono, .tabular-nums, .font-so {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Override legacy inline Roboto_Condensed utility cleanly */
+.font-\[\'Roboto_Condensed\'\] {
+  font-family: var(--font-sans) !important;
 }
 
 #root {
@@ -270,13 +289,55 @@ html, body {
   background-color: var(--bg-primary, #170f23);
 }
 
+/* Modern Frosted Glass & Ambient Surfaces */
+.glass-panel {
+  background: color-mix(in srgb, var(--bg-surface) 76%, transparent);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.glass-bar {
+  backdrop-filter: blur(24px) saturate(165%);
+  -webkit-backdrop-filter: blur(24px) saturate(165%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.ambient-page-glow {
+  background-image:
+    radial-gradient(ellipse 70% 42% at 20% 0%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 38% at 88% 8%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 70%);
+}
+
+.accent-glow-btn {
+  background: linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 72%, #ffffff 28%));
+  box-shadow: 0 10px 26px -6px color-mix(in srgb, var(--color-accent) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.accent-glow-btn:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 14px 30px -6px color-mix(in srgb, var(--color-accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
 /* Glass track and glass fill for progress bar and volume */
 .glass-track {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.14);
 }
 .glass-fill {
-  background: var(--color-accent, #9b4de0);
-  box-shadow: 0 0 10px var(--color-accent, rgba(155, 77, 224, 0.5));
+  background: linear-gradient(90deg, var(--color-accent, #9b4de0), color-mix(in srgb, var(--color-accent, #9b4de0) 68%, #ffffff 32%));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent, #9b4de0) 65%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slow,
+  .animate-spin-slower,
+  .animate-soundwave-1,
+  .animate-soundwave-2,
+  .animate-soundwave-3,
+  .animate-soundwave-4 {
+    animation: none !important;
+  }
 }
 
 /* Vinyl Spin Animations */
@@ -458,7 +519,7 @@ html, body {
   text-shadow: none !important;
 }
 
-/* Modal Open/Close Animations (Requirement 7) - Balanced 260ms duration */
+/* Modal, Drawer, Sheet & Popover Open/Close Animations - Balanced 240-260ms curves */
 @keyframes modalBackdropIn {
   from {
     opacity: 0;
@@ -490,54 +551,48 @@ html, body {
   }
 }
 
-.modal-backdrop-animate {
-  animation: modalBackdropIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+@keyframes modalSlideRightIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.modal-content-animate {
-  animation: modalContentIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+@keyframes modalSlideLeftIn {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-.modal-slide-animate {
-  animation: modalSlideUpIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+@keyframes modalSlideTopIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-/* Universal Tailwind-animate support for modals (Requirement 7) */
-.animate-in {
-  animation-duration: 0.26s;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  animation-fill-mode: both;
-}
-
-.fade-in {
-  animation-name: modalBackdropIn;
-}
-
-.zoom-in-95,
-.animate-in.zoom-in-95 {
-  animation-name: modalContentIn;
-}
-
-.slide-in-from-bottom {
-  animation-name: modalSlideUpIn;
-}
-
-.animate-out {
-  animation-duration: 0.22s;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  animation-fill-mode: both;
-}
-
-.fade-out {
-  animation-name: modalFadeOut;
-}
-
-.zoom-out-95 {
-  animation-name: modalContentOut;
-}
-
-.slide-out-to-bottom {
-  animation-name: modalSlideDownOut;
+@keyframes modalSlideBottomSmIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes modalSlideDownOut {
@@ -548,6 +603,39 @@ html, body {
   to {
     transform: translateY(100%);
     opacity: 0;
+  }
+}
+
+@keyframes modalSlideRightOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes modalSlideLeftOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes modalSlideTopOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
   }
 }
 
@@ -567,7 +655,130 @@ html, body {
   }
   to {
     opacity: 0;
-    transform: scale(0.95) translateY(8px);
+    transform: scale(0.94) translateY(10px);
+  }
+}
+
+.modal-backdrop-animate {
+  animation: modalBackdropIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-content-animate {
+  animation: modalContentIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-slide-animate {
+  animation: modalSlideUpIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Universal Tailwind-animate support for modals, drawers & popovers */
+.animate-in {
+  animation-duration: 0.26s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: modalBackdropIn;
+}
+
+.zoom-in-95,
+.animate-in.zoom-in-95 {
+  animation-name: modalContentIn;
+}
+
+.slide-in-from-bottom,
+.animate-in.slide-in-from-bottom {
+  animation-name: modalSlideUpIn;
+}
+
+.slide-in-from-bottom-1,
+.animate-in.slide-in-from-bottom-1 {
+  animation-name: modalSlideBottomSmIn;
+}
+
+.slide-in-from-right,
+.animate-in.slide-in-from-right {
+  animation-name: modalSlideRightIn;
+}
+
+.slide-in-from-left,
+.animate-in.slide-in-from-left {
+  animation-name: modalSlideLeftIn;
+}
+
+.slide-in-from-top,
+.slide-in-from-top-2,
+.animate-in.slide-in-from-top,
+.animate-in.slide-in-from-top-2 {
+  animation-name: modalSlideTopIn;
+}
+
+.animate-out {
+  animation-duration: 0.22s;
+  animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  animation-fill-mode: both;
+}
+
+.fade-out {
+  animation-name: modalFadeOut;
+}
+
+.zoom-out-95,
+.animate-out.zoom-out-95 {
+  animation-name: modalContentOut;
+}
+
+.slide-out-to-bottom,
+.animate-out.slide-out-to-bottom {
+  animation-name: modalSlideDownOut;
+}
+
+.slide-out-to-right,
+.animate-out.slide-out-to-right {
+  animation-name: modalSlideRightOut;
+}
+
+.slide-out-to-left,
+.animate-out.slide-out-to-left {
+  animation-name: modalSlideLeftOut;
+}
+
+.slide-out-to-top,
+.slide-out-to-top-2,
+.animate-out.slide-out-to-top,
+.animate-out.slide-out-to-top-2 {
+  animation-name: modalSlideTopOut;
+}
+
+/* Duration overrides for micro-popovers vs full sheets */
+.animate-in.duration-150,
+.animate-out.duration-150 {
+  animation-duration: 0.16s;
+}
+
+.animate-in.duration-200,
+.animate-out.duration-200 {
+  animation-duration: 0.2s;
+}
+
+.animate-in.duration-300,
+.animate-out.duration-300 {
+  animation-duration: 0.28s;
+}
+
+.animate-in.duration-350,
+.animate-out.duration-350 {
+  animation-duration: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out,
+  .modal-backdrop-animate,
+  .modal-content-animate,
+  .modal-slide-animate {
+    animation-duration: 0.01ms !important;
   }
 }
 

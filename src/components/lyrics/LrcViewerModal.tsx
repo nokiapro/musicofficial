@@ -2,16 +2,21 @@ import React, { useState } from 'react';
 import { X, FileText, Copy, Check, Download, Mic2 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ArtistNames } from '../common/ArtistNames';
+import { useAnimatedData } from '../../hooks/useAnimatedPresence';
 
 export const LrcViewerModal: React.FC = () => {
   const { selectedLrcSong, setSelectedLrcSong, setIsLyricsOpen, theme } = useMusic();
   const [copied, setCopied] = useState(false);
 
-  if (!selectedLrcSong) return null;
+  const { activeData: activeSong, shouldRender, isClosing } = useAnimatedData(selectedLrcSong, 220);
+
+  if (!shouldRender || !activeSong) return null;
+
+  const handleClose = () => setSelectedLrcSong(null);
 
   const rawLrc =
-    selectedLrcSong.lrcRaw ||
-    selectedLrcSong.lyrics
+    activeSong.lrcRaw ||
+    activeSong.lyrics
       .map((l) => {
         const m = Math.floor(l.time / 60);
         const s = Math.floor(l.time % 60);
@@ -30,7 +35,7 @@ export const LrcViewerModal: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${selectedLrcSong.title} - ${selectedLrcSong.artists}.lrc`;
+    a.download = `${activeSong.title} - ${activeSong.artists}.lrc`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -38,10 +43,16 @@ export const LrcViewerModal: React.FC = () => {
   return (
     <div
       data-theme={theme}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 font-['Roboto_Condensed'] select-none"
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-['Roboto_Condensed'] select-none ${
+        isClosing ? 'animate-out fade-out' : 'animate-in fade-in'
+      }`}
     >
       <div
-        className="w-full max-w-xl border rounded-2xl shadow-2xl overflow-hidden p-6 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-xl border rounded-2xl shadow-2xl overflow-hidden p-6 flex flex-col max-h-[85vh] ${
+          isClosing ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+        }`}
         style={{
           backgroundColor: 'var(--bg-surface)',
           borderColor: 'var(--border-color)',
@@ -59,16 +70,16 @@ export const LrcViewerModal: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-bold text-white truncate max-w-xs sm:max-w-md">
-                Tệp Lời Bài Hát (LRC): {selectedLrcSong.title}
+                Tệp Lời Bài Hát (LRC): {activeSong.title}
               </h2>
               <div className="text-xs text-white/50">
-                <ArtistNames artists={selectedLrcSong.artists} linkClassName="text-white/50 hover:text-purple-300" />
+                <ArtistNames artists={activeSong.artists} linkClassName="text-white/50 hover:text-purple-300" />
               </div>
             </div>
           </div>
           <button
-            onClick={() => setSelectedLrcSong(null)}
-            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white"
+            onClick={handleClose}
+            className="p-1 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

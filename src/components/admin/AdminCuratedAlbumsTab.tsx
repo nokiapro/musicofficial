@@ -26,6 +26,7 @@ import {
 import { useMusic } from '../../context/MusicContext';
 import { ExclusiveAlbum, AlbumSong, AudioFormat } from '../../types/music';
 import { audioEngine } from '../../services/audioEngine';
+import { useAnimatedData, useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const AdminCuratedAlbumsTab: React.FC = () => {
   const {
@@ -89,6 +90,25 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const {
+    activeData: activeAlbumToDelete,
+    shouldRender: shouldRenderDeleteAlbum,
+    isClosing: isClosingDeleteAlbum,
+  } = useAnimatedData(albumToDelete, 220);
+  const {
+    activeData: activeSongToDelete,
+    shouldRender: shouldRenderDeleteSong,
+    isClosing: isClosingDeleteSong,
+  } = useAnimatedData(songToDelete, 220);
+  const {
+    shouldRender: shouldRenderAlbumModal,
+    isClosing: isClosingAlbumModal,
+  } = useAnimatedPresence(isAlbumModalOpen, 220);
+  const {
+    shouldRender: shouldRenderSongModal,
+    isClosing: isClosingSongModal,
+  } = useAnimatedPresence(isSongModalOpen, 220);
 
   // Safely find the current active album
   const activeAlbum = exclusiveAlbums.find((a) => a.id === activeAlbumId) || null;
@@ -815,18 +835,24 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
       )}
 
       {/* MODAL: CONFIRM DELETE ALBUM (In-UI modal, no browser window.confirm) */}
-      {albumToDelete && (
+      {shouldRenderDeleteAlbum && activeAlbumToDelete && (
         <div
           data-theme={theme}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => !isDeleting && setAlbumToDelete(null)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md ${
+            isClosingDeleteAlbum ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-color)',
               color: 'var(--text-primary)',
             }}
-            className="w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4"
+            className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 ${
+              isClosingDeleteAlbum ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
           >
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0">
@@ -841,14 +867,14 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-800 shrink-0">
                 <img
-                  src={albumToDelete.coverImage}
-                  alt={albumToDelete.title}
+                  src={activeAlbumToDelete.coverImage}
+                  alt={activeAlbumToDelete.title}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-white truncate">{albumToDelete.title}</p>
-                <p className="text-[11px] text-white/60 truncate">{albumToDelete.artist} • {Array.isArray(albumToDelete.songs) ? albumToDelete.songs.length : 0} bài hát</p>
+                <p className="text-xs font-bold text-white truncate">{activeAlbumToDelete.title}</p>
+                <p className="text-[11px] text-white/60 truncate">{activeAlbumToDelete.artist} • {Array.isArray(activeAlbumToDelete.songs) ? activeAlbumToDelete.songs.length : 0} bài hát</p>
               </div>
             </div>
 
@@ -880,18 +906,24 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
       )}
 
       {/* MODAL: CONFIRM DELETE SONG IN ALBUM (In-UI modal, no browser window.confirm) */}
-      {songToDelete && (
+      {shouldRenderDeleteSong && activeSongToDelete && (
         <div
           data-theme={theme}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => !isDeleting && setSongToDelete(null)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md ${
+            isClosingDeleteSong ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-color)',
               color: 'var(--text-primary)',
             }}
-            className="w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4"
+            className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 ${
+              isClosingDeleteSong ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
           >
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0">
@@ -904,8 +936,8 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
             </div>
 
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
-              <p className="text-xs font-bold text-white truncate">{songToDelete.title}</p>
-              <p className="text-[11px] text-white/60 truncate mt-0.5">{songToDelete.artists} • {songToDelete.audioFormat}</p>
+              <p className="text-xs font-bold text-white truncate">{activeSongToDelete.title}</p>
+              <p className="text-[11px] text-white/60 truncate mt-0.5">{activeSongToDelete.artists} • {activeSongToDelete.audioFormat}</p>
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
@@ -932,18 +964,24 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
       )}
 
       {/* MODAL 1: CREATE / EDIT ALBUM */}
-      {isAlbumModalOpen && (
+      {shouldRenderAlbumModal && (
         <div
           data-theme={theme}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setIsAlbumModalOpen(false)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${
+            isClosingAlbumModal ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-color)',
               color: 'var(--text-primary)',
             }}
-            className="w-full max-w-lg rounded-3xl border p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto"
+            className={`w-full max-w-lg rounded-3xl border p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto ${
+              isClosingAlbumModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
@@ -1096,18 +1134,24 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
       )}
 
       {/* MODAL 2: CREATE / EDIT SONG IN ALBUM */}
-      {isSongModalOpen && (
+      {shouldRenderSongModal && (
         <div
           data-theme={theme}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setIsSongModalOpen(false)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${
+            isClosingSongModal ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-color)',
               color: 'var(--text-primary)',
             }}
-            className="w-full max-w-lg rounded-3xl border p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto"
+            className={`w-full max-w-lg rounded-3xl border p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto ${
+              isClosingSongModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
