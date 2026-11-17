@@ -14,12 +14,13 @@ import {
   Award,
   CheckCircle,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ArtistBio } from '../../types/music';
 import { DEFAULT_ARTIST_BIOS } from '../../services/musicService';
 import { formatArtistName } from '../../utils/artistUtils';
-import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
+import { useAnimatedData, useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const AdminArtistBiosTab: React.FC = () => {
   const {
@@ -53,8 +54,18 @@ export const AdminArtistBiosTab: React.FC = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; error?: boolean } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    type: 'delete' | 'seed';
+    id?: string;
+    name?: string;
+  } | null>(null);
 
   const { shouldRender: shouldRenderModal, isClosing: isClosingModal } = useAnimatedPresence(isModalOpen, 220);
+  const {
+    activeData: activeConfirmModal,
+    shouldRender: shouldRenderConfirmModal,
+    isClosing: isClosingConfirmModal,
+  } = useAnimatedData(confirmModal, 200);
 
   const handleOpenAdd = () => {
     setEditingId(null);
@@ -147,32 +158,41 @@ export const AdminArtistBiosTab: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string, artistName: string) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa tiểu sử của ca sĩ "${artistName}"?`)) {
-      return;
-    }
-    try {
-      await deleteArtistBio(id);
-      setStatusMsg({ text: `Đã xóa tiểu sử ca sĩ "${artistName}"!` });
-    } catch (err: any) {
-      setStatusMsg({ text: `Lỗi khi xóa: ${err?.message}`, error: true });
-    }
+  const handleDelete = (id: string, artistName: string) => {
+    setConfirmModal({ type: 'delete', id, name: artistName });
   };
 
-  const handleSeedDefaults = async () => {
-    if (
-      !window.confirm(
-        'Bạn có muốn nạp lại danh sách 9 ca sĩ mẫu nổi tiếng (XuanKen, Sơn Tùng, JustaTee, Đen Vâu, Vũ., Soobin, Hoàng Thùy Linh, Amee, Jack)?'
-      )
-    ) {
-      return;
+  const handleSeedDefaults = () => {
+    setConfirmModal({ type: 'seed' });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmModal) return;
+    if (confirmModal.type === 'delete' && confirmModal.id) {
+      setIsSaving(true);
+      try {
+        await deleteArtistBio(confirmModal.id);
+        setStatusMsg({ text: `Đã xóa tiểu sử ca sĩ "${confirmModal.name}"!` });
+      } catch (err: any) {
+        setStatusMsg({ text: `Lỗi khi xóa: ${err?.message}`, error: true });
+      } finally {
+        setIsSaving(false);
+        setConfirmModal(null);
+      }
+    } else if (confirmModal.type === 'seed') {
+      setIsSaving(true);
+      try {
+        for (const b of DEFAULT_ARTIST_BIOS) {
+          await upsertArtistBio(b);
+        }
+        setStatusMsg({ text: 'Đã nạp thành công 9 ca sĩ mẫu!' });
+      } catch (err: any) {
+        setStatusMsg({ text: `Lỗi khi nạp mẫu: ${err?.message}`, error: true });
+      } finally {
+        setIsSaving(false);
+        setConfirmModal(null);
+      }
     }
-    setIsSaving(true);
-    for (const b of DEFAULT_ARTIST_BIOS) {
-      await upsertArtistBio(b);
-    }
-    setIsSaving(false);
-    setStatusMsg({ text: 'Đã nạp thành công 9 ca sĩ mẫu!' });
   };
 
   const getSongCountForArtist = (artistName: string) => {
@@ -205,12 +225,12 @@ export const AdminArtistBiosTab: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="w-full sm:w-auto grid grid-cols-2 sm:flex items-center gap-2">
           <button
             type="button"
             onClick={handleSeedDefaults}
             disabled={isSaving}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 hover:text-white text-xs font-semibold transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 hover:text-white text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
             title="Nạp lại danh sách nghệ sĩ mẫu nổi tiếng"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -220,10 +240,10 @@ export const AdminArtistBiosTab: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition-transform active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition-transform active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Thêm Ca Sĩ Mới</span>
+            <span>Thêm Ca Sĩ Mới</span>
           </button>
         </div>
       </div>
@@ -363,7 +383,7 @@ export const AdminArtistBiosTab: React.FC = () => {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/15 bg-[#170f23] p-6 text-white shadow-2xl ${
+            className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/15 bg-[#170f23] p-4 sm:p-6 text-white shadow-2xl ${
               isClosingModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
             }`}
           >
@@ -594,6 +614,61 @@ export const AdminArtistBiosTab: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Confirm Action Modal (No native window.confirm) */}
+      {shouldRenderConfirmModal && activeConfirmModal && (
+        <div
+          onClick={() => !isSaving && setConfirmModal(null)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm ${
+            isClosingConfirmModal ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-sm rounded-3xl border border-white/15 bg-[#170f23] p-4 sm:p-6 text-white shadow-2xl space-y-4 ${
+              isClosingConfirmModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">
+                  {activeConfirmModal.type === 'delete' ? 'Xóa Tiểu Sử Nghệ Sĩ' : 'Nạp Danh Sách Ca Sĩ Mẫu'}
+                </h3>
+                <p className="text-[11px] text-white/60 mt-0.5">
+                  {activeConfirmModal.type === 'delete'
+                    ? `Bạn có chắc muốn xóa tiểu sử "${activeConfirmModal.name}"?`
+                    : 'Nạp lại 9 ca sĩ mẫu nổi tiếng (XuanKen, Sơn Tùng, JustaTee, Đen Vâu...)?'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleConfirmAction}
+                className={`px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer ${
+                  activeConfirmModal.type === 'delete'
+                    ? 'bg-red-600 hover:bg-red-500'
+                    : 'bg-purple-600 hover:bg-purple-500'
+                }`}
+              >
+                {isSaving ? 'Đang xử lý...' : activeConfirmModal.type === 'delete' ? 'Xóa Ngay' : 'Nạp Ngay'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -29,6 +29,9 @@ import {
   Upload,
   Disc3,
   Mic2,
+  KeyRound,
+  Search,
+  AlertTriangle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { Song, AppUser, AudioFormat } from '../../types/music';
@@ -36,6 +39,7 @@ import { audioEngine } from '../../services/audioEngine';
 import { testFirebaseConnection } from '../../services/firebase';
 import { AdminCuratedAlbumsTab } from './AdminCuratedAlbumsTab';
 import { AdminArtistBiosTab } from './AdminArtistBiosTab';
+import { AdminApiKeysTab } from './AdminApiKeysTab';
 import { useAnimatedData, useAnimatedPresence } from '../../hooks/useAnimatedPresence';
 
 export const AdminPageView: React.FC = () => {
@@ -64,7 +68,14 @@ export const AdminPageView: React.FC = () => {
     exclusiveAlbums,
   } = useMusic();
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'albums' | 'artists' | 'members' | 'rules' | 'vouchers' | 'settings'>('songs');
+  const [activeAdminTab, setActiveAdminTab] = useState<'songs' | 'albums' | 'artists' | 'members' | 'rules' | 'vouchers' | 'settings' | 'api'>('songs');
+  const [songSearch, setSongSearch] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    type: 'song' | 'member' | 'voucher';
+    id: string;
+    label: string;
+  } | null>(null);
 
   // Website Settings State (Item 11)
   const [siteNameInput, setSiteNameInput] = useState(siteSettings?.siteName || 'XuanKen Music');
@@ -229,6 +240,32 @@ export const AdminPageView: React.FC = () => {
     shouldRender: shouldRenderSongModal,
     isClosing: isClosingSongModal,
   } = useAnimatedPresence(isSongModalOpen, 220);
+  const {
+    activeData: activeConfirmDelete,
+    shouldRender: shouldRenderConfirmDelete,
+    isClosing: isClosingConfirmDelete,
+  } = useAnimatedData(confirmDelete, 200);
+
+  const normalizedSongQuery = songSearch.trim().toLowerCase();
+  const filteredSongs = [...songs]
+    .filter((s) => {
+      if (!normalizedSongQuery) return true;
+      return (
+        s.title.toLowerCase().includes(normalizedSongQuery) ||
+        s.artists.toLowerCase().includes(normalizedSongQuery) ||
+        (s.album || '').toLowerCase().includes(normalizedSongQuery)
+      );
+    })
+    .sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }));
+
+  const normalizedMemberQuery = memberSearch.trim().toLowerCase();
+  const filteredMembers = members.filter((m) => {
+    if (!normalizedMemberQuery) return true;
+    return (
+      (m.email || '').toLowerCase().includes(normalizedMemberQuery) ||
+      (m.displayName || '').toLowerCase().includes(normalizedMemberQuery)
+    );
+  });
 
   const handleTestFirebase = async () => {
     setIsTestingFirebase(true);
@@ -586,24 +623,54 @@ export const AdminPageView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20 select-none font-['Roboto_Condensed']">
+    <div className="space-y-4 sm:space-y-6 pb-20 select-none font-['Roboto_Condensed']">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-600/30 text-[#c273ed] flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+      <div className="p-3.5 sm:p-0 sm:pb-3 rounded-2xl sm:rounded-none bg-white/[0.04] sm:bg-transparent border border-white/10 sm:border-0 sm:border-b space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-600/30 text-[#c273ed] flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base sm:text-2xl font-extrabold text-white tracking-tight uppercase truncate">
+                Quản Trị XuanKen
+              </h1>
+              <p className="text-[11px] sm:text-xs text-white/60 truncate">
+                Admin: <strong className="text-white">{currentUser.email}</strong>
+              </p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg sm:text-2xl font-extrabold text-white tracking-tight uppercase truncate">
-              Quản Trị XuanKen Music
-            </h1>
-            <p className="text-[11px] sm:text-xs text-white/60 truncate">
-              Admin: <strong className="text-white">{currentUser.email}</strong>
-            </p>
+
+          <button
+            onClick={logout}
+            className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-red-500/20 text-white hover:text-red-300 text-[11px] font-bold transition-colors cursor-pointer shrink-0"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Thoát</span>
+          </button>
+        </div>
+
+        {/* Mobile Quick Stats Overview Strip */}
+        <div className="grid grid-cols-4 gap-1.5 pt-2.5 border-t border-white/10 sm:hidden text-center">
+          <div className="py-1.5 px-1 rounded-xl bg-black/25 border border-white/5">
+            <p className="text-xs font-black text-white font-mono">{songs.length}</p>
+            <p className="text-[9px] text-white/50 font-semibold">Bài hát</p>
+          </div>
+          <div className="py-1.5 px-1 rounded-xl bg-black/25 border border-white/5">
+            <p className="text-xs font-black text-[#c273ed] font-mono">{exclusiveAlbums.length}</p>
+            <p className="text-[9px] text-white/50 font-semibold">Album</p>
+          </div>
+          <div className="py-1.5 px-1 rounded-xl bg-black/25 border border-white/5">
+            <p className="text-xs font-black text-emerald-400 font-mono">{members.length}</p>
+            <p className="text-[9px] text-white/50 font-semibold">Thành viên</p>
+          </div>
+          <div className="py-1.5 px-1 rounded-xl bg-black/25 border border-white/5">
+            <p className="text-xs font-black text-amber-300 font-mono">{vouchers.length}</p>
+            <p className="text-[9px] text-white/50 font-semibold">Voucher</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           <button
             onClick={logout}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-red-500/20 text-white hover:text-red-300 text-xs font-bold transition-colors cursor-pointer"
@@ -614,91 +681,111 @@ export const AdminPageView: React.FC = () => {
         </div>
       </div>
 
-      {/* Admin Tabs - Mobile-friendly horizontal scrollable pills */}
-      <div className="flex items-center p-1 bg-white/5 rounded-2xl border border-white/10 w-full overflow-x-auto no-scrollbar gap-1 text-xs">
+      {/* Admin Tabs - 2x4 Grid on Mobile, Horizontal Pills on PC */}
+      <div className="grid grid-cols-4 sm:flex sm:items-center p-1.5 sm:p-1 bg-white/5 rounded-2xl border border-white/10 w-full sm:overflow-x-auto no-scrollbar gap-1.5 sm:gap-1 text-xs">
         <button
           onClick={() => setActiveAdminTab('songs')}
           style={activeAdminTab === 'songs' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-2 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all text-center sm:whitespace-nowrap sm:shrink-0 cursor-pointer ${
             activeAdminTab === 'songs'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Music2 className="w-3.5 h-3.5" />
-          <span>Bài Hát ({songs.length})</span>
+          <Music2 className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="text-[10px] sm:text-xs leading-tight sm:hidden">Bài Hát</span>
+          <span className="hidden sm:inline">Bài Hát ({songs.length})</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('albums')}
           style={activeAdminTab === 'albums' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-2 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all text-center sm:whitespace-nowrap sm:shrink-0 cursor-pointer ${
             activeAdminTab === 'albums'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Disc3 className="w-3.5 h-3.5" />
-          <span>Album Nhạc Hay ({exclusiveAlbums.length})</span>
+          <Disc3 className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="text-[10px] sm:text-xs leading-tight sm:hidden">Album</span>
+          <span className="hidden sm:inline">Album Nhạc Hay ({exclusiveAlbums.length})</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('artists')}
           style={activeAdminTab === 'artists' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-2 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all text-center sm:whitespace-nowrap sm:shrink-0 cursor-pointer ${
             activeAdminTab === 'artists'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Mic2 className="w-3.5 h-3.5" />
-          <span>Ca Sĩ & Tiểu Sử</span>
+          <Mic2 className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="text-[10px] sm:text-xs leading-tight sm:hidden">Ca Sĩ</span>
+          <span className="hidden sm:inline">Ca Sĩ & Tiểu Sử</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('members')}
           style={activeAdminTab === 'members' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-2 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all text-center sm:whitespace-nowrap sm:shrink-0 cursor-pointer ${
             activeAdminTab === 'members'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Users className="w-3.5 h-3.5" />
-          <span>Thành Viên ({members.length})</span>
+          <Users className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="text-[10px] sm:text-xs leading-tight sm:hidden">Thành Viên</span>
+          <span className="hidden sm:inline">Thành Viên ({members.length})</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('vouchers')}
           style={activeAdminTab === 'vouchers' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-2 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all text-center sm:whitespace-nowrap sm:shrink-0 cursor-pointer ${
             activeAdminTab === 'vouchers'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Tag className="w-3.5 h-3.5" />
-          <span>Voucher ({vouchers.length})</span>
+          <Tag className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="text-[10px] sm:text-xs leading-tight sm:hidden">Voucher</span>
+          <span className="hidden sm:inline">Voucher ({vouchers.length})</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('settings')}
           style={activeAdminTab === 'settings' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-2 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all text-center sm:whitespace-nowrap sm:shrink-0 cursor-pointer ${
             activeAdminTab === 'settings'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Settings className="w-3.5 h-3.5" />
-          <span>Cài Đặt Web</span>
+          <Settings className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="text-[10px] sm:text-xs leading-tight sm:hidden">Cài Đặt</span>
+          <span className="hidden sm:inline">Cài Đặt Web</span>
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('api')}
+          style={activeAdminTab === 'api' ? { backgroundColor: 'var(--color-accent)' } : undefined}
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-2 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all text-center sm:whitespace-nowrap sm:shrink-0 cursor-pointer ${
+            activeAdminTab === 'api'
+              ? 'text-white shadow'
+              : 'text-white/60 hover:text-white'
+          }`}
+        >
+          <KeyRound className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="text-[10px] sm:text-xs leading-tight sm:hidden">API Key</span>
+          <span className="hidden sm:inline">Public API & Key</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('rules')}
           style={activeAdminTab === 'rules' ? { backgroundColor: 'var(--color-accent)' } : undefined}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-2 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all text-center sm:whitespace-nowrap sm:shrink-0 cursor-pointer ${
             activeAdminTab === 'rules'
               ? 'text-white shadow'
               : 'text-white/60 hover:text-white'
           }`}
         >
-          <Code className="w-3.5 h-3.5" />
-          <span>Rules Firebase</span>
+          <Code className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="text-[10px] sm:text-xs leading-tight sm:hidden">Rules</span>
+          <span className="hidden sm:inline">Rules Firebase</span>
         </button>
       </div>
 
@@ -745,16 +832,16 @@ export const AdminPageView: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-full sm:w-auto grid grid-cols-2 sm:flex items-center gap-2 flex-wrap">
               {/* Force Sync All Button */}
               <button
                 onClick={handleForceSyncAll}
                 disabled={isSyncingAll}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
                 title="Đẩy toàn bộ bài hát, thành viên, playlist lên Firebase ngay"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncingAll ? 'animate-spin' : ''}`} />
-                <span>{isSyncingAll ? 'Đang đẩy lên Firebase...' : 'Đẩy Lên Firebase'}</span>
+                <span className="truncate">{isSyncingAll ? 'Đang đẩy...' : 'Đẩy Lên Firebase'}</span>
               </button>
 
               {/* Seed Sample Songs Button if empty */}
@@ -762,47 +849,69 @@ export const AdminPageView: React.FC = () => {
                 <button
                   onClick={handleSeedSongs}
                   disabled={isSeeding}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50"
+                  className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
                   title="Nạp 3 bài hát mẫu XuanKen lên Firebase"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{isSeeding ? 'Đang nạp...' : '🌱 Nạp 3 Bài Mẫu'}</span>
+                  <span>{isSeeding ? 'Đang nạp...' : 'Nạp 3 Bài Mẫu'}</span>
                 </button>
               )}
 
               {/* Add New Song Button */}
               <button
                 onClick={handleOpenAddModal}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Thêm Bài Hát Mới</span>
+                <span>Thêm Bài Hát</span>
               </button>
             </div>
           </div>
 
+          {songs.length > 0 && (
+            <div className="relative sm:max-w-sm">
+              <Search className="w-4 h-4 text-white/40 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={songSearch}
+                onChange={(e) => setSongSearch(e.target.value)}
+                placeholder="Tìm tên bài hát, ca sĩ, album..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-[#9b4de0]"
+              />
+              {songSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSongSearch('')}
+                  className="absolute right-2.5 top-2 text-white/40 hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+
           {songs.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl border border-dashed border-white/20 bg-white/5 space-y-3">
+            <div className="p-8 sm:p-12 text-center rounded-2xl border border-dashed border-white/20 bg-white/5 space-y-3">
               <Music2 className="w-12 h-12 text-white/30 mx-auto" />
               <h3 className="text-base font-bold text-white">Chưa Có Bài Hát Nào Trong Hệ Thống</h3>
               <p className="text-xs text-white/50 max-w-md mx-auto leading-relaxed">
-                Trên Firebase Realtime Database hiện đang trống (null). Bạn có thể bấm <strong>"Thêm Bài Hát Mới"</strong> hoặc bấm <strong>"Nạp 3 Bài Mẫu Lên Firebase"</strong> để dữ liệu lập tức xuất hiện trên Firebase Console!
+                Trên Firebase Realtime Database hiện đang trống (null). Bạn có thể bấm <strong>"Thêm Bài Hát"</strong> hoặc bấm <strong>"Nạp 3 Bài Mẫu"</strong> để dữ liệu lập tức xuất hiện!
               </p>
-              <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 pt-2">
                 <button
                   onClick={handleSeedSongs}
                   disabled={isSeeding}
-                  className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg transition-transform active:scale-95 flex items-center gap-2"
+                  className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>{isSeeding ? 'Đang nạp bài mẫu...' : '🌱 Nạp 3 Bài Mẫu Của XuanKen Lên Firebase'}</span>
+                  <span>{isSeeding ? 'Đang nạp bài mẫu...' : 'Nạp 3 Bài Mẫu XuanKen'}</span>
                 </button>
                 <button
                   onClick={handleOpenAddModal}
-                  className="px-4 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg transition-transform active:scale-95 flex items-center gap-2"
+                  className="px-4 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>+ Thêm Bài Mới Thủ Công</span>
+                  <span>Thêm Bài Mới Thủ Công</span>
                 </button>
               </div>
             </div>
@@ -810,15 +919,18 @@ export const AdminPageView: React.FC = () => {
             <>
               {/* Mobile View for Songs (sm:hidden) */}
               <div className="sm:hidden space-y-2.5">
-                {[...songs]
-                  .sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
-                  .map((song, i) => (
+                {filteredSongs.length === 0 ? (
+                  <div className="p-8 text-center rounded-2xl bg-white/5 border border-white/10 text-xs text-white/50">
+                    Không tìm thấy bài hát phù hợp với "{songSearch}"
+                  </div>
+                ) : (
+                  filteredSongs.map((song, i) => (
                     <div
                       key={song.id}
-                      className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 shadow-md"
+                      className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 shadow-md"
                     >
                       <div className="flex items-center gap-2.5">
-                        <span className="w-5 text-center font-mono text-[11px] text-white/40 font-bold">
+                        <span className="w-5 text-center font-mono text-[11px] text-white/40 font-bold shrink-0">
                           {song.stt || i + 1}
                         </span>
                         <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-zinc-900 relative">
@@ -835,7 +947,7 @@ export const AdminPageView: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center justify-between gap-1.5">
                             <p className="font-bold text-white text-xs truncate">{song.title}</p>
                             <span
                               className={`px-1.5 py-0.5 rounded font-black text-[9px] shrink-0 ${
@@ -848,7 +960,7 @@ export const AdminPageView: React.FC = () => {
                             </span>
                           </div>
                           <p className="text-[11px] text-white/60 truncate mt-0.5">{song.artists}</p>
-                          <div className="flex items-center gap-2 mt-1 text-[10px]">
+                          <div className="flex items-center gap-2 mt-1 text-[10px] flex-wrap">
                             <span className="font-mono text-amber-300 font-bold">
                               {(song.price ?? 20000).toLocaleString('vi-VN')} đ
                             </span>
@@ -864,8 +976,8 @@ export const AdminPageView: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2">
-                        <div className="flex items-center gap-1 text-[9px]">
+                      <div className="flex items-center justify-between pt-2.5 border-t border-white/5 gap-2">
+                        <div className="flex items-center gap-1 text-[9px] flex-wrap">
                           <span className={`px-1.5 py-0.5 rounded font-bold ${song.demoUrl ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-white/30'}`}>Demo</span>
                           <span className={`px-1.5 py-0.5 rounded font-bold ${song.mp3Url ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-white/30'}`}>MP3</span>
                           <span className={`px-1.5 py-0.5 rounded font-bold ${song.wavUrl ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-white/30'}`}>WAV</span>
@@ -873,21 +985,17 @@ export const AdminPageView: React.FC = () => {
                             <span className="px-1.5 py-0.5 rounded font-bold bg-cyan-500/20 text-cyan-300">LRC</span>
                           ) : null}
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             onClick={() => handleOpenEditModal(song)}
-                            className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white text-xs font-bold flex items-center gap-1 transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <Edit3 className="w-3 h-3" />
                             <span>Sửa</span>
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm(`Xóa bài hát "${song.title}"?`)) {
-                                removeSong(song.id);
-                              }
-                            }}
-                            className="p-1 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
+                            onClick={() => setConfirmDelete({ type: 'song', id: song.id, label: song.title })}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors cursor-pointer"
                             title="Xóa bài hát"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -895,7 +1003,8 @@ export const AdminPageView: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
 
               {/* Desktop Table View (hidden sm:block) */}
@@ -915,9 +1024,7 @@ export const AdminPageView: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {[...songs]
-                        .sort((a, b) => a.title.localeCompare(b.title, 'vi', { sensitivity: 'base' }))
-                        .map((song, i) => (
+                      {filteredSongs.map((song, i) => (
                         <tr key={song.id} className="hover:bg-white/5 transition-colors">
                           <td className="py-3 px-4 text-center font-mono text-white/40 font-bold">
                             {song.stt || i + 1}
@@ -1001,12 +1108,8 @@ export const AdminPageView: React.FC = () => {
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => {
-                                  if (confirm(`Xóa bài hát "${song.title}"?`)) {
-                                    removeSong(song.id);
-                                  }
-                                }}
-                                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white"
+                                onClick={() => setConfirmDelete({ type: 'song', id: song.id, label: song.title })}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white cursor-pointer"
                                 title="Xóa"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1045,8 +1148,8 @@ export const AdminPageView: React.FC = () => {
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-tight flex items-center gap-2">
-                    <span>Thêm Admin Toàn Quyền (Super Admin)</span>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-tight flex items-center gap-2 flex-wrap">
+                    <span>Thêm Admin Toàn Quyền</span>
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500 text-black uppercase">
                       Quyền Cao Nhất
                     </span>
@@ -1074,7 +1177,7 @@ export const AdminPageView: React.FC = () => {
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-amber-950/40 active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>{isAddingAdmin ? 'Đang cấp quyền...' : 'Cấp Quyền Admin Toàn Quyền'}</span>
+                <span>{isAddingAdmin ? 'Đang cấp quyền...' : 'Cấp Quyền Admin'}</span>
               </button>
             </form>
 
@@ -1092,8 +1195,30 @@ export const AdminPageView: React.FC = () => {
             )}
           </div>
 
+          {members.length > 0 && (
+            <div className="relative sm:max-w-sm">
+              <Search className="w-4 h-4 text-white/40 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Tìm thành viên theo tên hoặc email..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-[#9b4de0]"
+              />
+              {memberSearch && (
+                <button
+                  type="button"
+                  onClick={() => setMemberSearch('')}
+                  className="absolute right-2.5 top-2 text-white/40 hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+
           {members.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl border border-dashed border-white/20 bg-white/5">
+            <div className="p-8 sm:p-12 text-center rounded-2xl border border-dashed border-white/20 bg-white/5">
               <Users className="w-12 h-12 text-white/30 mx-auto mb-3" />
               <h3 className="text-base font-bold text-white">Chưa Có Thành Viên Nào</h3>
               <p className="text-xs text-white/50 mt-1">
@@ -1104,67 +1229,69 @@ export const AdminPageView: React.FC = () => {
             <>
               {/* Mobile Card List for Members (sm:hidden) */}
               <div className="sm:hidden space-y-2.5">
-                {members.map((member) => (
-                  <div
-                    key={member.uid}
-                    className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 shadow-md"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow">
-                          {member.displayName ? member.displayName.charAt(0).toUpperCase() : 'U'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-white text-xs truncate">{member.displayName || 'Thành viên'}</p>
-                          <p className="text-[10px] text-white/50 truncate font-mono">{member.email}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => toggleMemberRole(member.uid)}
-                        className={`px-2 py-0.5 rounded font-black text-[9px] uppercase transition-colors shrink-0 ${
-                          member.role === 'admin'
-                            ? 'bg-purple-500/30 text-[#c273ed] border border-purple-500/50'
-                            : 'bg-white/10 text-white/70'
-                        }`}
-                        title="Bấm để đổi quyền Admin/User"
-                      >
-                        {member.role}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span className="text-emerald-400 font-mono font-bold">
-                          {(member.balance || 0).toLocaleString('vi-VN')} đ
-                        </span>
-                        <span className="text-white/30">•</span>
-                        <span className="text-white/60 text-[10px]">
-                          {member.purchasedSongIds?.length || 0} bài mua
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleOpenEditMember(member)}
-                          className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/30 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white font-bold text-xs flex items-center gap-1 transition-colors"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                          <span>Sửa</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Xóa thành viên "${member.email}"?`)) {
-                              removeMember(member.uid);
-                            }
-                          }}
-                          className="p-1 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
-                          title="Xóa thành viên"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+                {filteredMembers.length === 0 ? (
+                  <div className="p-8 text-center rounded-2xl bg-white/5 border border-white/10 text-xs text-white/50">
+                    Không tìm thấy thành viên phù hợp với "{memberSearch}"
                   </div>
-                ))}
+                ) : (
+                  filteredMembers.map((member) => (
+                    <div
+                      key={member.uid}
+                      className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5 shadow-md"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow">
+                            {member.displayName ? member.displayName.charAt(0).toUpperCase() : 'U'}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-white text-xs truncate">{member.displayName || 'Thành viên'}</p>
+                            <p className="text-[10px] text-white/50 truncate font-mono">{member.email}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => toggleMemberRole(member.uid)}
+                          className={`px-2.5 py-1 rounded-lg font-black text-[9px] uppercase transition-colors shrink-0 cursor-pointer ${
+                            member.role === 'admin'
+                              ? 'bg-purple-500/30 text-[#c273ed] border border-purple-500/50'
+                              : 'bg-white/10 text-white/70'
+                          }`}
+                          title="Bấm để đổi quyền Admin/User"
+                        >
+                          {member.role}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2.5 border-t border-white/5 text-xs">
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <span className="text-emerald-400 font-mono font-bold">
+                            {(member.balance || 0).toLocaleString('vi-VN')} đ
+                          </span>
+                          <span className="text-white/30">•</span>
+                          <span className="text-white/60 text-[10px]">
+                            {member.purchasedSongIds?.length || 0} bài mua
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditMember(member)}
+                            className="px-3 py-1.5 rounded-lg bg-[#9b4de0]/30 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Sửa</span>
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete({ type: 'member', id: member.uid, label: member.email })}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors cursor-pointer"
+                            title="Xóa thành viên"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Desktop Table View (hidden sm:block) */}
@@ -1183,7 +1310,7 @@ export const AdminPageView: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {members.map((member, i) => (
+                      {filteredMembers.map((member, i) => (
                         <tr key={member.uid} className="hover:bg-white/5 transition-colors">
                           <td className="py-3 px-4 text-center font-mono text-white/40 font-bold">
                             {i + 1}
@@ -1222,12 +1349,8 @@ export const AdminPageView: React.FC = () => {
                               </button>
 
                               <button
-                                onClick={() => {
-                                  if (confirm(`Xóa thành viên "${member.email}"?`)) {
-                                    removeMember(member.uid);
-                                  }
-                                }}
-                                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
+                                onClick={() => setConfirmDelete({ type: 'member', id: member.uid, label: member.email })}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors cursor-pointer"
                                 title="Xóa thành viên"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1249,13 +1372,13 @@ export const AdminPageView: React.FC = () => {
       {activeAdminTab === 'rules' && (
         <div className="space-y-6">
           {/* Live Firebase Connectivity Check Card */}
-          <div className="p-5 rounded-2xl bg-[#170f23] border border-white/10 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#170f23] border border-white/10 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
                 <Database className="w-4 h-4" />
                 <span>Trạng Thái Đồng Bộ Firebase Trực Tuyến</span>
               </div>
-              <h3 className="text-base font-bold text-white mt-1">
+              <h3 className="text-sm sm:text-base font-bold text-white mt-1">
                 Kiểm Tra Kết Nối Cloud Firestore & Realtime Database
               </h3>
               <p className="text-xs text-white/60 mt-0.5">
@@ -1285,7 +1408,7 @@ export const AdminPageView: React.FC = () => {
             <button
               onClick={handleTestFirebase}
               disabled={isTestingFirebase}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-lg shadow-emerald-900/30"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 shrink-0 shadow-lg shadow-emerald-900/30 cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${isTestingFirebase ? 'animate-spin' : ''}`} />
               <span>{isTestingFirebase ? 'Đang kiểm tra...' : 'Kiểm Tra Đồng Bộ Ngay'}</span>
@@ -1293,7 +1416,7 @@ export const AdminPageView: React.FC = () => {
           </div>
 
           {/* Security Rules Banner */}
-          <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-500/15 via-purple-950/40 to-[#170f23] border border-emerald-500/30 text-xs space-y-3 shadow-xl">
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-emerald-500/15 via-purple-950/40 to-[#170f23] border border-emerald-500/30 text-xs space-y-3 shadow-xl">
             <div className="flex items-center gap-2 text-sm font-black text-emerald-300">
               <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
               <span>Hệ Thống Quy Tắc Bảo Mật Toàn Diện (Bản Quyền, Tiền Ví & Thành Viên)</span>
@@ -1374,7 +1497,7 @@ service cloud.firestore {
           (
             incoming().diff(existing()).affectedKeys().hasOnly([
               'displayName', 'avatarUrl', 'theme', 'crossfadeDuration',
-              'preferredAudioFormat', 'likedSongIds', 'blockedSongIds', 'rewindStats'
+              'preferredAudioFormat', 'likedSongIds', 'likedAlbumIds', 'blockedSongIds', 'rewindStats'
             ]) &&
             incoming().role == existing().role &&
             incoming().balance == existing().balance
@@ -1427,6 +1550,11 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    match /artist_bios/{artistId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /weekly_plays/{weekKey} {
       allow read: if true;
       allow write: if isSignedIn();
@@ -1439,7 +1567,7 @@ service cloud.firestore {
 }`
                   )
                 }
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95"
+                className="w-full sm:w-auto justify-center px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95 cursor-pointer"
               >
                 {copiedRuleFile === 'firestore.rules' ? (
                   <>
@@ -1486,7 +1614,7 @@ service cloud.firestore {
       allow update: if isAdmin() || (
         isOwner(userId) && (
           // Sửa thông tin cá nhân (không được đổi role hoặc tăng tiền)
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'avatarUrl', 'theme', 'likedSongIds', 'blockedSongIds']) &&
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'avatarUrl', 'theme', 'likedSongIds', 'likedAlbumIds', 'blockedSongIds']) &&
            request.resource.data.role == resource.data.role && request.resource.data.balance == resource.data.balance) ||
           // Mua nhạc (tiền chỉ được giảm, không được tăng)
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'purchasedSongIds']) &&
@@ -1609,6 +1737,21 @@ service cloud.firestore {
                             ".read": true,
                             ".write": true
                           },
+                          artist_bios: {
+                            ".read": true,
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                          },
+                          api_keys: {
+                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                          },
+                          api_key_hashes: {
+                            ".read": false,
+                            "$keyHash": {
+                              ".read": true,
+                              ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                            }
+                          },
                           _system_ping: {
                             ".read": true,
                             ".write": true
@@ -1620,7 +1763,7 @@ service cloud.firestore {
                     )
                   )
                 }
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95 cursor-pointer"
+                className="w-full sm:w-auto justify-center px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95 cursor-pointer"
               >
                 {copiedRuleFile === 'database.rules.json' ? (
                   <>
@@ -1673,7 +1816,7 @@ service cloud.firestore {
 
           {/* 3. Storage Rules */}
           <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
-            <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+            <div className="p-4 bg-white/5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="font-bold text-white text-sm">storage.rules (Firebase Cloud Storage)</span>
                 <p className="text-[11px] text-white/50">Bảo vệ file âm thanh gốc MP3/WAV và giới hạn upload avatar</p>
@@ -1709,7 +1852,7 @@ service firebase.storage {
 }`
                   )
                 }
-                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors"
+                className="w-full sm:w-auto justify-center px-3 py-2 sm:py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 {copiedRuleFile === 'storage.rules' ? (
                   <>
@@ -1750,13 +1893,13 @@ service firebase.storage {
       {/* TAB 4: QUẢN LÝ VOUCHER / MÃ GIẢM GIÁ */}
       {activeAdminTab === 'vouchers' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-white/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/5 p-3.5 rounded-2xl border border-white/10">
+            <p className="text-xs text-white/70">
               Quản lý mã giảm giá (Voucher / Coupon) cho khách hàng khi mua nhạc bản quyền
             </p>
             <button
               onClick={() => setIsAddingVoucher(!isAddingVoucher)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95"
+              className="w-full sm:w-auto justify-center flex items-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{isAddingVoucher ? 'Đóng Form' : 'Thêm Voucher Mới'}</span>
@@ -1876,12 +2019,8 @@ service firebase.storage {
                     </strong> ({v.discountType === 'percent' ? 'Phần trăm' : 'Cố định'})
                   </span>
                   <button
-                    onClick={() => {
-                      if (confirm(`Xóa voucher "${v.code}"?`)) {
-                        removeVoucher(v.id);
-                      }
-                    }}
-                    className="p-1 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors"
+                    onClick={() => setConfirmDelete({ type: 'voucher', id: v.id, label: v.code })}
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white/70 hover:text-white transition-colors cursor-pointer"
                     title="Xóa voucher"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -1932,12 +2071,8 @@ service firebase.storage {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <button
-                          onClick={() => {
-                            if (confirm(`Xóa voucher "${v.code}"?`)) {
-                              removeVoucher(v.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white transition-colors"
+                          onClick={() => setConfirmDelete({ type: 'voucher', id: v.id, label: v.code })}
+                          className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white transition-colors cursor-pointer"
                           title="Xóa voucher"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1967,11 +2102,11 @@ service firebase.storage {
             </div>
           )}
 
-          <form onSubmit={handleSaveSettings} className="space-y-6">
+          <form onSubmit={handleSaveSettings} className="space-y-4 sm:space-y-6">
             {/* 1. THÔNG TIN THƯƠNG HIỆU & TIÊU ĐỀ TRANG */}
-            <div className="p-6 rounded-3xl bg-[#170f23] border border-white/10 shadow-2xl space-y-4">
+            <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#170f23] border border-white/10 shadow-2xl space-y-4">
               <div className="flex items-center gap-2.5 pb-3 border-b border-white/10">
-                <div className="w-8 h-8 rounded-xl bg-purple-600/30 text-[#c273ed] flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-xl bg-purple-600/30 text-[#c273ed] flex items-center justify-center font-bold shrink-0">
                   <Globe className="w-4 h-4" />
                 </div>
                 <div>
@@ -2009,11 +2144,11 @@ service firebase.storage {
               </div>
 
               {/* Logo & Favicon with file upload & preview */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-2">
                 {/* Logo Web */}
-                <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                <div className="space-y-3 p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                   <label className="block text-xs font-bold text-white/90">Ảnh Logo Trang Web (Logo URL / Upload)</label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/20 bg-black/40 flex items-center justify-center shrink-0 shadow-md">
                       {logoUrlInput ? (
                         <img
@@ -2026,13 +2161,13 @@ service firebase.storage {
                         <Globe className="w-6 h-6 text-white/40" />
                       )}
                     </div>
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-2 w-full">
                       <input
                         type="url"
                         value={logoUrlInput}
                         onChange={(e) => setLogoUrlInput(e.target.value)}
                         placeholder="https://.../logo.png"
-                        className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
+                        className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
                       />
                       <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/80 hover:text-white text-xs font-bold cursor-pointer transition-colors">
                         <Upload className="w-3.5 h-3.5" />
@@ -2044,9 +2179,9 @@ service firebase.storage {
                 </div>
 
                 {/* Favicon / Ico */}
-                <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                <div className="space-y-3 p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                   <label className="block text-xs font-bold text-white/90">Ảnh Icon Tab / Favicon (.ico, .png)</label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/20 bg-black/40 flex items-center justify-center shrink-0 shadow-md">
                       {faviconUrlInput ? (
                         <img
@@ -2059,13 +2194,13 @@ service firebase.storage {
                         <Globe className="w-6 h-6 text-white/40" />
                       )}
                     </div>
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-2 w-full">
                       <input
                         type="url"
                         value={faviconUrlInput}
                         onChange={(e) => setFaviconUrlInput(e.target.value)}
                         placeholder="https://.../favicon.ico"
-                        className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
+                        className="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#9b4de0]"
                       />
                       <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/80 hover:text-white text-xs font-bold cursor-pointer transition-colors">
                         <Upload className="w-3.5 h-3.5" />
@@ -2079,9 +2214,9 @@ service firebase.storage {
             </div>
 
             {/* 2. CẤU HÌNH TIỀN THƯỞNG, GIÁ VÀ LƯỢT NGHE */}
-            <div className="p-6 rounded-3xl bg-[#170f23] border border-white/10 shadow-2xl space-y-4">
+            <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#170f23] border border-white/10 shadow-2xl space-y-4">
               <div className="flex items-center gap-2.5 pb-3 border-b border-white/10">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold shrink-0">
                   <Sliders className="w-4 h-4" />
                 </div>
                 <div>
@@ -2151,7 +2286,7 @@ service firebase.storage {
             </div>
 
             {/* Submit Button */}
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -2163,7 +2298,7 @@ service firebase.storage {
                   setDefaultSongPriceInput('20000');
                   setMinListenDurationInput('5');
                 }}
-                className="px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white/70 hover:text-white font-bold text-xs transition-colors"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white/70 hover:text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 Đặt Lại Mặc Định
               </button>
@@ -2171,7 +2306,7 @@ service firebase.storage {
               <button
                 type="submit"
                 disabled={isSavingSettings}
-                className="px-6 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-xs shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto justify-center px-6 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold text-xs shadow-lg shadow-[#9b4de0]/30 transition-transform active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 <span>{isSavingSettings ? 'Đang Lưu...' : 'Lưu Cài Đặt Website'}</span>
@@ -2180,6 +2315,9 @@ service firebase.storage {
           </form>
         </div>
       )}
+
+      {/* TAB: PUBLIC API & API KEY MANAGEMENT */}
+      {activeAdminTab === 'api' && <AdminApiKeysTab />}
 
       {/* MODAL: CHỈNH SỬA THÀNH VIÊN (Tên hiển thị, vai trò, số tiền - Requirement 3) */}
       {shouldRenderMemberModal && activeEditingMember && (
@@ -2193,7 +2331,7 @@ service firebase.storage {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-            className={`w-full max-w-md border rounded-3xl shadow-2xl p-6 text-xs ${
+            className={`w-full max-w-md border rounded-3xl shadow-2xl p-4 sm:p-6 text-xs max-h-[92vh] overflow-y-auto ${
               isClosingMemberModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
             }`}
           >
@@ -2259,14 +2397,14 @@ service firebase.storage {
                 />
 
                 {/* Quick helper balance buttons */}
-                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
                   <button
                     type="button"
                     onClick={() => {
                       const cur = parseInt(editBalance || '0', 10);
                       setEditBalance((cur + 50000).toString());
                     }}
-                    className="py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white font-mono font-bold text-[10px] border border-emerald-500/30 transition-colors"
+                    className="py-1.5 sm:py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white font-mono font-bold text-[10px] border border-emerald-500/30 transition-colors cursor-pointer"
                   >
                     +50.000đ
                   </button>
@@ -2332,12 +2470,12 @@ service firebase.storage {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-            className={`w-full max-w-xl border rounded-3xl shadow-2xl p-6 max-h-[92vh] overflow-y-auto ${
+            className={`w-full max-w-xl border rounded-3xl shadow-2xl p-4 sm:p-6 max-h-[92vh] overflow-y-auto ${
               isClosingSongModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
             }`}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h2 className="text-lg font-bold">
+              <h2 className="text-base sm:text-lg font-bold">
                 {editingSongId ? 'Chỉnh Sửa Bài Hát' : 'Thêm Bài Hát Mới'}
               </h2>
               <button onClick={() => setIsSongModalOpen(false)} className="p-1 text-white/60 hover:text-white cursor-pointer">
@@ -2347,7 +2485,7 @@ service firebase.storage {
 
             <form onSubmit={handleSaveSong} className="mt-4 space-y-4 text-xs">
               {/* Row 1: Tên bài & Ca sỹ */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-white/70 mb-1 font-bold">Tên bài hát *</label>
                   <input
@@ -2605,9 +2743,9 @@ service firebase.storage {
                 </div>
 
                 {/* Auto duration helper */}
-                <div className="p-2.5 rounded-lg bg-black/30 border border-white/5 flex items-center justify-between">
+                <div className="p-2.5 rounded-lg bg-black/30 border border-white/5 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs">
-                    <Clock className="w-4 h-4 text-[#c273ed]" />
+                    <Clock className="w-4 h-4 text-[#c273ed] shrink-0" />
                     <span className="text-white/70">Tổng thời lượng lưu:</span>
                     <span className="font-mono font-bold text-amber-300">
                       {durationMinutes}:{durationSeconds.padStart(2, '0')} (
@@ -2618,7 +2756,7 @@ service firebase.storage {
                     <button
                       type="button"
                       onClick={() => triggerAutoDuration(mp3Url.trim() || wavUrl.trim())}
-                      className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/20 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white text-[10px] font-bold transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-[#9b4de0]/20 hover:bg-[#9b4de0] text-[#c273ed] hover:text-white text-[10px] font-bold transition-colors cursor-pointer"
                     >
                       {isDetectingDuration ? 'Đang dò...' : 'Dò từ file MP3/WAV'}
                     </button>
@@ -2628,7 +2766,7 @@ service firebase.storage {
 
               {/* Requirement 2: LRC có thể thêm chữ hoặc link đều được */}
               <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-bold text-white flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-[#c273ed]" />
                     Lời bài hát (LRC)
@@ -2698,6 +2836,73 @@ service firebase.storage {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: XÁC NHẬN XÓA (Không dùng window.confirm) */}
+      {shouldRenderConfirmDelete && activeConfirmDelete && (
+        <div
+          data-theme={theme}
+          onClick={() => setConfirmDelete(null)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md ${
+            isClosingConfirmDelete ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+            className={`w-full max-w-sm border rounded-3xl shadow-2xl p-4 sm:p-6 space-y-4 text-xs ${
+              isClosingConfirmDelete ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold text-white">
+                  {activeConfirmDelete.type === 'song'
+                    ? 'Xác Nhận Xóa Bài Hát'
+                    : activeConfirmDelete.type === 'member'
+                    ? 'Xác Nhận Xóa Thành Viên'
+                    : 'Xác Nhận Xóa Voucher'}
+                </h3>
+                <p className="text-[11px] text-white/60 mt-0.5 truncate">
+                  {activeConfirmDelete.label}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-white/70 leading-relaxed">
+              Hành động này sẽ xóa dữ liệu khỏi hệ thống và Firebase. Bạn có chắc chắn muốn tiếp tục?
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeConfirmDelete.type === 'song') {
+                    removeSong(activeConfirmDelete.id);
+                  } else if (activeConfirmDelete.type === 'member') {
+                    removeMember(activeConfirmDelete.id);
+                  } else {
+                    removeVoucher(activeConfirmDelete.id);
+                  }
+                  setConfirmDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold cursor-pointer"
+              >
+                Xóa Ngay
+              </button>
+            </div>
           </div>
         </div>
       )}

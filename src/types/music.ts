@@ -44,6 +44,7 @@ export interface AppUser {
   balance: number; // Số dư ví VNĐ
   purchasedSongIds: string[];
   likedSongIds?: string[]; // Danh sách ID bài hát đã tim đồng bộ đa thiết bị
+  likedAlbumIds?: string[]; // Danh sách ID album đã tim đồng bộ đa thiết bị
   blockedSongIds?: string[]; // Danh sách bài hát bị chặn
   usedVoucherCodes?: string[]; // Danh sách mã voucher đã dùng
   theme?: ThemeId;

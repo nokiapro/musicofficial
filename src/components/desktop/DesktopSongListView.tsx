@@ -310,21 +310,23 @@ export const DesktopSongListView: React.FC = () => {
                       }`}
                     >
                       {/* 1: STT */}
-                      <td className="py-3.5 px-4 text-center text-xs font-bold text-white/50 group-hover:text-white font-mono tabular-nums">
-                        {isCurrentPlaying ? (
-                          <div className="w-7 h-7 rounded-full accent-glow-btn text-white flex items-center justify-center mx-auto">
-                            <Pause className="w-3.5 h-3.5 fill-current" />
-                          </div>
-                        ) : (
-                          <span className="group-hover:hidden font-so text-sm tabular-nums">
-                            {globalIndex + 1}
-                          </span>
-                        )}
-                        {!isCurrentPlaying && (
-                          <div className="hidden group-hover:flex w-7 h-7 rounded-full bg-white text-slate-900 items-center justify-center mx-auto shadow">
-                            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                          </div>
-                        )}
+                      <td className="w-14 py-3.5 px-3 text-center text-xs font-bold text-white/50 group-hover:text-white font-mono tabular-nums">
+                        <div className="relative w-7 h-7 mx-auto flex items-center justify-center">
+                          {isCurrentPlaying ? (
+                            <div className="w-7 h-7 rounded-full accent-glow-btn text-white flex items-center justify-center">
+                              <Pause className="w-3.5 h-3.5 fill-current" />
+                            </div>
+                          ) : (
+                            <>
+                              <span className="font-so text-sm tabular-nums transition-opacity group-hover:opacity-0">
+                                {globalIndex + 1}
+                              </span>
+                              <div className="absolute inset-0 flex w-7 h-7 rounded-full bg-white text-slate-900 items-center justify-center shadow opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
+                                <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </td>
 
                       {/* 2: TÊN BÀI */}

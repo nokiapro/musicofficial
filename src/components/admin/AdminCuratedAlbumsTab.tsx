@@ -488,10 +488,10 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto shrink-0">
+            <div className="w-full sm:w-auto grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
               <button
                 onClick={() => handleOpenEditAlbum(activeAlbum)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer"
                 title="Sửa thông tin album này"
               >
                 <Edit3 className="w-3.5 h-3.5" />
@@ -501,10 +501,10 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
               <button
                 onClick={handleOpenAddSong}
                 style={{ backgroundColor: 'var(--color-accent)' }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 rounded-xl text-white text-xs font-bold shadow-md hover:opacity-90 active:scale-95 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Thêm Bài Hát</span>
+                <span>Thêm Bài Hát</span>
               </button>
             </div>
           </div>
@@ -525,13 +525,13 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
 
           {/* Table / List of Songs inside Album */}
           <div className="rounded-2xl border border-white/10 overflow-hidden bg-[#170f23]/90 shadow-xl">
-            <div className="p-3.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-white bg-white/5">
+            <div className="p-3.5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs font-bold text-white bg-white/5">
               <span>Danh Sách Bài Hát Trong Album ({filteredAlbumSongs.length}/{activeAlbumSongs.length})</span>
-              <span className="text-[11px] text-white/50">Dùng nút mũi tên ↑ ↓ để đổi thứ tự bài</span>
+              <span className="text-[11px] text-white/50 font-normal">Dùng nút mũi tên ↑ ↓ để đổi thứ tự bài</span>
             </div>
 
             {filteredAlbumSongs.length === 0 ? (
-              <div className="p-12 text-center text-white/40 text-xs space-y-3">
+              <div className="p-8 sm:p-12 text-center text-white/40 text-xs space-y-3">
                 <Music2 className="w-10 h-10 mx-auto stroke-[1.2] text-white/30" />
                 <p className="text-white/60 font-bold">Album này chưa có bài hát nào.</p>
                 <p className="text-[11px]">Bấm vào nút dưới để thêm bài hát đầu tiên vào album.</p>
@@ -554,36 +554,37 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                   return (
                     <div
                       key={song.id}
-                      className={`flex items-center justify-between p-3.5 hover:bg-white/5 transition-colors gap-2 sm:gap-4 ${
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-3.5 hover:bg-white/5 transition-colors gap-2.5 sm:gap-4 ${
                         isCurrent ? 'bg-purple-600/15' : ''
                       }`}
                     >
-                      {/* Left: Reorder Arrows + STT + Play button + Info */}
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                        {/* Move Up / Down Buttons */}
-                        <div className="flex flex-col gap-0.5 shrink-0">
-                          <button
-                            onClick={() => handleMoveSong(song.id, 'up')}
-                            disabled={originalIndex === 0}
-                            className="p-0.5 rounded hover:bg-white/20 disabled:opacity-20 text-white/70 hover:text-white cursor-pointer"
-                            title="Di chuyển lên trên"
-                          >
-                            <ArrowUp className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => handleMoveSong(song.id, 'down')}
-                            disabled={originalIndex === activeAlbumSongs.length - 1}
-                            className="p-0.5 rounded hover:bg-white/20 disabled:opacity-20 text-white/70 hover:text-white cursor-pointer"
-                            title="Di chuyển xuống dưới"
-                          >
-                            <ArrowDown className="w-3 h-3" />
-                          </button>
-                        </div>
+                      {/* Top / Left: Play + Cover + Title & Artists (plus desktop Reorder + STT) */}
+                      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                        {/* Desktop Reorder Arrows + STT */}
+                        <div className="hidden sm:flex items-center gap-2.5 shrink-0">
+                          <div className="flex flex-col gap-0.5 shrink-0">
+                            <button
+                              onClick={() => handleMoveSong(song.id, 'up')}
+                              disabled={originalIndex === 0}
+                              className="p-0.5 rounded hover:bg-white/20 disabled:opacity-20 text-white/70 hover:text-white cursor-pointer"
+                              title="Di chuyển lên trên"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleMoveSong(song.id, 'down')}
+                              disabled={originalIndex === activeAlbumSongs.length - 1}
+                              className="p-0.5 rounded hover:bg-white/20 disabled:opacity-20 text-white/70 hover:text-white cursor-pointer"
+                              title="Di chuyển xuống dưới"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </button>
+                          </div>
 
-                        {/* Consecutive STT */}
-                        <span className="text-xs font-mono font-bold text-white/40 w-5 text-center shrink-0">
-                          {song.stt || idx + 1}
-                        </span>
+                          <span className="text-xs font-mono font-bold text-white/40 w-5 text-center shrink-0">
+                            {song.stt || idx + 1}
+                          </span>
+                        </div>
 
                         {/* Test Play Button */}
                         <button
@@ -594,7 +595,7 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                               playAlbumTrack(song, activeAlbum);
                             }
                           }}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white shadow shrink-0 active:scale-95 transition-all cursor-pointer ${
+                          className={`w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white shadow shrink-0 active:scale-95 transition-all cursor-pointer ${
                             isCurrent ? 'bg-purple-600 ring-2 ring-purple-400' : 'bg-white/10 hover:bg-purple-600'
                           }`}
                           title={isPlayingThis ? 'Tạm dừng' : 'Phát thử bài hát'}
@@ -603,7 +604,7 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                         </button>
 
                         {/* Song Cover Thumbnail */}
-                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shrink-0 relative shadow-sm">
+                        <div className="w-11 h-11 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shrink-0 relative shadow-sm">
                           <img
                             src={song.coverImage || activeAlbum.coverImage}
                             alt={song.title}
@@ -626,41 +627,69 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-white/50 truncate mt-0.5">
+                          <p className="text-[11px] text-white/55 truncate mt-0.5">
                             {song.artists}
                           </p>
                         </div>
                       </div>
 
-                      {/* Right: Audio Format + Duration + Actions */}
-                      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
-                          song.audioFormat === 'WAV'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                        }`}>
-                          {song.audioFormat || 'MP3'}
-                        </span>
+                      {/* Bottom / Right: Mobile Reorder+STT + Audio Format + Duration + Actions */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 pt-2 sm:pt-0 border-t border-white/5 sm:border-0 shrink-0">
+                        <div className="flex items-center gap-2">
+                          {/* Mobile Reorder & STT */}
+                          <div className="flex sm:hidden items-center gap-1 bg-white/5 px-1.5 py-1 rounded-lg border border-white/10">
+                            <span className="text-[11px] font-mono font-bold text-white/50 px-1">
+                              #{song.stt || idx + 1}
+                            </span>
+                            <button
+                              onClick={() => handleMoveSong(song.id, 'up')}
+                              disabled={originalIndex === 0}
+                              className="p-1 rounded hover:bg-white/20 disabled:opacity-20 text-white/80 cursor-pointer"
+                              title="Di chuyển lên trên"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleMoveSong(song.id, 'down')}
+                              disabled={originalIndex === activeAlbumSongs.length - 1}
+                              className="p-1 rounded hover:bg-white/20 disabled:opacity-20 text-white/80 cursor-pointer"
+                              title="Di chuyển xuống dưới"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
 
-                        <span className="text-xs font-mono text-white/50 w-11 text-right">
-                          {formatSeconds(song.duration || 0)}
-                        </span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                            song.audioFormat === 'WAV'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                          }`}>
+                            {song.audioFormat || 'MP3'}
+                          </span>
 
-                        <button
-                          onClick={() => handleOpenEditSong(song)}
-                          className="p-1.5 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white transition-colors cursor-pointer"
-                          title="Chỉnh sửa bài hát này"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
+                          <span className="text-xs font-mono text-white/55 sm:w-11 sm:text-right">
+                            {formatSeconds(song.duration || 0)}
+                          </span>
+                        </div>
 
-                        <button
-                          onClick={() => setSongToDelete(song)}
-                          className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white transition-colors cursor-pointer"
-                          title="Xóa bài hát khỏi album"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditSong(song)}
+                            className="px-2.5 py-1.5 sm:p-1.5 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Chỉnh sửa bài hát này"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span className="sm:hidden">Sửa</span>
+                          </button>
+
+                          <button
+                            onClick={() => setSongToDelete(song)}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-red-600 text-white transition-colors cursor-pointer"
+                            title="Xóa bài hát khỏi album"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -686,16 +715,16 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            <div className="w-full sm:w-auto grid grid-cols-2 sm:flex items-center gap-2 flex-wrap">
               {/* Force Sync Albums to Firebase */}
               <button
                 onClick={handleSyncAlbums}
                 disabled={isSyncing}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
                 title="Đẩy tất cả album lên Firebase RTDB & Firestore"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng Bộ Lên Firebase'}</span>
+                <span className="truncate">{isSyncing ? 'Đang đồng bộ...' : 'Đồng Bộ Firebase'}</span>
               </button>
 
               {/* Seed Sample Albums button */}
@@ -703,11 +732,11 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                 <button
                   onClick={handleSeedDefaultAlbums}
                   disabled={isSeeding}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
+                  className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
                   title="Nạp lại các album nhạc hay mẫu XuanKen"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{isSeeding ? 'Đang nạp...' : '🌱 Nạp Album Mẫu'}</span>
+                  <span>{isSeeding ? 'Đang nạp...' : 'Nạp Album Mẫu'}</span>
                 </button>
               )}
 
@@ -715,29 +744,29 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
               <button
                 onClick={handleOpenAddAlbum}
                 style={{ backgroundColor: 'var(--color-accent)' }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-bold shadow-lg hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2 rounded-xl text-white text-xs font-bold shadow-lg hover:opacity-90 active:scale-95 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Tạo Album Mới</span>
+                <span>Tạo Album Mới</span>
               </button>
             </div>
           </div>
 
           {/* Grid of Albums */}
           {exclusiveAlbums.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-white/5 border border-dashed border-white/20 text-white/50 text-xs space-y-3">
+            <div className="p-8 sm:p-12 text-center rounded-2xl bg-white/5 border border-dashed border-white/20 text-white/50 text-xs space-y-3">
               <Disc3 className="w-12 h-12 text-white/30 mx-auto" />
               <h3 className="text-base font-bold text-white">Chưa Có Album Nào Trong Hệ Thống</h3>
               <p className="max-w-md mx-auto leading-relaxed">
-                Tất cả album đã được xóa sạch. Bạn có thể bấm <strong>"+ Tạo Album Mới"</strong> để tự tạo album riêng hoặc bấm <strong>"Nạp Album Mẫu"</strong> khi cần nạp lại 3 album tuyển chọn!
+                Tất cả album đã được xóa sạch. Bạn có thể bấm <strong>"Tạo Album Mới"</strong> để tự tạo album riêng hoặc bấm <strong>"Nạp Album Mẫu"</strong> khi cần nạp lại 3 album tuyển chọn!
               </p>
-              <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 pt-2">
                 <button
                   onClick={handleSeedDefaultAlbums}
                   disabled={isSeeding}
                   className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  🌱 Nạp 3 Album Mẫu XuanKen
+                  Nạp 3 Album Mẫu XuanKen
                 </button>
                 <button
                   onClick={handleOpenAddAlbum}
@@ -850,7 +879,7 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
               borderColor: 'var(--border-color)',
               color: 'var(--text-primary)',
             }}
-            className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 ${
+            className={`w-full max-w-md rounded-3xl border p-4 sm:p-6 shadow-2xl space-y-4 ${
               isClosingDeleteAlbum ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
             }`}
           >
@@ -921,7 +950,7 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
               borderColor: 'var(--border-color)',
               color: 'var(--text-primary)',
             }}
-            className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl space-y-4 ${
+            className={`w-full max-w-md rounded-3xl border p-4 sm:p-6 shadow-2xl space-y-4 ${
               isClosingDeleteSong ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
             }`}
           >

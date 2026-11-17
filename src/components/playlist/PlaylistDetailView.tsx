@@ -232,33 +232,35 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
                     >
                       {/* STT */}
                       <div className="w-8 sm:w-10 flex items-center justify-center shrink-0">
-                        {isPlayingThis ? (
-                          <div className="flex items-end justify-center gap-0.5 h-4">
-                            <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-1" />
-                            <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-2" />
-                            <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-3" />
-                          </div>
-                        ) : (
-                          <>
-                            <span className="text-xs sm:text-sm font-bold text-white/45 group-hover:hidden font-mono tabular-nums">
-                              {(idx + 1).toString().padStart(2, '0')}
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isCurrent) {
-                                  togglePlay();
-                                } else {
-                                  handlePlaySongInPlaylist(song);
-                                }
-                              }}
-                              style={{ backgroundColor: 'var(--color-accent)' }}
-                              className="hidden group-hover:flex items-center justify-center w-6 h-6 rounded-full text-white shadow-md transition-transform hover:scale-105 cursor-pointer"
-                            >
-                              <Play className="w-3 h-3 fill-current ml-0.5" />
-                            </button>
-                          </>
-                        )}
+                        <div className="relative w-7 h-7 flex items-center justify-center">
+                          {isPlayingThis ? (
+                            <div className="flex items-end justify-center gap-0.5 h-4">
+                              <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-1" />
+                              <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-2" />
+                              <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-3" />
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-xs sm:text-sm font-bold text-white/45 transition-opacity group-hover:opacity-0 font-mono tabular-nums">
+                                {(idx + 1).toString().padStart(2, '0')}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isCurrent) {
+                                    togglePlay();
+                                  } else {
+                                    handlePlaySongInPlaylist(song);
+                                  }
+                                }}
+                                style={{ backgroundColor: 'var(--color-accent)' }}
+                                className="absolute inset-0 m-auto flex items-center justify-center w-6 h-6 rounded-full text-white shadow-md opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity cursor-pointer"
+                              >
+                                <Play className="w-3 h-3 fill-current ml-0.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
 
                       {/* Song Info */}

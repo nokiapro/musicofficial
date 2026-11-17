@@ -28,7 +28,9 @@ export const CuratedAlbumsView: React.FC = () => {
     togglePlay,
     setSelectedLrcSong,
     likedSongIds,
+    likedAlbumIds,
     toggleLike,
+    toggleLikeAlbum,
     openAddToPlaylistModal,
     openDownloadModal,
     openShareModal,
@@ -38,16 +40,7 @@ export const CuratedAlbumsView: React.FC = () => {
 
   const [activeSongMenuId, setActiveSongMenuId] = useState<string | null>(null);
   const [activeAlbumMenuId, setActiveAlbumMenuId] = useState<string | null>(null);
-  const [likedAlbumIds, setLikedAlbumIds] = useState<string[]>(() => {
-    try {
-      const s = localStorage.getItem('xuanken_liked_albums');
-      return s ? JSON.parse(s) : [];
-    } catch (e) {
-      return [];
-    }
-  });
   const [albumToast, setAlbumToast] = useState<string | null>(null);
-  const [isAlbumLiked, setIsAlbumLiked] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const albumMenuRef = useRef<HTMLDivElement | null>(null);
   const albumSongsListRef = useRef<HTMLDivElement | null>(null);
@@ -216,13 +209,13 @@ export const CuratedAlbumsView: React.FC = () => {
                 {/* Hàng nút phụ: Yêu thích Album + Nút Random sáng đèn */}
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setIsAlbumLiked(!isAlbumLiked)}
+                    onClick={() => toggleLikeAlbum(selectedAlbum.id)}
                     className={`w-9 h-9 rounded-full bg-white/[0.08] border border-white/10 hover:bg-white/[0.16] flex items-center justify-center transition-colors cursor-pointer ${
-                      isAlbumLiked ? 'text-rose-500 border-rose-500/30 bg-rose-500/15' : 'text-white/75 hover:text-white'
+                      likedAlbumIds.includes(selectedAlbum.id) ? 'text-rose-500 border-rose-500/30 bg-rose-500/15' : 'text-white/75 hover:text-white'
                     }`}
                     title="Yêu thích album"
                   >
-                    <Heart className={`w-4 h-4 ${isAlbumLiked ? 'fill-current' : ''}`} />
+                    <Heart className={`w-4 h-4 ${likedAlbumIds.includes(selectedAlbum.id) ? 'fill-current' : ''}`} />
                   </button>
 
                   {/* Sáng đèn khi random trong album này, và chỉ random trong album này */}
@@ -320,33 +313,35 @@ export const CuratedAlbumsView: React.FC = () => {
                       >
                         {/* Cột 1: # STT */}
                         <div className="w-8 sm:w-10 flex items-center justify-center shrink-0">
-                          {isPlayingThis ? (
-                            <div className="flex items-end justify-center gap-0.5 h-4">
-                              <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-1" />
-                              <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-2" />
-                              <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-3" />
-                            </div>
-                          ) : (
-                            <>
-                              <span className="text-xs sm:text-sm font-bold text-white/45 group-hover:hidden font-mono tabular-nums">
-                                {(idx + 1).toString().padStart(2, '0')}
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isCurrent) {
-                                    togglePlay();
-                                  } else {
-                                    playAlbumTrack(song, selectedAlbum);
-                                  }
-                                }}
-                                style={{ backgroundColor: 'var(--color-accent)' }}
-                                className="hidden group-hover:flex items-center justify-center w-6 h-6 rounded-full text-white shadow-md transition-transform hover:scale-105 cursor-pointer"
-                              >
-                                <Play className="w-3 h-3 fill-current ml-0.5" />
-                              </button>
-                            </>
-                          )}
+                          <div className="relative w-7 h-7 flex items-center justify-center">
+                            {isPlayingThis ? (
+                              <div className="flex items-end justify-center gap-0.5 h-4">
+                                <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-1" />
+                                <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-2" />
+                                <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-3" />
+                              </div>
+                            ) : (
+                              <>
+                                <span className="text-xs sm:text-sm font-bold text-white/45 group-hover:opacity-0 transition-opacity font-mono tabular-nums">
+                                  {(idx + 1).toString().padStart(2, '0')}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isCurrent) {
+                                      togglePlay();
+                                    } else {
+                                      playAlbumTrack(song, selectedAlbum);
+                                    }
+                                  }}
+                                  style={{ backgroundColor: 'var(--color-accent)' }}
+                                  className="absolute inset-0 m-auto flex items-center justify-center w-6 h-6 rounded-full text-white shadow-md opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity cursor-pointer"
+                                >
+                                  <Play className="w-3 h-3 fill-current ml-0.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
 
                         {/* Cột 2: BÀI HÁT (Thumbnail + Title + Artists) */}
@@ -668,13 +663,7 @@ export const CuratedAlbumsView: React.FC = () => {
                           type="button"
                           onClick={() => {
                             const isLiked = likedAlbumIds.includes(album.id);
-                            const updated = isLiked
-                              ? likedAlbumIds.filter((id) => id !== album.id)
-                              : [...likedAlbumIds, album.id];
-                            setLikedAlbumIds(updated);
-                            try {
-                              localStorage.setItem('xuanken_liked_albums', JSON.stringify(updated));
-                            } catch (e) {}
+                            toggleLikeAlbum(album.id);
                             setAlbumToast(
                               isLiked ? `Đã bỏ tim album "${album.title}"` : `Đã thả tim album "${album.title}"! ❤️`
                             );

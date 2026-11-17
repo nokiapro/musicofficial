@@ -1233,7 +1233,7 @@ export const MobileAppLayout: React.FC = () => {
 
       case 'admin':
         return (
-          <div className="pb-32 px-1 sm:px-3 pt-2 max-w-6xl mx-auto">
+          <div className="pb-32 px-3 pt-3 max-w-6xl mx-auto">
             <AdminPageView />
           </div>
         );

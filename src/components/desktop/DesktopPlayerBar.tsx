@@ -282,7 +282,7 @@ export const DesktopPlayerBar: React.FC = () => {
             aria-valuemax={safeDuration}
             aria-valuenow={displayProgressTime}
           >
-            <div className="w-full h-1.5 group-hover:h-2 transition-all rounded-full glass-track overflow-visible relative">
+            <div className="w-full h-1.5 rounded-full glass-track overflow-visible relative">
               <div
                 className={`h-full rounded-full glass-fill relative ${isDraggingProgress ? '' : 'transition-[width] duration-100 ease-linear'}`}
                 style={{ width: `${progressPercent}%` }}

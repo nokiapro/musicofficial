@@ -31,6 +31,7 @@ interface MusicContextType {
   queue: Song[];
   history: Song[];
   likedSongIds: string[];
+  likedAlbumIds: string[];
   purchasedSongIds: string[];
   theme: ThemeId;
   activeDesktopTab: ActiveDesktopTab;
@@ -72,6 +73,7 @@ interface MusicContextType {
   nextSong: () => void;
   prevSong: () => void;
   toggleLike: (songId: string) => void;
+  toggleLikeAlbum: (albumId: string) => void;
   toggleShuffle: () => void;
   toggleRepeat: () => void;
   setVolume: (v: number) => void;
@@ -244,44 +246,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
   const [queue, setQueue] = useState<Song[]>([]);
   const [history, setHistory] = useState<Song[]>([]);
-  const [likedSongIds, setLikedSongIds] = useState<string[]>(() => {
-    try {
-      const parseKey = (k: string): string[] => {
-        const raw = localStorage.getItem(k);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
-      };
-      const merged = Array.from(new Set([...parseKey('xuanken_liked_v2'), ...parseKey('xuanken_liked_guest')]));
-      return merged;
-    } catch (e) {}
-    return [];
-  });
+  const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
+  const [likedAlbumIds, setLikedAlbumIds] = useState<string[]>([]);
   const [purchasedSongIds, setPurchasedSongIds] = useState<string[]>([]);
-  const [blockedSongIds, setBlockedSongIds] = useState<string[]>(() => {
-    try {
-      const local = localStorage.getItem('xuanken_blocked_songs');
-      return local ? JSON.parse(local) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [blockedSongIds, setBlockedSongIds] = useState<string[]>([]);
   const [userBalance, setUserBalance] = useState<number>(0);
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
-    try {
-      const local = localStorage.getItem('xuanken_site_settings');
-      if (local) return { ...DEFAULT_SITE_SETTINGS, ...JSON.parse(local) };
-    } catch (e) {}
-    return DEFAULT_SITE_SETTINGS;
-  });
-  const [theme, setThemeState] = useState<ThemeId>(() => {
-    try {
-      const saved = localStorage.getItem('xuanken_theme') as ThemeId;
-      return saved || 'purple';
-    } catch (e) {
-      return 'purple';
-    }
-  });
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [theme, setThemeState] = useState<ThemeId>('purple');
   const [activeDesktopTab, setActiveDesktopTabState] = useState<ActiveDesktopTab>('discover');
   const [tabHistory, setTabHistory] = useState<ActiveDesktopTab[]>(['discover']);
   const [tabHistoryIndex, setTabHistoryIndex] = useState<number>(0);
@@ -317,34 +288,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [playbackSource, setPlaybackSource] = useState<string>('Bài hát gợi ý');
 
-  // Audio Playback Settings: Format & Crossfade (Requirement 5)
-  const [preferredAudioFormat, setPreferredAudioFormatState] = useState<'MP3' | 'WAV'>(() => {
-    try {
-      const saved = localStorage.getItem('xuanken_preferred_audio_format');
-      if (saved === 'WAV' || saved === 'MP3') return saved;
-    } catch (e) {}
-    return 'MP3';
-  });
-  const [songFormatMap, setSongFormatMap] = useState<Record<string, 'MP3' | 'WAV'>>(() => {
-    try {
-      const saved = localStorage.getItem('xuanken_song_format_map');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return {};
-  });
+  // Audio Playback Settings: Format & Crossfade (Firebase Synced)
+  const [preferredAudioFormat, setPreferredAudioFormatState] = useState<'MP3' | 'WAV'>('MP3');
+  const [songFormatMap, setSongFormatMap] = useState<Record<string, 'MP3' | 'WAV'>>({});
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
   const [songToDownload, setSongToDownload] = useState<Song | null>(null);
   const [playbackRate, setPlaybackRateState] = useState<number>(1.0);
-  const [crossfadeDuration, setCrossfadeDurationState] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('xuanken_crossfade_duration');
-      if (saved !== null) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 0) return parsed;
-      }
-    } catch (e) {}
-    return 3;
-  });
+  const [crossfadeDuration, setCrossfadeDurationState] = useState<number>(3);
   const [isAudioSettingsModalOpen, setIsAudioSettingsModalOpen] = useState<boolean>(false);
 
   const openDownloadModal = (song: Song) => {
@@ -380,27 +330,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Auth & Members
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
-  const [members, setMembers] = useState<AppUser[]>(() => {
-    try {
-      const cached = localStorage.getItem('xuanken_music_members_v1');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          return parsed.map((m: any) => {
-            try {
-              const localBal = localStorage.getItem(`xuanken_member_balance_${m.uid}`);
-              if (localBal !== null) {
-                const num = parseInt(localBal, 10);
-                if (!isNaN(num)) return { ...m, balance: num };
-              }
-            } catch (e) {}
-            return m;
-          });
-        }
-      }
-    } catch (e) {}
-    return [];
-  });
+  const [members, setMembers] = useState<AppUser[]>([]);
 
   const [activePlaylistSongs, setActivePlaylistSongs] = useState<Song[]>([]);
 
@@ -553,40 +483,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return `${date.getUTCFullYear()}-W${weekNo}`;
   });
 
-  const [weeklyPlays, setWeeklyPlays] = useState<Record<string, number>>(() => {
-    try {
-      const local = localStorage.getItem('xuanken_weekly');
-      if (local) {
-        const parsed = JSON.parse(local);
-        if (parsed && parsed.weekKey) {
-          return parsed.songPlays || {};
-        }
-      }
-    } catch (e) {}
-    return {};
-  });
+  const [weeklyPlays, setWeeklyPlays] = useState<Record<string, number>>({});
 
-
-  // Fetch weekly plays from Firebase
+  // Fetch & subscribe to weekly plays from Firebase
   useEffect(() => {
     MusicService.fetchWeeklyPlays(currentWeekKey).then((plays) => {
       if (plays && Object.keys(plays).length > 0) {
         setWeeklyPlays(plays);
       }
     });
+    const unsubWeekly = MusicService.subscribeToWeeklyPlays(currentWeekKey, (plays) => {
+      if (plays) setWeeklyPlays(plays);
+    });
+    return () => unsubWeekly();
   }, [currentWeekKey]);
 
-  // Firebase Auth State Listener & Device Sync (Requirement 23)
+  // Firebase Auth State Listener & Real-time Device Sync (100% Firebase, zero localStorage)
   useEffect(() => {
+    let unsubUserProfile: (() => void) | null = null;
+    let unsubUserPlaylists: (() => void) | null = null;
+
+    const cleanupUserSubs = () => {
+      if (unsubUserProfile) {
+        unsubUserProfile();
+        unsubUserProfile = null;
+      }
+      if (unsubUserPlaylists) {
+        unsubUserPlaylists();
+        unsubUserPlaylists = null;
+      }
+    };
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+      cleanupUserSubs();
       setIsAuthLoading(true);
       if (fbUser) {
-        // Fetch existing members and direct member doc by uid (so non-admins also get full data)
-        const [allMembers, directMember, remoteLikedResult] = await Promise.all([
+        const [allMembers, directMember, remoteLikedResult, remoteLikedAlbums, loadedPlaylists, audioSettings] = await Promise.all([
           MusicService.fetchMembers(),
           MusicService.fetchMemberByUid(fbUser.uid),
           MusicService.fetchLikedSongs(fbUser.uid),
+          MusicService.fetchLikedAlbums(fbUser.uid),
+          MusicService.fetchPlaylists(),
+          MusicService.fetchAudioSettings(fbUser.uid),
         ]);
+
         let currentMember = allMembers.find((m) => m.uid === fbUser.uid || m.email === fbUser.email);
         if (directMember) {
           currentMember = currentMember
@@ -595,31 +535,24 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 ...directMember,
                 purchasedSongIds: Array.from(new Set([...(currentMember.purchasedSongIds || []), ...(directMember.purchasedSongIds || [])])),
                 likedSongIds: Array.from(new Set([...(currentMember.likedSongIds || []), ...(directMember.likedSongIds || [])])),
+                likedAlbumIds: Array.from(new Set([...(currentMember.likedAlbumIds || []), ...(directMember.likedAlbumIds || [])])),
               }
             : directMember;
         }
 
-        // Super Admin Check: Any email in PRIMARY_ADMIN_EMAILS has full admin privileges
         const userEmailClean = (fbUser.email || '').toLowerCase().trim();
         const isPrimaryAdmin = isSuperAdminEmail(userEmailClean);
 
         if (!currentMember) {
           const determinedRole: 'admin' | 'user' = isPrimaryAdmin ? 'admin' : 'user';
-          let startingBal = siteSettings?.defaultStartingBalance ?? 500000;
-          try {
-            const localSaved = localStorage.getItem(`xuanken_member_balance_${fbUser.uid}`);
-            if (localSaved !== null) {
-              const num = parseInt(localSaved, 10);
-              if (!isNaN(num)) startingBal = num;
-            }
-          } catch (e) {}
           currentMember = {
             uid: fbUser.uid,
             email: fbUser.email || 'user@xuanken.vn',
             displayName: fbUser.displayName || fbUser.email?.split('@')[0] || (determinedRole === 'admin' ? 'Admin XuanKen' : 'Thành viên'),
-            balance: startingBal,
+            balance: siteSettings?.defaultStartingBalance ?? 500000,
             purchasedSongIds: [],
             likedSongIds: remoteLikedResult?.ids || [],
+            likedAlbumIds: remoteLikedAlbums || [],
             blockedSongIds: [],
             role: determinedRole,
             createdAt: new Date().toLocaleDateString('vi-VN'),
@@ -636,163 +569,144 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             };
             await MusicService.upsertMember(currentMember);
           }
-          // Restore any updated balance stored by admin
-          try {
-            const storedBal = localStorage.getItem(`xuanken_member_balance_${currentMember.uid}`);
-            if (storedBal !== null) {
-              const num = parseInt(storedBal, 10);
-              if (!isNaN(num)) {
-                currentMember.balance = num;
-              }
-            }
-          } catch (e) {}
           const mergedList = allMembers.some((m) => m.uid === currentMember!.uid)
             ? allMembers.map((m) => (m.uid === currentMember!.uid ? currentMember! : m))
             : [...allMembers, currentMember];
           setMembers(mergedList);
         }
 
-        // Restore user settings and states from Firebase (Requirement 23)
-        const remoteLiked = Array.from(
+        const mergedLikes = Array.from(
           new Set([
             ...(Array.isArray(currentMember.likedSongIds) ? currentMember.likedSongIds : []),
             ...(remoteLikedResult?.ids || []),
           ])
         );
-        const parseLocalLiked = (key: string): string[] => {
-          try {
-            const raw = localStorage.getItem(key);
-            if (!raw) return [];
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
-          } catch (e) {
-            return [];
-          }
+        const mergedAlbumLikes = Array.from(
+          new Set([
+            ...(Array.isArray(currentMember.likedAlbumIds) ? currentMember.likedAlbumIds : []),
+            ...(remoteLikedAlbums || []),
+          ])
+        );
+
+        currentMember = {
+          ...currentMember,
+          likedSongIds: mergedLikes,
+          likedAlbumIds: mergedAlbumLikes,
         };
-        const uidLocal = parseLocalLiked(`xuanken_liked_${currentMember.uid}`);
-        const v2Local = parseLocalLiked('xuanken_liked_v2');
-        const guestLocal = parseLocalLiked('xuanken_liked_guest');
-
-        let localTs = 0;
-        try {
-          const tsRaw = localStorage.getItem(`xuanken_liked_ts_${currentMember.uid}`);
-          if (tsRaw) localTs = parseInt(tsRaw, 10) || 0;
-        } catch (e) {}
-        const remoteTs = remoteLikedResult?.updatedAt || 0;
-
-        let mergedLikes: string[];
-        if (remoteLikedResult && remoteTs > localTs && localTs > 0) {
-          mergedLikes = Array.from(new Set([...remoteLiked, ...guestLocal]));
-        } else {
-          mergedLikes = Array.from(new Set([...remoteLiked, ...uidLocal, ...v2Local, ...guestLocal]));
-        }
-
-        currentMember = { ...currentMember, likedSongIds: mergedLikes };
         setCurrentUser(currentMember);
-        setUserBalance(currentMember.balance);
-        if (currentMember.purchasedSongIds) {
-          setPurchasedSongIds(currentMember.purchasedSongIds);
-          purchasedSongIdsRef.current = currentMember.purchasedSongIds;
-        }
-        if (currentMember.blockedSongIds) {
-          setBlockedSongIds(currentMember.blockedSongIds);
-        }
+        setUserBalance(currentMember.balance ?? 0);
+        setPurchasedSongIds(currentMember.purchasedSongIds || []);
+        purchasedSongIdsRef.current = currentMember.purchasedSongIds || [];
+        setBlockedSongIds(currentMember.blockedSongIds || []);
         setLikedSongIds(mergedLikes);
-        try {
-          localStorage.setItem(`xuanken_liked_${currentMember.uid}`, JSON.stringify(mergedLikes));
-          localStorage.setItem('xuanken_liked_v2', JSON.stringify(mergedLikes));
-          localStorage.setItem('xuanken_liked_guest', JSON.stringify(mergedLikes));
-        } catch (e) {}
-        if (mergedLikes.length !== remoteLiked.length || mergedLikes.some((id) => !remoteLiked.includes(id))) {
-          MusicService.saveUserSettings(currentMember.uid, { likedSongIds: mergedLikes });
-        }
+        setLikedAlbumIds(mergedAlbumLikes);
 
-        // Isolate playlists per user account (Requirement 3)
-        try {
-          const userPlStr = localStorage.getItem(`xuanken_playlists_${currentMember.uid}`);
-          if (userPlStr) {
-            setPlaylists(JSON.parse(userPlStr));
-          } else {
-            MusicService.fetchPlaylists().then((allPl) => {
-              const userFiltered = (allPl || []).filter((p) => !p.userId || p.userId === currentMember!.uid);
-              setPlaylists(userFiltered);
-            });
-          }
-        } catch (e) {
-          setPlaylists([]);
-        }
+        const userFilteredPlaylists = (loadedPlaylists || []).filter(
+          (p) => !p.userId || p.userId === fbUser.uid
+        );
+        setPlaylists(userFilteredPlaylists);
+        setSelectedPlaylist((prev) => (prev ? userFilteredPlaylists.find((p) => p.id === prev.id) || prev : null));
 
         if (currentMember.theme) {
           setThemeState(currentMember.theme);
-          try {
-            localStorage.setItem('xuanken_theme', currentMember.theme);
-          } catch (e) {}
         }
-        if (currentMember.crossfadeDuration !== undefined) {
-          setCrossfadeDurationState(currentMember.crossfadeDuration);
+        const resolvedFormat = currentMember.preferredAudioFormat || audioSettings?.preferredFormat;
+        if (resolvedFormat) {
+          setPreferredAudioFormatState(resolvedFormat);
         }
-        if (currentMember.preferredAudioFormat) {
-          setPreferredAudioFormatState(currentMember.preferredAudioFormat);
+        if (audioSettings?.formatMap) {
+          setSongFormatMap(audioSettings.formatMap);
         }
+        const resolvedCrossfade =
+          currentMember.crossfadeDuration !== undefined
+            ? currentMember.crossfadeDuration
+            : audioSettings?.crossfadeDuration;
+        if (resolvedCrossfade !== undefined) {
+          setCrossfadeDurationState(resolvedCrossfade);
+          audioEngine.setCrossfadeDuration(resolvedCrossfade);
+        }
+
+        // Real-time listener for user's own playlists across PC & Mobile
+        unsubUserPlaylists = MusicService.subscribeToPlaylists((allPl) => {
+          const filtered = (allPl || []).filter((p) => !p.userId || p.userId === fbUser.uid);
+          setPlaylists(filtered);
+          setSelectedPlaylist((prev) => (prev ? filtered.find((p) => p.id === prev.id) || prev : null));
+        });
+
+        // Real-time listener for user profile (balance, liked songs, liked albums, purchased songs, blocked songs, theme, audio prefs)
+        unsubUserProfile = MusicService.subscribeToUserProfile(fbUser.uid, (remote) => {
+          if (!remote) return;
+          setCurrentUser((prev) => (prev ? { ...prev, ...remote } : prev));
+          if (typeof remote.balance === 'number') {
+            setUserBalance(remote.balance);
+          }
+          if (Array.isArray(remote.purchasedSongIds)) {
+            setPurchasedSongIds(remote.purchasedSongIds);
+            purchasedSongIdsRef.current = remote.purchasedSongIds;
+          }
+          if (Array.isArray(remote.likedSongIds)) {
+            setLikedSongIds(remote.likedSongIds);
+          }
+          if (Array.isArray(remote.likedAlbumIds)) {
+            setLikedAlbumIds(remote.likedAlbumIds);
+          }
+          if (Array.isArray(remote.blockedSongIds)) {
+            setBlockedSongIds(remote.blockedSongIds);
+          }
+          if (remote.theme) {
+            setThemeState(remote.theme);
+          }
+          if (remote.preferredAudioFormat) {
+            setPreferredAudioFormatState(remote.preferredAudioFormat);
+          }
+          if (typeof remote.crossfadeDuration === 'number') {
+            setCrossfadeDurationState(remote.crossfadeDuration);
+            audioEngine.setCrossfadeDuration(remote.crossfadeDuration);
+          }
+        });
       } else {
         setCurrentUser(null);
         setUserBalance(0);
         setPurchasedSongIds([]);
         purchasedSongIdsRef.current = [];
-        try {
-          const parseKey = (k: string): string[] => {
-            const raw = localStorage.getItem(k);
-            if (!raw) return [];
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
-          };
-          setLikedSongIds(Array.from(new Set([...parseKey('xuanken_liked_v2'), ...parseKey('xuanken_liked_guest')])));
-        } catch (e) {
-          setLikedSongIds([]);
-        }
+        setBlockedSongIds([]);
+        setLikedSongIds([]);
+        setLikedAlbumIds([]);
         setPlaylists([]);
+        setSelectedPlaylist(null);
       }
       setIsAuthLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      cleanupUserSubs();
+      unsubscribe();
+    };
   }, []);
 
-  // Fetch initial songs and members with real-time RTDB sync
+  // Fetch initial songs and attach global real-time Firebase listeners
   useEffect(() => {
     MusicService.fetchSongs().then((loadedSongs) => {
       const validSongs = loadedSongs || [];
       setSongs(validSongs);
     });
 
-    // Real-time listener for live sync across devices
     const unsubscribeRealtime = MusicService.subscribeToSongs((updatedSongs) => {
       const list = updatedSongs || [];
       setSongs(list);
       setCurrentSong((cur) => {
         if (!cur) return null;
-        // Never wipe out album songs or active playing tracks when standard catalog syncs
         if (cur.isAlbumTrack) return cur;
         const matched = list.find((s) => s.id === cur.id);
         return matched ? { ...cur, ...matched } : cur;
       });
     });
 
-    if (currentUser?.role === 'admin') {
-      MusicService.fetchMembers().then((loadedMembers) => {
-        setMembers(loadedMembers || []);
-      });
-    }
-
-    MusicService.fetchPlaylists().then((loadedPlaylists) => {
-      if (currentUser?.uid) {
-        const userFiltered = (loadedPlaylists || []).filter((p) => !p.userId || p.userId === currentUser.uid);
-        setPlaylists(userFiltered);
-      }
-    });
-
     MusicService.fetchVouchers().then((loadedVouchers) => {
       setVouchers(loadedVouchers || []);
+    });
+    const unsubscribeVouchers = MusicService.subscribeToVouchers((updatedVouchers) => {
+      setVouchers(updatedVouchers || []);
     });
 
     MusicService.fetchAudioSettings(currentUser?.uid).then((settings) => {
@@ -806,33 +720,41 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (settings.crossfadeDuration !== undefined) {
           setCrossfadeDurationState(settings.crossfadeDuration);
           audioEngine.setCrossfadeDuration(settings.crossfadeDuration);
-          try {
-            localStorage.setItem('xuanken_crossfade_duration', settings.crossfadeDuration.toString());
-          } catch (e) {}
         }
       }
     });
+
+    const applySiteMeta = (merged: SiteSettings) => {
+      if (merged.siteName) {
+        document.title = `${merged.siteName} - ${merged.siteSlogan || ''}`;
+      }
+      if (merged.faviconUrl) {
+        let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.type = 'image/x-icon';
+          link.rel = 'shortcut icon';
+          document.head.appendChild(link);
+        }
+        link.href = merged.faviconUrl;
+      }
+    };
 
     MusicService.fetchSiteSettings().then((loaded) => {
       if (loaded) {
         setSiteSettings((prev) => {
           const merged = { ...prev, ...loaded };
-          if (merged.siteName) {
-            document.title = `${merged.siteName} - ${merged.siteSlogan || ''}`;
-          }
-          if (merged.faviconUrl) {
-            let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-            if (!link) {
-              link = document.createElement('link');
-              link.type = 'image/x-icon';
-              link.rel = 'shortcut icon';
-              document.head.appendChild(link);
-            }
-            link.href = merged.faviconUrl;
-          }
+          applySiteMeta(merged);
           return merged;
         });
       }
+    });
+    const unsubscribeSiteSettings = MusicService.subscribeToSiteSettings((loaded) => {
+      setSiteSettings((prev) => {
+        const merged = { ...prev, ...loaded };
+        applySiteMeta(merged);
+        return merged;
+      });
     });
 
     MusicService.fetchExclusiveAlbums().then((loadedAlbums) => {
@@ -878,11 +800,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     MusicService.fetchArtistBios().then((loadedBios) => {
       setArtistBios(loadedBios || []);
     });
+    const unsubscribeArtistBios = MusicService.subscribeToArtistBios((updatedBios) => {
+      setArtistBios(updatedBios || []);
+    });
 
     return () => {
       unsubscribeRealtime();
+      unsubscribeVouchers();
+      unsubscribeSiteSettings();
       unsubscribeAlbums();
       unsubscribeChat();
+      unsubscribeArtistBios();
     };
   }, []);
   const isSongPurchased = (songId: string): boolean => {
@@ -938,15 +866,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCurrentUser(null);
     setUserBalance(0);
     setPurchasedSongIds([]);
-    try {
-      const guestLiked =
-        localStorage.getItem('xuanken_liked_v2') ||
-        localStorage.getItem('xuanken_liked_guest');
-      setLikedSongIds(guestLiked ? JSON.parse(guestLiked) : []);
-    } catch (e) {
-      setLikedSongIds([]);
-    }
+    purchasedSongIdsRef.current = [];
+    setBlockedSongIds([]);
+    setLikedSongIds([]);
+    setLikedAlbumIds([]);
     setPlaylists([]);
+    setSelectedPlaylist(null);
     if (activeDesktopTab === 'admin') {
       setActiveDesktopTab('discover');
     }
@@ -1641,14 +1566,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLikedSongIds((prev) => {
       const isCurrentlyLiked = prev.includes(songId);
       const next = isCurrentlyLiked ? prev.filter((id) => id !== songId) : [...prev, songId];
-      try {
-        localStorage.setItem('xuanken_liked_v2', JSON.stringify(next));
-        localStorage.setItem('xuanken_liked_guest', JSON.stringify(next));
-        if (currentUser?.uid) {
-          localStorage.setItem(`xuanken_liked_${currentUser.uid}`, JSON.stringify(next));
-          localStorage.setItem(`xuanken_liked_ts_${currentUser.uid}`, Date.now().toString());
-        }
-      } catch (e) {}
       if (currentUser?.uid) {
         setCurrentUser((cur) => (cur ? { ...cur, likedSongIds: next } : cur));
         setMembers((prevMembers) =>
@@ -1682,12 +1599,24 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  const toggleLikeAlbum = (albumId: string) => {
+    setLikedAlbumIds((prev) => {
+      const isCurrentlyLiked = prev.includes(albumId);
+      const next = isCurrentlyLiked ? prev.filter((id) => id !== albumId) : [...prev, albumId];
+      if (currentUser?.uid) {
+        setCurrentUser((cur) => (cur ? { ...cur, likedAlbumIds: next } : cur));
+        setMembers((prevMembers) =>
+          prevMembers.map((m) => (m.uid === currentUser.uid ? { ...m, likedAlbumIds: next } : m))
+        );
+        MusicService.saveUserSettings(currentUser.uid, { likedAlbumIds: next });
+      }
+      return next;
+    });
+  };
+
   const blockSong = (songId: string) => {
     setBlockedSongIds((prev) => {
       const next = prev.includes(songId) ? prev : [...prev, songId];
-      try {
-        localStorage.setItem('xuanken_blocked_songs', JSON.stringify(next));
-      } catch (e) {}
       if (currentUser?.uid) {
         MusicService.saveUserSettings(currentUser.uid, { blockedSongIds: next });
       }
@@ -1701,9 +1630,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const unblockSong = (songId: string) => {
     setBlockedSongIds((prev) => {
       const next = prev.filter((id) => id !== songId);
-      try {
-        localStorage.setItem('xuanken_blocked_songs', JSON.stringify(next));
-      } catch (e) {}
       if (currentUser?.uid) {
         MusicService.saveUserSettings(currentUser.uid, { blockedSongIds: next });
       }
@@ -1776,7 +1702,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       document.body.setAttribute('data-theme', t);
       const rootEl = document.getElementById('root');
       if (rootEl) rootEl.setAttribute('data-theme', t);
-      localStorage.setItem('xuanken_theme', t);
     } catch (e) {}
     if (currentUser?.uid) {
       MusicService.saveUserSettings(currentUser.uid, { theme: t });
@@ -1789,7 +1714,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       document.body.setAttribute('data-theme', theme);
       const rootEl = document.getElementById('root');
       if (rootEl) rootEl.setAttribute('data-theme', theme);
-      localStorage.setItem('xuanken_theme', theme);
     } catch (e) {}
   }, [theme]);
 
@@ -2033,9 +1957,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateMemberBalance = async (uid: string, newBalance: number) => {
-    try {
-      localStorage.setItem(`xuanken_member_balance_${uid}`, newBalance.toString());
-    } catch (e) {}
     const updated = members.map((m) => (m.uid === uid ? { ...m, balance: newBalance } : m));
     setMembers(updated);
     if (currentUser?.uid === uid) {
@@ -2050,11 +1971,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateMember = async (uid: string, data: { displayName?: string; role?: 'admin' | 'user'; balance?: number }) => {
-    if (data.balance !== undefined) {
-      try {
-        localStorage.setItem(`xuanken_member_balance_${uid}`, data.balance.toString());
-      } catch (e) {}
-    }
     const updated = members.map((m) => {
       if (m.uid === uid) {
         return {
@@ -2257,13 +2173,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setCrossfadeDuration = (sec: number) => {
     setCrossfadeDurationState(sec);
     audioEngine.setCrossfadeDuration(sec);
-    try {
-      localStorage.setItem('xuanken_crossfade_duration', sec.toString());
-    } catch (e) {}
     MusicService.saveAudioSettings(preferredAudioFormat, songFormatMap, currentUser?.uid, sec);
   };
 
-  // 4. Custom Playlists Handlers
+  // 4. Custom Playlists Handlers (100% Firebase Synced)
   const createPlaylist = async (name: string, description?: string): Promise<Playlist> => {
     const newPlaylist: Playlist = {
       id: `pl-${Date.now()}`,
@@ -2276,11 +2189,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     const updated = [newPlaylist, ...playlists];
     setPlaylists(updated);
-    if (currentUser?.uid) {
-      try {
-        localStorage.setItem(`xuanken_playlists_${currentUser.uid}`, JSON.stringify(updated));
-      } catch (e) {}
-    }
     await MusicService.upsertPlaylist(newPlaylist);
     return newPlaylist;
   };
@@ -2288,10 +2196,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deletePlaylist = async (id: string) => {
     const updated = playlists.filter((p) => p.id !== id);
     setPlaylists(updated);
-    if (currentUser?.uid) {
-      try {
-        localStorage.setItem(`xuanken_playlists_${currentUser.uid}`, JSON.stringify(updated));
-      } catch (e) {}
+    if (selectedPlaylist?.id === id) {
+      setSelectedPlaylist(null);
     }
     await MusicService.deletePlaylist(id);
   };
@@ -2309,11 +2215,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (selectedPlaylist?.id === playlistId) {
       setSelectedPlaylist(updated);
     }
-    if (currentUser?.uid) {
-      try {
-        localStorage.setItem(`xuanken_playlists_${currentUser.uid}`, JSON.stringify(nextList));
-      } catch (e) {}
-    }
     await MusicService.upsertPlaylist(updated);
   };
 
@@ -2328,11 +2229,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setPlaylists(nextList);
     if (selectedPlaylist?.id === playlistId) {
       setSelectedPlaylist(updated);
-    }
-    if (currentUser?.uid) {
-      try {
-        localStorage.setItem(`xuanken_playlists_${currentUser.uid}`, JSON.stringify(nextList));
-      } catch (e) {}
     }
     await MusicService.upsertPlaylist(updated);
   };
@@ -2812,6 +2708,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         queue,
         history,
         likedSongIds,
+        likedAlbumIds,
         purchasedSongIds,
         theme,
         activeDesktopTab,
@@ -2844,6 +2741,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         nextSong,
         prevSong,
         toggleLike,
+        toggleLikeAlbum,
         toggleShuffle,
         toggleRepeat,
         setVolume,

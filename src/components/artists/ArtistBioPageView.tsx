@@ -593,7 +593,7 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
                     }`}
                   >
                     {/* Index or Equalizer / Play indicator */}
-                    <div className="flex w-7 shrink-0 items-center justify-center text-xs text-white/45 font-mono tabular-nums">
+                    <div className="relative flex w-7 h-7 shrink-0 items-center justify-center text-xs text-white/45 font-mono tabular-nums">
                       {isSongPlaying ? (
                         <div className="flex items-end gap-0.5 h-4">
                           <span style={{ backgroundColor: 'var(--color-accent)' }} className="w-0.5 rounded-full animate-soundwave-1" />
@@ -602,8 +602,8 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
                         </div>
                       ) : (
                         <>
-                          <span className="group-hover:hidden">{(index + 1).toString().padStart(2, '0')}</span>
-                          <Play className="hidden h-3.5 w-3.5 fill-current text-white group-hover:block" />
+                          <span className="transition-opacity group-hover:opacity-0">{(index + 1).toString().padStart(2, '0')}</span>
+                          <Play className="absolute inset-0 m-auto h-3.5 w-3.5 fill-current text-white opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity" />
                         </>
                       )}
                     </div>

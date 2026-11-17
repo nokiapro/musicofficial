@@ -74,6 +74,21 @@
         ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
       }
     },
+    "artist_bios": {
+      ".read": true,
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+    },
+    "api_keys": {
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+    },
+    "api_key_hashes": {
+      ".read": false,
+      "$keyHash": {
+        ".read": true,
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+      }
+    },
     "_system_ping": {
       ".read": true,
       ".write": true

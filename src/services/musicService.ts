@@ -4,9 +4,6 @@ import { rtdb, db, auth } from './firebase';
 import { Song, AppUser, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage, ArtistBio } from '../types/music';
 import { SONGS_DATABASE } from '../data/songs';
 
-const STORAGE_KEY_SONGS = 'xuanken_music_songs_v3';
-const STORAGE_KEY_MEMBERS = 'xuanken_music_members_v3';
-
 // Recursively strips all undefined properties from objects/arrays so Firebase never throws "value argument contains undefined"
 export function cleanForFirebase<T = any>(obj: any): T {
   if (obj === undefined) return null as any;
@@ -143,12 +140,11 @@ export const MusicService = {
               .map(([key, val]: [string, any]) => sanitizeSong(val, key));
             // Sort by stt or id
             songsArray.sort((a, b) => (a.stt || 0) - (b.stt || 0));
-            localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(songsArray));
             onUpdate(songsArray);
           }
         },
         (err: any) => {
-          console.warn('Realtime sync warning (using cache):', err);
+          console.warn('Realtime sync warning:', err);
         }
       );
     } catch (e) {
@@ -157,7 +153,7 @@ export const MusicService = {
     }
   },
 
-  // Load songs from Firebase Realtime Database or Firestore, fallback to LocalStorage
+  // Load songs from Firebase Realtime Database or Firestore
   async fetchSongs(): Promise<Song[]> {
     try {
       const dbRef = ref(rtdb);
@@ -168,7 +164,6 @@ export const MusicService = {
           .filter(([_, val]: [string, any]) => val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl))
           .map(([key, val]: [string, any]) => sanitizeSong(val, key));
         songsArray.sort((a, b) => (a.stt || 0) - (b.stt || 0));
-        localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(songsArray));
         return songsArray;
       }
     } catch (err) {
@@ -188,31 +183,16 @@ export const MusicService = {
           }
         });
         songsArray.sort((a, b) => (a.stt || 0) - (b.stt || 0));
-        localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(songsArray));
         return songsArray;
       }
     } catch (err) {
       console.warn('Firestore fallback read notice:', err);
     }
 
-    const localCached = localStorage.getItem(STORAGE_KEY_SONGS);
-    if (localCached) {
-      try {
-        const list = JSON.parse(localCached);
-        if (Array.isArray(list)) {
-          return list
-            .filter((s) => s && (s.title || s.demoUrl || s.mp3Url || s.wavUrl))
-            .map((s, idx) => sanitizeSong(s, s.id || `cached-${idx}`));
-        }
-      } catch (e) {
-        console.error('Failed to parse cached songs:', e);
-      }
-    }
-
     return SONGS_DATABASE;
   },
 
-  // Save all songs to Firebase and LocalStorage with detailed error reporting
+  // Save all songs to Firebase
   async saveSongsToFirebase(songs: Song[]): Promise<{
     success: boolean;
     rtdb: boolean;
@@ -220,7 +200,6 @@ export const MusicService = {
     error?: string;
   }> {
     const cleanSongs = cleanForFirebase(songs) || [];
-    localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(cleanSongs));
     let rtdbSuccess = false;
     let firestoreSuccess = false;
     let lastError = '';
@@ -288,19 +267,6 @@ export const MusicService = {
       console.error('Firestore upsert error:', err);
     }
 
-    // Update local storage
-    try {
-      const local = localStorage.getItem(STORAGE_KEY_SONGS);
-      const list: Song[] = local ? JSON.parse(local) : [];
-      const idx = list.findIndex((s) => s.id === song.id);
-      if (idx >= 0) {
-        list[idx] = clean;
-      } else {
-        list.unshift(clean);
-      }
-      localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(list));
-    } catch (e) {}
-
     const overallSuccess = rtdbSuccess || firestoreSuccess;
     return {
       success: overallSuccess,
@@ -325,15 +291,6 @@ export const MusicService = {
       console.warn('Firestore playCount update warning:', err);
     }
 
-    try {
-      const local = localStorage.getItem(STORAGE_KEY_SONGS);
-      if (local) {
-        const list: Song[] = JSON.parse(local);
-        const updated = list.map((s) => (s.id === songId ? { ...s, playCount: newCount } : s));
-        localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(updated));
-      }
-    } catch (e) {}
-
     return true;
   },
 
@@ -354,33 +311,15 @@ export const MusicService = {
     return true;
   },
 
-  // Members Management
+  // Members Management (Firebase Only)
   async fetchMembers(): Promise<AppUser[]> {
-    const applyLocalBalanceOverrides = (arr: AppUser[]): AppUser[] => {
-      return arr.map((m) => {
-        if (!m || !m.uid) return m;
-        try {
-          const localBal = localStorage.getItem(`xuanken_member_balance_${m.uid}`);
-          if (localBal !== null) {
-            const num = parseInt(localBal, 10);
-            if (!isNaN(num)) {
-              return { ...m, balance: num };
-            }
-          }
-        } catch (e) {}
-        return m;
-      });
-    };
-
     try {
       const dbRef = ref(rtdb);
       const snapshot = await get(child(dbRef, 'members'));
       if (snapshot.exists()) {
         const data = snapshot.val();
-        let membersArray: AppUser[] = Object.values(data);
+        const membersArray: AppUser[] = Object.values(data);
         if (membersArray.length > 0) {
-          membersArray = applyLocalBalanceOverrides(membersArray);
-          localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(membersArray));
           return membersArray;
         }
       }
@@ -396,7 +335,7 @@ export const MusicService = {
       const colRef = collection(db, 'members');
       const docsSnap = await getDocs(colRef);
       if (!docsSnap.empty) {
-        let membersArray: AppUser[] = [];
+        const membersArray: AppUser[] = [];
         docsSnap.forEach((d: any) => {
           const val = d.data();
           if (val && val.email) {
@@ -408,6 +347,7 @@ export const MusicService = {
               balance: typeof val.balance === 'number' ? val.balance : 500000,
               purchasedSongIds: Array.isArray(val.purchasedSongIds) ? val.purchasedSongIds : [],
               likedSongIds: Array.isArray(val.likedSongIds) ? val.likedSongIds : [],
+              likedAlbumIds: Array.isArray(val.likedAlbumIds) ? val.likedAlbumIds : [],
               blockedSongIds: Array.isArray(val.blockedSongIds) ? val.blockedSongIds : [],
               usedVoucherCodes: Array.isArray(val.usedVoucherCodes) ? val.usedVoucherCodes : undefined,
               theme: val.theme,
@@ -419,8 +359,6 @@ export const MusicService = {
           }
         });
         if (membersArray.length > 0) {
-          membersArray = applyLocalBalanceOverrides(membersArray);
-          localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(membersArray));
           return membersArray;
         }
       }
@@ -431,31 +369,18 @@ export const MusicService = {
       }
     }
 
-    const localCached = localStorage.getItem(STORAGE_KEY_MEMBERS);
-    if (localCached) {
-      try {
-        const parsed = JSON.parse(localCached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return applyLocalBalanceOverrides(parsed);
-        }
-      } catch (e) {}
-    }
-
     // Default member if authenticated
     if (auth.currentUser) {
       const isPrimaryAdmin = auth.currentUser.email?.toLowerCase().trim() === 'admin@xuanken.vn' ||
                              auth.currentUser.email?.toLowerCase().trim() === 'phamthikimthanh.qy@gmail.com';
-      let bal = 500000;
-      try {
-        const stored = localStorage.getItem(`xuanken_member_balance_${auth.currentUser.uid}`);
-        if (stored !== null) bal = parseInt(stored, 10) || 500000;
-      } catch (e) {}
       const fallbackMember: AppUser = {
         uid: auth.currentUser.uid,
         email: auth.currentUser.email || (isPrimaryAdmin ? 'admin@xuanken.vn' : 'user@xuanken.vn'),
         displayName: auth.currentUser.displayName || (isPrimaryAdmin ? 'Admin XuanKen' : 'Thành Viên'),
-        balance: bal,
+        balance: 500000,
         purchasedSongIds: [],
+        likedSongIds: [],
+        likedAlbumIds: [],
         blockedSongIds: [],
         role: isPrimaryAdmin ? 'admin' : 'user',
         createdAt: new Date().toLocaleDateString('vi-VN'),
@@ -493,6 +418,10 @@ export const MusicService = {
     const fsLikes = Array.isArray(fsMember?.likedSongIds) ? fsMember.likedSongIds : [];
     const mergedLikes = Array.from(new Set([...rtdbLikes, ...fsLikes]));
 
+    const rtdbAlbumLikes = Array.isArray(rtdbMember?.likedAlbumIds) ? rtdbMember.likedAlbumIds : [];
+    const fsAlbumLikes = Array.isArray(fsMember?.likedAlbumIds) ? fsMember.likedAlbumIds : [];
+    const mergedAlbumLikes = Array.from(new Set([...rtdbAlbumLikes, ...fsAlbumLikes]));
+
     const rtdbPurchased = Array.isArray(rtdbMember?.purchasedSongIds) ? rtdbMember.purchasedSongIds : [];
     const fsPurchased = Array.isArray(fsMember?.purchasedSongIds) ? fsMember.purchasedSongIds : [];
     const mergedPurchased = Array.from(new Set([...rtdbPurchased, ...fsPurchased]));
@@ -502,6 +431,7 @@ export const MusicService = {
       uid: base.uid || uid,
       purchasedSongIds: mergedPurchased,
       likedSongIds: mergedLikes,
+      likedAlbumIds: mergedAlbumLikes,
     };
   },
 
@@ -552,17 +482,47 @@ export const MusicService = {
     return { ids: Array.from(allIds), updatedAt: latestUpdatedAt };
   },
 
+  async fetchLikedAlbums(uid: string): Promise<string[]> {
+    if (!uid) return [];
+    const allIds = new Set<string>();
+    try {
+      const snap = await get(ref(rtdb, `users/${uid}/liked_albums`));
+      if (snap.exists()) {
+        const val = snap.val();
+        if (val && Array.isArray(val.likedAlbumIds)) {
+          val.likedAlbumIds.forEach((id: any) => typeof id === 'string' && allIds.add(id));
+        }
+      }
+    } catch (e) {}
+    try {
+      const snap = await get(ref(rtdb, `members/${uid}/likedAlbumIds`));
+      if (snap.exists() && Array.isArray(snap.val())) {
+        snap.val().forEach((id: any) => typeof id === 'string' && allIds.add(id));
+      }
+    } catch (e) {}
+    return Array.from(allIds);
+  },
+
+  subscribeToUserProfile(uid: string, onUpdate: (member: Partial<AppUser>) => void): () => void {
+    if (!uid) return () => {};
+    try {
+      const mRef = ref(rtdb, `members/${uid}`);
+      return onValue(
+        mRef,
+        (snapshot: any) => {
+          if (snapshot.exists()) {
+            onUpdate(snapshot.val() || {});
+          }
+        },
+        () => {}
+      );
+    } catch (e) {
+      return () => {};
+    }
+  },
+
   async saveMembers(members: AppUser[]): Promise<{ success: boolean; error?: string }> {
     const cleanMembers = cleanForFirebase(members) || [];
-    // Ensure every member balance and likedSongIds are preserved
-    cleanMembers.forEach((m: AppUser) => {
-      if (m && m.uid && typeof m.balance === 'number') {
-        try {
-          localStorage.setItem(`xuanken_member_balance_${m.uid}`, m.balance.toString());
-        } catch (e) {}
-      }
-    });
-    localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(cleanMembers));
     let success = false;
     let lastError = '';
 
@@ -626,28 +586,6 @@ export const MusicService = {
 
   async upsertMember(member: AppUser): Promise<{ success: boolean; error?: string }> {
     const clean = cleanForFirebase(member);
-    if (clean && clean.uid && typeof clean.balance === 'number') {
-      try {
-        localStorage.setItem(`xuanken_member_balance_${clean.uid}`, clean.balance.toString());
-      } catch (e) {}
-    }
-
-    // Keep cached members list up to date and preserve likedSongIds if missing on incoming object
-    try {
-      const cached = localStorage.getItem(STORAGE_KEY_MEMBERS);
-      const list: AppUser[] = cached ? JSON.parse(cached) : [];
-      const idx = list.findIndex((m) => m.uid === member.uid);
-      if (idx >= 0) {
-        if (clean.likedSongIds === undefined && Array.isArray(list[idx].likedSongIds)) {
-          clean.likedSongIds = list[idx].likedSongIds;
-        }
-        list[idx] = { ...list[idx], ...clean };
-      } else {
-        list.push(clean);
-      }
-      localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(list));
-    } catch (e) {}
-
     let success = false;
     let lastError = '';
 
@@ -700,33 +638,80 @@ export const MusicService = {
     } catch (e) {}
   },
 
-  // Playlists Management
+  // Playlists Management (100% Firebase RTDB + Firestore + Realtime Sync)
   async fetchPlaylists(): Promise<Playlist[]> {
+    const byId = new Map<string, Playlist>();
+
     try {
       const dbRef = ref(rtdb);
       const snapshot = await get(child(dbRef, 'playlists'));
       if (snapshot.exists()) {
-        const data = snapshot.val();
-        const list: Playlist[] = Object.values(data);
-        localStorage.setItem('xuanken_music_playlists_v1', JSON.stringify(list));
-        return list;
+        const data = snapshot.val() || {};
+        Object.values(data).forEach((p: any) => {
+          if (p && p.id) {
+            byId.set(p.id, {
+              ...p,
+              songIds: Array.isArray(p.songIds) ? p.songIds : [],
+            });
+          }
+        });
       }
     } catch (err) {
-      console.warn('Firebase playlists fetch notice:', err);
+      console.warn('Firebase RTDB playlists fetch notice:', err);
     }
 
-    const local = localStorage.getItem('xuanken_music_playlists_v1');
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch (e) {}
+    try {
+      const colRef = collection(db, 'playlists');
+      const docsSnap = await getDocs(colRef);
+      if (!docsSnap.empty) {
+        docsSnap.forEach((d: any) => {
+          const val = d.data();
+          if (val && (val.id || d.id) && !byId.has(val.id || d.id)) {
+            byId.set(val.id || d.id, {
+              ...val,
+              id: val.id || d.id,
+              songIds: Array.isArray(val.songIds) ? val.songIds : [],
+            } as Playlist);
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Firestore playlists fetch notice:', err);
     }
-    return [];
+
+    return Array.from(byId.values());
+  },
+
+  subscribeToPlaylists(onUpdate: (playlists: Playlist[]) => void): () => void {
+    try {
+      const pRef = ref(rtdb, 'playlists');
+      return onValue(
+        pRef,
+        (snapshot: any) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val() || {};
+            const list: Playlist[] = Object.values(data)
+              .filter((p: any) => p && p.id)
+              .map((p: any) => ({
+                ...p,
+                songIds: Array.isArray(p.songIds) ? p.songIds : [],
+              }));
+            onUpdate(list);
+          } else {
+            onUpdate([]);
+          }
+        },
+        (err: any) => {
+          console.warn('Playlists RTDB realtime sync notice:', err);
+        }
+      );
+    } catch (e) {
+      return () => {};
+    }
   },
 
   async savePlaylists(playlists: Playlist[]): Promise<{ success: boolean; error?: string }> {
     const clean = cleanForFirebase(playlists) || [];
-    localStorage.setItem('xuanken_music_playlists_v1', JSON.stringify(clean));
     let success = false;
     let lastError = '';
 
@@ -745,11 +730,25 @@ export const MusicService = {
       console.error('Firebase savePlaylists error:', err);
     }
 
+    try {
+      for (const p of clean) {
+        if (p && p.id) {
+          await setDoc(doc(db, 'playlists', p.id), p, { merge: true });
+        }
+      }
+      success = true;
+    } catch (err: any) {
+      if (!lastError) lastError = err?.message || String(err);
+    }
+
     return { success, error: success ? undefined : lastError };
   },
 
   async upsertPlaylist(playlist: Playlist): Promise<{ success: boolean; error?: string }> {
-    const clean = cleanForFirebase(playlist);
+    const clean = cleanForFirebase({
+      ...playlist,
+      songIds: Array.isArray(playlist.songIds) ? playlist.songIds : [],
+    });
     let success = false;
     let lastError = '';
 
@@ -759,17 +758,16 @@ export const MusicService = {
       success = true;
     } catch (err: any) {
       lastError = err?.message || String(err);
-      console.error('Firebase upsertPlaylist error:', err);
+      console.error('Firebase RTDB upsertPlaylist error:', err);
     }
 
     try {
-      const local = localStorage.getItem('xuanken_music_playlists_v1');
-      const list: Playlist[] = local ? JSON.parse(local) : [];
-      const idx = list.findIndex((p) => p.id === clean.id);
-      if (idx >= 0) list[idx] = clean;
-      else list.unshift(clean);
-      localStorage.setItem('xuanken_music_playlists_v1', JSON.stringify(list));
-    } catch (e) {}
+      await setDoc(doc(db, 'playlists', clean.id), clean);
+      success = true;
+    } catch (err: any) {
+      if (!lastError) lastError = err?.message || String(err);
+      console.error('Firestore upsertPlaylist error:', err);
+    }
 
     return { success, error: success ? undefined : lastError };
   },
@@ -780,11 +778,7 @@ export const MusicService = {
       await set(pRef, null);
     } catch (e) {}
     try {
-      const local = localStorage.getItem('xuanken_music_playlists_v1');
-      if (local) {
-        const list: Playlist[] = JSON.parse(local);
-        localStorage.setItem('xuanken_music_playlists_v1', JSON.stringify(list.filter((p) => p.id !== id)));
-      }
+      await deleteDoc(doc(db, 'playlists', id));
     } catch (e) {}
   },
 
@@ -823,27 +817,34 @@ export const MusicService = {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const list: Voucher[] = Object.values(data);
-        localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(list));
         return list;
       }
     } catch (err) {
       console.warn('Firebase vouchers fetch notice:', err);
     }
 
-    const local = localStorage.getItem('xuanken_music_vouchers_v1');
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch (e) {}
-    }
-
-    localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(defaultVouchers));
     return defaultVouchers;
+  },
+
+  subscribeToVouchers(onUpdate: (vouchers: Voucher[]) => void): () => void {
+    try {
+      return onValue(
+        ref(rtdb, 'vouchers'),
+        (snapshot: any) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val() || {};
+            onUpdate(Object.values(data).filter(Boolean) as Voucher[]);
+          }
+        },
+        () => {}
+      );
+    } catch (e) {
+      return () => {};
+    }
   },
 
   async saveVouchers(vouchers: Voucher[]): Promise<{ success: boolean; error?: string }> {
     const clean = cleanForFirebase(vouchers) || [];
-    localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(clean));
     let success = false;
     let lastError = '';
 
@@ -879,15 +880,6 @@ export const MusicService = {
       console.error('Firebase upsertVoucher error:', err);
     }
 
-    try {
-      const local = localStorage.getItem('xuanken_music_vouchers_v1');
-      const list: Voucher[] = local ? JSON.parse(local) : [];
-      const idx = list.findIndex((v) => v.id === clean.id);
-      if (idx >= 0) list[idx] = clean;
-      else list.push(clean);
-      localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(list));
-    } catch (e) {}
-
     return { success, error: success ? undefined : lastError };
   },
 
@@ -895,13 +887,6 @@ export const MusicService = {
     try {
       const vRef = ref(rtdb, `vouchers/${voucherId}`);
       await set(vRef, null);
-    } catch (e) {}
-    try {
-      const local = localStorage.getItem('xuanken_music_vouchers_v1');
-      if (local) {
-        const list: Voucher[] = JSON.parse(local);
-        localStorage.setItem('xuanken_music_vouchers_v1', JSON.stringify(list.filter((v) => v.id !== voucherId)));
-      }
     } catch (e) {}
   },
 
@@ -1064,24 +1049,35 @@ export const MusicService = {
     } catch (e) {
       console.warn('Weekly plays fetch notice:', e);
     }
-    try {
-      const local = localStorage.getItem(`xuanken_weekly_${weekKey}`);
-      if (local) return JSON.parse(local);
-    } catch (e) {}
     return {};
+  },
+
+  subscribeToWeeklyPlays(weekKey: string, onUpdate: (plays: Record<string, number>) => void): () => void {
+    try {
+      return onValue(
+        ref(rtdb, `weekly_plays/${weekKey}`),
+        (snap: any) => {
+          if (snap.exists()) {
+            onUpdate(snap.val() || {});
+          }
+        },
+        () => {}
+      );
+    } catch (e) {
+      return () => {};
+    }
   },
 
   async saveWeeklyPlays(weekKey: string, songPlays: Record<string, number>): Promise<void> {
     const cleanPlays = cleanForFirebase(songPlays) || {};
     try {
-      localStorage.setItem(`xuanken_weekly_${weekKey}`, JSON.stringify(cleanPlays));
       await set(ref(rtdb, `weekly_plays/${weekKey}`), cleanPlays);
     } catch (e) {
       console.warn('Weekly plays save notice:', e);
     }
   },
 
-  // User Settings sync (theme, crossfade, format, liked, blocked)
+  // User Settings sync (theme, crossfade, format, liked, blocked, likedAlbumIds)
   async saveUserSettings(uid: string, settings: any): Promise<void> {
     const clean = cleanForFirebase(settings);
     if (!uid || !clean) return;
@@ -1096,6 +1092,15 @@ export const MusicService = {
       try {
         await set(ref(rtdb, `users/${uid}/liked_songs`), {
           likedSongIds: clean.likedSongIds,
+          updatedAt: Date.now(),
+        });
+      } catch (e) {}
+    }
+
+    if (Array.isArray(clean.likedAlbumIds)) {
+      try {
+        await set(ref(rtdb, `users/${uid}/liked_albums`), {
+          likedAlbumIds: clean.likedAlbumIds,
           updatedAt: Date.now(),
         });
       } catch (e) {}
@@ -1133,58 +1138,44 @@ export const MusicService = {
     } catch (e) {
       console.warn('Site settings fetch notice:', e);
     }
-    try {
-      const saved = localStorage.getItem('xuanken_site_settings');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
     return null;
+  },
+
+  subscribeToSiteSettings(onUpdate: (settings: SiteSettings) => void): () => void {
+    try {
+      return onValue(
+        ref(rtdb, 'site_settings'),
+        (snapshot: any) => {
+          if (snapshot.exists() && snapshot.val()) {
+            onUpdate(snapshot.val());
+          }
+        },
+        () => {}
+      );
+    } catch (e) {
+      return () => {};
+    }
   },
 
   async saveSiteSettings(settings: SiteSettings): Promise<void> {
     const clean = cleanForFirebase(settings);
     try {
-      localStorage.setItem('xuanken_site_settings', JSON.stringify(clean));
       await set(ref(rtdb, 'site_settings'), clean);
     } catch (e) {
       console.warn('Site settings save notice:', e);
     }
   },
 
-
-
   // -------------------------------------------------------------
   // Audio Format Settings (MP3 / WAV) Sync (Requirement 5)
   // -------------------------------------------------------------
   async fetchAudioSettings(uid?: string): Promise<{ preferredFormat: 'MP3' | 'WAV'; formatMap: Record<string, 'MP3' | 'WAV'>; crossfadeDuration?: number } | null> {
-    if (!uid) {
-      try {
-        const localPref = localStorage.getItem('xuanken_preferred_audio_format') as 'MP3' | 'WAV';
-        const localMap = localStorage.getItem('xuanken_song_format_map');
-        const localCross = localStorage.getItem('xuanken_crossfade_duration');
-        return {
-          preferredFormat: localPref === 'WAV' ? 'WAV' : 'MP3',
-          formatMap: localMap ? JSON.parse(localMap) : {},
-          crossfadeDuration: localCross !== null ? parseInt(localCross, 10) : undefined,
-        };
-      } catch (e) {
-        return null;
-      }
-    }
-    const key = `users/${uid}/audio_settings`;
+    const key = uid ? `users/${uid}/audio_settings` : 'audio_settings/shared';
     try {
       const snapshot = await get(ref(rtdb, key));
       if (snapshot.exists()) {
         const val = snapshot.val();
         if (val) {
-          if (val.preferredFormat) {
-            localStorage.setItem('xuanken_preferred_audio_format', val.preferredFormat);
-          }
-          if (val.formatMap) {
-            localStorage.setItem('xuanken_song_format_map', JSON.stringify(val.formatMap));
-          }
-          if (typeof val.crossfadeDuration === 'number') {
-            localStorage.setItem('xuanken_crossfade_duration', val.crossfadeDuration.toString());
-          }
           return {
             preferredFormat: val.preferredFormat === 'WAV' ? 'WAV' : 'MP3',
             formatMap: val.formatMap || {},
@@ -1198,18 +1189,7 @@ export const MusicService = {
         console.warn('Audio settings fetch notice:', e);
       }
     }
-    try {
-      const localPref = localStorage.getItem('xuanken_preferred_audio_format') as 'MP3' | 'WAV';
-      const localMap = localStorage.getItem('xuanken_song_format_map');
-      const localCross = localStorage.getItem('xuanken_crossfade_duration');
-      return {
-        preferredFormat: localPref === 'WAV' ? 'WAV' : 'MP3',
-        formatMap: localMap ? JSON.parse(localMap) : {},
-        crossfadeDuration: localCross !== null ? parseInt(localCross, 10) : undefined,
-      };
-    } catch (e) {
-      return null;
-    }
+    return null;
   },
 
   async saveAudioSettings(
@@ -1224,13 +1204,6 @@ export const MusicService = {
       crossfadeDuration: crossfadeDuration !== undefined ? crossfadeDuration : 3,
       updatedAt: new Date().toISOString(),
     };
-    try {
-      localStorage.setItem('xuanken_preferred_audio_format', preferredFormat);
-      localStorage.setItem('xuanken_song_format_map', JSON.stringify(payload.formatMap));
-      if (crossfadeDuration !== undefined) {
-        localStorage.setItem('xuanken_crossfade_duration', crossfadeDuration.toString());
-      }
-    } catch (e) {}
     try {
       const key = uid ? `users/${uid}/audio_settings` : 'audio_settings/shared';
       await set(ref(rtdb, key), payload);
@@ -1248,20 +1221,15 @@ export const MusicService = {
   },
 
   // -------------------------------------------------------------
-  // Curated / Exclusive Albums (Album Nhạc Hay)
-  // Strict Isolation: Album songs ONLY live inside their albums
+  // Curated / Exclusive Albums (Album Nhạc Hay - 100% Firebase)
   // -------------------------------------------------------------
   async fetchExclusiveAlbums(): Promise<ExclusiveAlbum[]> {
-    const hasInitialized = localStorage.getItem('xuanken_exclusive_albums_init') === 'true';
-
     try {
       const dbRef = ref(rtdb);
       const snapshot = await get(child(dbRef, 'exclusive_albums'));
       if (snapshot.exists()) {
         const val = snapshot.val();
         if (val && (val._empty === true || val === 'EMPTY')) {
-          localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify([]));
-          localStorage.setItem('xuanken_exclusive_albums_init', 'true');
           return [];
         }
         let rawList: any[] = [];
@@ -1270,10 +1238,7 @@ export const MusicService = {
         } else if (typeof val === 'object' && val !== null) {
           rawList = Object.values(val).filter((item: any) => item && typeof item === 'object' && item.title);
         }
-        const albums = rawList.map((a: any, idx: number) => sanitizeAlbum(a, a?.id || `alb-${idx}`));
-        localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(albums));
-        localStorage.setItem('xuanken_exclusive_albums_init', 'true');
-        return albums;
+        return rawList.map((a: any, idx: number) => sanitizeAlbum(a, a?.id || `alb-${idx}`));
       }
     } catch (e: any) {
       const isPerm = e?.message?.toLowerCase().includes('permission_denied') || e?.message?.toLowerCase().includes('permission denied');
@@ -1292,35 +1257,13 @@ export const MusicService = {
             albums.push(sanitizeAlbum(val, d.id));
           }
         });
-        localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(albums));
-        localStorage.setItem('xuanken_exclusive_albums_init', 'true');
         return albums;
       }
     } catch (e: any) {
       // ignore
     }
 
-    // Check localStorage
-    try {
-      const local = localStorage.getItem('xuanken_exclusive_albums_v1');
-      if (local !== null) {
-        const parsed = JSON.parse(local);
-        if (Array.isArray(parsed)) {
-          if (parsed.length > 0 || hasInitialized) {
-            return parsed.map((a: any, idx: number) => sanitizeAlbum(a, a?.id || `alb-${idx}`));
-          }
-        }
-      }
-    } catch (e) {}
-
-    // Only fallback to default curated albums on brand new first-time setup
-    if (!hasInitialized) {
-      const defaults = DEFAULT_EXCLUSIVE_ALBUMS.map((a, idx) => sanitizeAlbum(a, a.id || `alb-${idx}`));
-      localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(defaults));
-      return defaults;
-    }
-
-    return [];
+    return DEFAULT_EXCLUSIVE_ALBUMS.map((a, idx) => sanitizeAlbum(a, a.id || `alb-${idx}`));
   },
 
   async saveExclusiveAlbums(albums: ExclusiveAlbum[]): Promise<{
@@ -1330,16 +1273,10 @@ export const MusicService = {
     error?: string;
   }> {
     const cleanAlbums = (albums || []).map((a, i) => sanitizeAlbum(a, a.id || `alb-${i}`));
-    try {
-      localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(cleanAlbums));
-      localStorage.setItem('xuanken_exclusive_albums_init', 'true');
-    } catch (e) {}
-
     let rtdbSuccess = false;
     let firestoreSuccess = false;
     let lastError = '';
 
-    // Convert list to map by ID for Realtime Database
     const albumsMap: Record<string, any> = {};
     if (cleanAlbums.length === 0) {
       albumsMap._empty = true;
@@ -1361,7 +1298,6 @@ export const MusicService = {
     }
 
     try {
-      // Keep Firestore in sync by removing deleted albums
       const colRef = collection(db, 'exclusive_albums');
       const docsSnap = await getDocs(colRef);
       const remainingIds = new Set(cleanAlbums.map((a) => a.id));
@@ -1398,20 +1334,10 @@ export const MusicService = {
     try {
       await deleteDoc(doc(db, 'exclusive_albums', albumId));
     } catch (e) {}
-    try {
-      const local = localStorage.getItem('xuanken_exclusive_albums_v1');
-      if (local) {
-        const parsed: ExclusiveAlbum[] = JSON.parse(local);
-        const filtered = parsed.filter((a) => a.id !== albumId);
-        localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(filtered));
-        localStorage.setItem('xuanken_exclusive_albums_init', 'true');
-      }
-    } catch (e) {}
   },
 
   async seedDefaultAlbums(): Promise<{ success: boolean; error?: string }> {
     const defaults = DEFAULT_EXCLUSIVE_ALBUMS.map((a, idx) => sanitizeAlbum(a, a.id || `alb-${idx}`));
-    localStorage.setItem('xuanken_exclusive_albums_init', 'true');
     return await this.saveExclusiveAlbums(defaults);
   },
 
@@ -1424,8 +1350,6 @@ export const MusicService = {
           if (snapshot.exists()) {
             const val = snapshot.val();
             if (val && (val._empty === true || val === 'EMPTY')) {
-              localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify([]));
-              localStorage.setItem('xuanken_exclusive_albums_init', 'true');
               onUpdate([]);
               return;
             }
@@ -1436,8 +1360,6 @@ export const MusicService = {
               rawList = Object.values(val).filter((item: any) => item && typeof item === 'object' && item.title);
             }
             const albums = rawList.map((a: any, idx: number) => sanitizeAlbum(a, a?.id || `alb-${idx}`));
-            localStorage.setItem('xuanken_exclusive_albums_v1', JSON.stringify(albums));
-            localStorage.setItem('xuanken_exclusive_albums_init', 'true');
             onUpdate(albums);
           }
         },
@@ -1452,7 +1374,7 @@ export const MusicService = {
   },
 
   // -------------------------------------------------------------
-  // Community Chat Box
+  // Community Chat Box (100% Firebase)
   // -------------------------------------------------------------
   async fetchChatMessages(): Promise<ChatMessage[]> {
     try {
@@ -1468,7 +1390,6 @@ export const MusicService = {
         }
         if (list.length > 0) {
           list.sort((a, b) => a.timestamp - b.timestamp);
-          localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(list));
           return list;
         }
       }
@@ -1477,17 +1398,6 @@ export const MusicService = {
       if (!isPerm) console.warn('Fetch chat messages notice:', e);
     }
 
-    try {
-      const local = localStorage.getItem('xuanken_chat_messages_v1');
-      if (local) {
-        const parsed = JSON.parse(local);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {}
-
-    localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(DEFAULT_CHAT_MESSAGES));
     return DEFAULT_CHAT_MESSAGES;
   },
 
@@ -1499,14 +1409,6 @@ export const MusicService = {
       timestamp: msg.timestamp || Date.now(),
     };
 
-    // Update local cache first
-    try {
-      const current = await this.fetchChatMessages();
-      const updated = [...current, newMsg].slice(-100); // keep latest 100 messages
-      localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(updated));
-    } catch (e) {}
-
-    // Save to RTDB
     try {
       await set(ref(rtdb, `chat_messages/${id}`), cleanForFirebase(newMsg));
     } catch (e: any) {
@@ -1518,35 +1420,17 @@ export const MusicService = {
 
   async deleteChatMessage(id: string): Promise<void> {
     try {
-      const current = await this.fetchChatMessages();
-      const filtered = current.filter((m) => m.id !== id);
-      localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(filtered));
-    } catch (e) {}
-
-    try {
       await set(ref(rtdb, `chat_messages/${id}`), null);
     } catch (e) {}
   },
 
   async togglePinChatMessage(id: string, isPinned: boolean): Promise<void> {
     try {
-      const current = await this.fetchChatMessages();
-      const updated = current.map((m) => (m.id === id ? { ...m, isPinned } : m));
-      localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(updated));
-    } catch (e) {}
-
-    try {
       await update(ref(rtdb, `chat_messages/${id}`), { isPinned });
     } catch (e) {}
   },
 
   async editChatMessage(id: string, newContent: string): Promise<void> {
-    try {
-      const current = await this.fetchChatMessages();
-      const updated = current.map((m) => (m.id === id ? { ...m, content: newContent, isEdited: true } : m));
-      localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(updated));
-    } catch (e) {}
-
     try {
       await update(ref(rtdb, `chat_messages/${id}`), { content: newContent, isEdited: true });
     } catch (e) {}
@@ -1556,14 +1440,8 @@ export const MusicService = {
     try {
       const snapshot = await get(ref(rtdb, 'banned_chat_members'));
       if (snapshot.exists()) {
-        const val = snapshot.val() || {};
-        localStorage.setItem('xuanken_banned_chat_members', JSON.stringify(val));
-        return val;
+        return snapshot.val() || {};
       }
-    } catch (e) {}
-    try {
-      const local = localStorage.getItem('xuanken_banned_chat_members');
-      if (local) return JSON.parse(local);
     } catch (e) {}
     return {};
   },
@@ -1572,29 +1450,12 @@ export const MusicService = {
     const bannedAt = Date.now();
     const bannedUntil = durationMinutes ? bannedAt + durationMinutes * 60 * 1000 : null;
     const data = { bannedUntil, bannedAt, userName };
-
-    try {
-      const local = localStorage.getItem('xuanken_banned_chat_members');
-      const map = local ? JSON.parse(local) : {};
-      map[userId] = data;
-      localStorage.setItem('xuanken_banned_chat_members', JSON.stringify(map));
-    } catch (e) {}
-
     try {
       await set(ref(rtdb, `banned_chat_members/${userId}`), data);
     } catch (e) {}
   },
 
   async unbanChatMember(userId: string): Promise<void> {
-    try {
-      const local = localStorage.getItem('xuanken_banned_chat_members');
-      if (local) {
-        const map = JSON.parse(local);
-        delete map[userId];
-        localStorage.setItem('xuanken_banned_chat_members', JSON.stringify(map));
-      }
-    } catch (e) {}
-
     try {
       await set(ref(rtdb, `banned_chat_members/${userId}`), null);
     } catch (e) {}
@@ -1623,7 +1484,6 @@ export const MusicService = {
               }
             }
             uniqueList.sort((a, b) => a.timestamp - b.timestamp);
-            localStorage.setItem('xuanken_chat_messages_v1', JSON.stringify(uniqueList));
             onUpdate(uniqueList);
           }
         },
@@ -1635,7 +1495,7 @@ export const MusicService = {
   },
 
   // -------------------------------------------------------------
-  // Artist Biographies Management (Tiểu Sử Ca Sĩ)
+  // Artist Biographies Management (Tiểu Sử Ca Sĩ - 100% Firebase)
   // -------------------------------------------------------------
   async fetchArtistBios(): Promise<ArtistBio[]> {
     try {
@@ -1650,7 +1510,6 @@ export const MusicService = {
           list = Object.values(val);
         }
         if (list.length > 0) {
-          localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(list));
           return list;
         }
       }
@@ -1659,25 +1518,44 @@ export const MusicService = {
     }
 
     try {
-      const local = localStorage.getItem('xuanken_artist_bios_v1');
-      if (local) {
-        const parsed = JSON.parse(local);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
+      const docsSnap = await getDocs(collection(db, 'artist_bios'));
+      if (!docsSnap.empty) {
+        const list: ArtistBio[] = [];
+        docsSnap.forEach((d: any) => {
+          const val = d.data();
+          if (val && val.name) list.push(val as ArtistBio);
+        });
+        if (list.length > 0) return list;
       }
     } catch (e) {}
 
-    localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(DEFAULT_ARTIST_BIOS));
     return DEFAULT_ARTIST_BIOS;
+  },
+
+  subscribeToArtistBios(onUpdate: (bios: ArtistBio[]) => void): () => void {
+    try {
+      return onValue(
+        ref(rtdb, 'artist_bios'),
+        (snapshot: any) => {
+          if (snapshot.exists()) {
+            const val = snapshot.val();
+            const list: ArtistBio[] = Array.isArray(val)
+              ? val.filter(Boolean)
+              : val && typeof val === 'object'
+              ? (Object.values(val).filter(Boolean) as ArtistBio[])
+              : [];
+            if (list.length > 0) onUpdate(list);
+          }
+        },
+        () => {}
+      );
+    } catch (e) {
+      return () => {};
+    }
   },
 
   async saveArtistBios(bios: ArtistBio[]): Promise<{ success: boolean; error?: string }> {
     const clean = cleanForFirebase(bios) || [];
-    try {
-      localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(clean));
-    } catch (e) {}
-
     let success = false;
     let lastError = '';
 
@@ -1709,18 +1587,6 @@ export const MusicService = {
 
   async upsertArtistBio(bio: ArtistBio): Promise<{ success: boolean; error?: string }> {
     const clean = cleanForFirebase(bio);
-    try {
-      const local = localStorage.getItem('xuanken_artist_bios_v1');
-      const list: ArtistBio[] = local ? JSON.parse(local) : [...DEFAULT_ARTIST_BIOS];
-      const idx = list.findIndex((b) => b.id === bio.id || b.name.toLowerCase() === bio.name.toLowerCase());
-      if (idx >= 0) {
-        list[idx] = clean;
-      } else {
-        list.push(clean);
-      }
-      localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(list));
-    } catch (e) {}
-
     let success = false;
     let lastError = '';
 
@@ -1742,14 +1608,6 @@ export const MusicService = {
   },
 
   async deleteArtistBio(id: string): Promise<void> {
-    try {
-      const local = localStorage.getItem('xuanken_artist_bios_v1');
-      if (local) {
-        const list: ArtistBio[] = JSON.parse(local);
-        localStorage.setItem('xuanken_artist_bios_v1', JSON.stringify(list.filter((b) => b.id !== id)));
-      }
-    } catch (e) {}
-
     try {
       await set(ref(rtdb, `artist_bios/${id}`), null);
     } catch (e) {}

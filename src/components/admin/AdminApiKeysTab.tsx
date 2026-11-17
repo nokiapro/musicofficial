@@ -1,0 +1,667 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  KeyRound,
+  Plus,
+  Copy,
+  Check,
+  Trash2,
+  Eye,
+  EyeOff,
+  Power,
+  RefreshCw,
+  ShieldCheck,
+  ShieldAlert,
+  Play,
+  Code2,
+  Sparkles,
+  Lock,
+  Unlock,
+} from 'lucide-react';
+import { auth } from '../../services/firebase';
+
+export interface ApiKeyItem {
+  id: string;
+  name: string;
+  key: string;
+  keyHash: string;
+  keyPreview: string;
+  isActive: boolean;
+  createdAt: string;
+  createdBy: string;
+  lastUsedAt: string | null;
+  usageCount: number;
+}
+
+const TEST_ENDPOINTS = [
+  { label: 'Danh sách bài hát (/api/v1/songs)', path: '/api/v1/songs?limit=5' },
+  { label: 'Album nhạc hay (/api/v1/albums)', path: '/api/v1/albums' },
+  { label: 'Ca sĩ & Tiểu sử (/api/v1/artists)', path: '/api/v1/artists' },
+  { label: 'Bảng xếp hạng (/api/v1/charts)', path: '/api/v1/charts?limit=10' },
+  { label: 'Thông tin hệ thống (/api/v1/info)', path: '/api/v1/info' },
+];
+
+export const AdminApiKeysTab: React.FC = () => {
+  const [keys, setKeys] = useState<ApiKeyItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [cloudSynced, setCloudSynced] = useState<boolean | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Create form
+  const [newKeyName, setNewKeyName] = useState('');
+  const [customKeyInput, setCustomKeyInput] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Key UI states
+  const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [busyKeyId, setBusyKeyId] = useState<string | null>(null);
+
+  // Live API Tester
+  const [selectedTestKey, setSelectedTestKey] = useState('');
+  const [selectedEndpoint, setSelectedEndpoint] = useState(TEST_ENDPOINTS[0].path);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    status: number;
+    ok: boolean;
+    body: string;
+  } | null>(null);
+
+  const getAdminAuthHeaders = async (): Promise<Record<string, string>> => {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      throw new Error('Phiên đăng nhập Firebase Admin chưa sẵn sàng. Vui lòng đăng nhập lại.');
+    }
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
+  const fetchKeys = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const headers = await getAdminAuthHeaders();
+      const res = await fetch('/api/admin/keys', { headers });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Không thể tải danh sách API Key');
+      }
+      const list: ApiKeyItem[] = Array.isArray(data.keys) ? data.keys : [];
+      setKeys(list);
+      setCloudSynced(Boolean(data.cloudSynced));
+      if (!selectedTestKey && list.length > 0) {
+        const active = list.find((k) => k.isActive) || list[0];
+        setSelectedTestKey(active.key);
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Lỗi tải API Keys');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedTestKey]);
+
+  useEffect(() => {
+    fetchKeys();
+  }, [fetchKeys]);
+
+  const handleGenerateRandomPreview = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let randomPart = '';
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    for (let i = 0; i < bytes.length; i++) {
+      randomPart += chars[bytes[i] % chars.length];
+    }
+    setCustomKeyInput(`xk_live_${randomPart}`);
+  };
+
+  const handleCreateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newKeyName.trim()) {
+      setErrorMsg('Vui lòng nhập tên gợi nhớ cho API Key.');
+      return;
+    }
+    setIsCreating(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const headers = await getAdminAuthHeaders();
+      const res = await fetch('/api/admin/keys', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: newKeyName.trim(),
+          customKey: customKeyInput.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Không thể tạo API Key');
+      }
+      const created: ApiKeyItem = data.key;
+      setKeys((prev) => [created, ...prev]);
+      setRevealedKeys((prev) => ({ ...prev, [created.id]: true }));
+      setSelectedTestKey(created.key);
+      setCloudSynced(Boolean(data.cloudSynced));
+      setNewKeyName('');
+      setCustomKeyInput('');
+      setSuccessMsg(`Đã tạo API Key "${created.name}" thành công!`);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Lỗi tạo API Key');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleToggleActive = async (item: ApiKeyItem) => {
+    setBusyKeyId(item.id);
+    setErrorMsg(null);
+    try {
+      const headers = await getAdminAuthHeaders();
+      const res = await fetch(`/api/admin/keys/${item.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ isActive: !item.isActive }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Không thể cập nhật trạng thái API Key');
+      }
+      setKeys((prev) => prev.map((k) => (k.id === item.id ? data.key : k)));
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Lỗi cập nhật trạng thái API Key');
+    } finally {
+      setBusyKeyId(null);
+    }
+  };
+
+  const handleDeleteKey = async (item: ApiKeyItem) => {
+    setBusyKeyId(item.id);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const headers = await getAdminAuthHeaders();
+      const res = await fetch(`/api/admin/keys/${item.id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Không thể xóa API Key');
+      }
+      setKeys((prev) => prev.filter((k) => k.id !== item.id));
+      if (selectedTestKey === item.key) {
+        setSelectedTestKey('');
+      }
+      setSuccessMsg(`Đã thu hồi và xóa API Key "${item.name}".`);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Lỗi xóa API Key');
+    } finally {
+      setBusyKeyId(null);
+    }
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const runApiTest = async (withKey: boolean) => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const headers: Record<string, string> = {};
+      if (withKey && selectedTestKey) {
+        headers['x-api-key'] = selectedTestKey;
+      }
+      const res = await fetch(selectedEndpoint, { headers });
+      const text = await res.text();
+      let formatted = text;
+      try {
+        formatted = JSON.stringify(JSON.parse(text), null, 2);
+      } catch {
+        // keep raw
+      }
+      setTestResult({
+        status: res.status,
+        ok: res.ok,
+        body: formatted,
+      });
+      if (withKey && res.ok) {
+        fetchKeys();
+      }
+    } catch (err: any) {
+      setTestResult({
+        status: 0,
+        ok: false,
+        body: err?.message || 'Lỗi kết nối API',
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com';
+  const activeKeyForSample = selectedTestKey || 'YOUR_API_KEY';
+
+  return (
+    <div className="space-y-6">
+      {/* Banner explaining API rules */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-purple-600/20 via-[#1b112c] to-emerald-500/10 border border-purple-500/30 shadow-xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-[#c273ed] shrink-0">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-white">
+                Public API & Quản Lý API Key Riêng
+              </h3>
+              <p className="text-xs text-white/65">
+                Mọi endpoint công khai đều bắt buộc có API Key do bạn tạo mới chạy được.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
+            {cloudSynced !== null && (
+              <span
+                className={`px-3 py-1 rounded-full text-[11px] font-bold border ${
+                  cloudSynced
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                    : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                }`}
+              >
+                {cloudSynced ? 'Đã đồng bộ Server + Firebase' : 'Đang lưu trực tiếp trên Server'}
+              </span>
+            )}
+            <button
+              onClick={fetchKeys}
+              disabled={isLoading}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs">
+          <div className="p-3 rounded-2xl bg-black/25 border border-white/10 flex items-start gap-2.5">
+            <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-white">Nhạc Trả Phí (price &gt; 0)</p>
+              <p className="text-white/60 text-[11px] mt-0.5">
+                Tự động ẩn <code className="text-amber-300">mp3Url</code> & <code className="text-amber-300">wavUrl</code> (<code className="text-white/80">null</code>), chỉ trả <code className="text-emerald-300">demoUrl</code>.
+              </p>
+            </div>
+          </div>
+          <div className="p-3 rounded-2xl bg-black/25 border border-white/10 flex items-start gap-2.5">
+            <Unlock className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-white">Nhạc Miễn Phí (price = 0)</p>
+              <p className="text-white/60 text-[11px] mt-0.5">
+                Không ẩn link, trả về đầy đủ <code className="text-emerald-300">mp3Url</code>, <code className="text-emerald-300">wavUrl</code> và <code className="text-emerald-300">audioUrl</code>.
+              </p>
+            </div>
+          </div>
+          <div className="p-3 rounded-2xl bg-black/25 border border-white/10 flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-[#c273ed] shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-white">Bắt Buộc API Key</p>
+              <p className="text-white/60 text-[11px] mt-0.5">
+                Không có key hoặc key bị khóa sẽ trả lỗi <code className="text-red-300">401 / 403</code> ngay lập tức.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {successMsg && (
+        <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 text-xs font-bold flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+      {errorMsg && (
+        <div className="p-3.5 rounded-2xl bg-red-500/15 border border-red-500/35 text-red-300 text-xs font-bold flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Create New API Key Form */}
+      <form
+        onSubmit={handleCreateKey}
+        className="p-4 sm:p-5 rounded-2xl bg-[#170f23] border border-white/10 shadow-xl space-y-4"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-sm font-bold text-white flex items-center gap-2">
+            <Plus className="w-4 h-4 text-[#c273ed]" />
+            <span>Tạo API Key Mới</span>
+          </h4>
+          <button
+            type="button"
+            onClick={handleGenerateRandomPreview}
+            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-purple-300 flex items-center gap-1.5 cursor-pointer transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Gợi ý Key Ngẫu Nhiên</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
+              Tên Ứng Dụng / Ghi Chú *
+            </label>
+            <input
+              type="text"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              placeholder="Ví dụ: App Mobile Flutter, Web Blog Nhạc..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white text-xs focus:outline-none focus:border-[#9b4de0]"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-white/70 uppercase tracking-wider">
+              Key Tự Nhập (Tùy chọn — bỏ trống để tự sinh)
+            </label>
+            <input
+              type="text"
+              value={customKeyInput}
+              onChange={(e) => setCustomKeyInput(e.target.value)}
+              placeholder="VD: xuanken_secret_2026 (tối thiểu 8 ký tự)"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-[#9b4de0]"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={isCreating}
+            className="w-full sm:w-auto justify-center px-5 py-2.5 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-[#9b4de0]/30 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            <KeyRound className="w-4 h-4" />
+            <span>{isCreating ? 'Đang tạo API Key...' : 'Tạo API Key Ngay'}</span>
+          </button>
+        </div>
+      </form>
+
+      {/* API Keys List */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#170f23] border border-white/10 shadow-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-bold text-white">
+            Danh Sách API Key Của Bạn ({keys.length})
+          </h4>
+        </div>
+
+        {isLoading ? (
+          <div className="py-8 text-center text-xs text-white/50">Đang tải danh sách API Key...</div>
+        ) : keys.length === 0 ? (
+          <div className="py-8 px-4 text-center rounded-2xl border border-dashed border-white/15 bg-black/20 space-y-2">
+            <KeyRound className="w-8 h-8 text-white/25 mx-auto" />
+            <p className="text-xs font-bold text-white/70">Chưa có API Key nào được tạo</p>
+            <p className="text-[11px] text-white/45">
+              Hiện tại toàn bộ API công khai đang khóa 100%. Hãy tạo 1 API Key ở form bên trên để bắt đầu gọi API.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {keys.map((item) => {
+              const isRevealed = Boolean(revealedKeys[item.id]);
+              const isBusy = busyKeyId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-2xl bg-black/30 border border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+                >
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm text-white">{item.name}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          item.isActive
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                        }`}
+                      >
+                        {item.isActive ? 'Đang hoạt động' : 'Đã tạm khóa'}
+                      </span>
+                      <span className="text-[11px] text-white/45">
+                        • {item.usageCount || 0} lượt gọi
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <code className="px-2.5 py-1 rounded-lg bg-black/50 border border-white/10 text-xs font-mono text-purple-200 break-all">
+                        {isRevealed ? item.key : item.keyPreview}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRevealedKeys((prev) => ({ ...prev, [item.id]: !isRevealed }))
+                        }
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                        title={isRevealed ? 'Ẩn key' : 'Hiện đầy đủ key'}
+                      >
+                        {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(item.key, item.id)}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        {copiedId === item.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-300">Đã copy</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy Key</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-white/40">
+                      Tạo lúc: {new Date(item.createdAt).toLocaleString('vi-VN')}
+                      {item.lastUsedAt
+                        ? ` • Gọi gần nhất: ${new Date(item.lastUsedAt).toLocaleString('vi-VN')}`
+                        : ''}
+                    </p>
+                  </div>
+
+                  <div className="w-full lg:w-auto grid grid-cols-2 lg:flex items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t border-white/5 lg:border-0">
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => handleToggleActive(item)}
+                      className={`justify-center px-3 py-2 lg:py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 ${
+                        item.isActive
+                          ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30'
+                          : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'
+                      }`}
+                    >
+                      <Power className="w-3.5 h-3.5" />
+                      <span>{item.isActive ? 'Tạm Khóa' : 'Kích Hoạt'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => handleDeleteKey(item)}
+                      className="justify-center px-3 py-2 lg:py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Xóa</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Live API Tester + Docs */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        {/* Interactive Tester */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#170f23] border border-white/10 shadow-xl space-y-4">
+          <h4 className="text-sm font-bold text-white flex items-center gap-2">
+            <Play className="w-4 h-4 text-emerald-400" />
+            <span>Kiểm Tra API Trực Tiếp</span>
+          </h4>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-white/60">Chọn Endpoint</label>
+              <select
+                value={selectedEndpoint}
+                onChange={(e) => setSelectedEndpoint(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-xs focus:outline-none focus:border-[#9b4de0]"
+              >
+                {TEST_ENDPOINTS.map((ep) => (
+                  <option key={ep.path} value={ep.path} className="bg-[#170f23]">
+                    {ep.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-white/60">Chọn API Key để Test</label>
+              <select
+                value={selectedTestKey}
+                onChange={(e) => setSelectedTestKey(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-[#9b4de0]"
+              >
+                <option value="" className="bg-[#170f23]">
+                  -- Chọn API Key --
+                </option>
+                {keys.map((k) => (
+                  <option key={k.id} value={k.key} className="bg-[#170f23]">
+                    {k.name} ({k.keyPreview}) {k.isActive ? '' : '[Đang khóa]'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                disabled={isTesting || !selectedTestKey}
+                onClick={() => runApiTest(true)}
+                className="justify-center px-4 py-2.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>Chạy Thử (Có Key)</span>
+              </button>
+              <button
+                type="button"
+                disabled={isTesting}
+                onClick={() => runApiTest(false)}
+                className="justify-center px-4 py-2.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/15 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>Thử Gọi Không Key (Chặn 401)</span>
+              </button>
+            </div>
+          </div>
+
+          {testResult && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-white/70">Kết quả trả về:</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full font-mono text-[11px] font-bold ${
+                    testResult.ok
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : 'bg-red-500/20 text-red-300'
+                  }`}
+                >
+                  HTTP {testResult.status}
+                </span>
+              </div>
+              <pre className="p-3 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-purple-200 overflow-auto max-h-72 leading-relaxed">
+                {testResult.body}
+              </pre>
+            </div>
+          )}
+        </div>
+
+        {/* Code Examples & Endpoint Reference */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#170f23] border border-white/10 shadow-xl space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <Code2 className="w-4 h-4 text-[#c273ed]" />
+              <span>Hướng Dẫn Gọi API Từ App / Web Khác</span>
+            </h4>
+            <button
+              type="button"
+              onClick={() =>
+                copyToClipboard(
+                  `fetch('${originUrl}/api/v1/songs', {\n  headers: {\n    'x-api-key': '${activeKeyForSample}'\n  }\n}).then(r => r.json()).then(console.log);`,
+                  'sample-fetch'
+                )
+              }
+              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
+            >
+              {copiedId === 'sample-fetch' ? (
+                <>
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span>Đã copy</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  <span>Copy Code</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            <div className="space-y-1">
+              <p className="text-white/70 font-bold">1. Gọi bằng JavaScript (Header x-api-key):</p>
+              <pre className="p-3 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed">
+{`fetch('${originUrl}/api/v1/songs', {
+  headers: {
+    'x-api-key': '${activeKeyForSample}'
+  }
+})
+  .then(res => res.json())
+  .then(data => console.log(data));`}
+              </pre>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-white/70 font-bold">2. Gọi nhanh trên trình duyệt / URL (?apiKey=...):</p>
+              <pre className="p-3 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-amber-200 overflow-x-auto">
+{`${originUrl}/api/v1/songs?apiKey=${activeKeyForSample}`}
+              </pre>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-white/70 font-bold">3. Các Endpoints hỗ trợ sẵn:</p>
+              <ul className="space-y-1 text-[11px] text-white/65 font-mono bg-black/30 p-3 rounded-xl border border-white/10">
+                <li>• GET /api/v1/songs?q=&amp;genre=&amp;paid=true|false&amp;sort=popular</li>
+                <li>• GET /api/v1/songs/:id</li>
+                <li>• GET /api/v1/albums &amp; /api/v1/albums/:id</li>
+                <li>• GET /api/v1/artists &amp; /api/v1/artists/:id</li>
+                <li>• GET /api/v1/charts &amp; /api/v1/playlists &amp; /api/v1/site</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
