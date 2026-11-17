@@ -25,7 +25,14 @@ export const DesktopSidebar: React.FC = () => {
     setSelectedAlbum,
     setSelectedPlaylist,
     setSelectedArtistName,
+    siteSettings,
   } = useMusic();
+
+  const brandName = (siteSettings?.siteName || 'XuanKen Music').trim();
+  const brandWords = brandName.split(/\s+/).filter(Boolean);
+  const brandLead = brandWords.length > 1 ? brandWords.slice(0, -1).join(' ') : brandName;
+  const brandTail = brandWords.length > 1 ? brandWords[brandWords.length - 1] : '';
+  const brandSlogan = (siteSettings?.siteSlogan || 'Nghe & Mua Nhạc Bản Quyền').trim();
 
   // Safety redirect: If a non-admin is on admin tab, or guest is on chat/library tab, redirect to discover
   React.useEffect(() => {
@@ -69,12 +76,23 @@ export const DesktopSidebar: React.FC = () => {
               <Disc className="w-5 h-5 text-white animate-spin-slow" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[19px] font-extrabold tracking-tight text-white uppercase leading-none font-display">
-                XuanKen <span style={{ color: 'var(--color-accent)' }}>Music</span>
+              <span className="text-[18px] font-extrabold tracking-tight text-white uppercase leading-tight font-display break-words">
+                {brandLead}
+                {brandTail ? (
+                  <>
+                    {' '}
+                    <span style={{ color: 'var(--color-accent)' }}>{brandTail}</span>
+                  </>
+                ) : null}
               </span>
-              <span className="text-[10px] font-medium text-white/45 tracking-[0.08em] mt-1 truncate">
-                NGHE & MUA NHẠC BẢN QUYỀN
-              </span>
+              {brandSlogan && (
+                <span
+                  title={brandSlogan}
+                  className="text-[10.5px] font-medium text-white/55 tracking-[0.03em] mt-1 leading-snug break-words"
+                >
+                  {brandSlogan}
+                </span>
+              )}
             </div>
           </div>
 

@@ -58,6 +58,7 @@ export const MobileAppLayout: React.FC = () => {
     downloadSong,
     openDownloadModal,
     playlists,
+    siteSettings,
     selectedPlaylist,
     setSelectedPlaylist,
     createPlaylist,
@@ -1277,9 +1278,9 @@ export const MobileAppLayout: React.FC = () => {
       <div
         className="hidden sm:flex items-center justify-between w-full max-w-[460px] px-4 py-2 mb-2 rounded-xl glass-panel text-xs text-[var(--text-primary)] shrink-0"
       >
-        <div className="flex items-center gap-2">
-          <Smartphone style={{ color: 'var(--color-accent)' }} className="w-4 h-4" />
-          <span className="font-semibold">XuanKen Music - Giao diện Mobile App</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <Smartphone style={{ color: 'var(--color-accent)' }} className="w-4 h-4 shrink-0" />
+          <span className="font-semibold truncate">{siteSettings?.siteName || 'XuanKen Music'} - Giao diện Mobile App</span>
         </div>
         <button
           onClick={() => setViewMode('pc')}

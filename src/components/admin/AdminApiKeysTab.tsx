@@ -17,7 +17,8 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
-import { auth } from '../../services/firebase';
+import { ref, get, set, remove } from 'firebase/database';
+import { auth, rtdb } from '../../services/firebase';
 
 export interface ApiKeyItem {
   id: string;
@@ -78,25 +79,104 @@ export const AdminApiKeysTab: React.FC = () => {
     };
   };
 
+  const safeParseJson = async (res: Response): Promise<{ isJson: boolean; data: any; rawText: string }> => {
+    const rawText = await res.text();
+    try {
+      const data = JSON.parse(rawText);
+      return { isJson: true, data, rawText };
+    } catch {
+      return { isJson: false, data: null, rawText };
+    }
+  };
+
+  const sha256Hex = async (value: string): Promise<string> => {
+    const encoded = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest('SHA-256', encoded);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  };
+
+  const maskKeyPreview = (rawKey: string): string => {
+    if (rawKey.length <= 12) {
+      return `${rawKey.slice(0, 4)}••••${rawKey.slice(-2)}`;
+    }
+    return `${rawKey.slice(0, 10)}••••${rawKey.slice(-4)}`;
+  };
+
+  const generateRandomKey = (): string => {
+    const chars = 'abcdef0123456789';
+    const bytes = new Uint8Array(36);
+    crypto.getRandomValues(bytes);
+    let randomPart = '';
+    for (let i = 0; i < bytes.length; i++) {
+      randomPart += chars[bytes[i] % chars.length];
+    }
+    return `xk_live_${randomPart}`;
+  };
+
+  const fetchKeysFromRtdb = async (): Promise<ApiKeyItem[]> => {
+    const snap = await get(ref(rtdb, 'api_keys'));
+    if (!snap.exists()) return [];
+    const val = snap.val() || {};
+    const list: ApiKeyItem[] = Object.values(val)
+      .filter((item: any) => item && item.id && item.keyHash)
+      .map((item: any) => ({
+        id: item.id,
+        name: item.name || 'API Key',
+        key: item.key || '',
+        keyHash: item.keyHash,
+        keyPreview: item.keyPreview || maskKeyPreview(item.key || ''),
+        isActive: item.isActive !== false,
+        createdAt: item.createdAt || new Date().toISOString(),
+        createdBy: item.createdBy || auth.currentUser?.email || 'admin',
+        lastUsedAt: item.lastUsedAt || null,
+        usageCount: typeof item.usageCount === 'number' ? item.usageCount : 0,
+      }));
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
+  };
+
   const fetchKeys = useCallback(async () => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
       const headers = await getAdminAuthHeaders();
       const res = await fetch('/api/admin/keys', { headers });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Không thể tải danh sách API Key');
+      const parsed = await safeParseJson(res);
+
+      if (parsed.isJson) {
+        const data = parsed.data;
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Không thể tải danh sách API Key');
+        }
+        const list: ApiKeyItem[] = Array.isArray(data.keys) ? data.keys : [];
+        setKeys(list);
+        setCloudSynced(Boolean(data.cloudSynced));
+        if (!selectedTestKey && list.length > 0) {
+          const active = list.find((k) => k.isActive) || list[0];
+          setSelectedTestKey(active.key);
+        }
+        return;
       }
-      const list: ApiKeyItem[] = Array.isArray(data.keys) ? data.keys : [];
-      setKeys(list);
-      setCloudSynced(Boolean(data.cloudSynced));
-      if (!selectedTestKey && list.length > 0) {
-        const active = list.find((k) => k.isActive) || list[0];
+
+      // Fallback when static hosting (e.g. Shared App URL) does not mount Node /api routes
+      const rtdbList = await fetchKeysFromRtdb();
+      setKeys(rtdbList);
+      setCloudSynced(true);
+      if (!selectedTestKey && rtdbList.length > 0) {
+        const active = rtdbList.find((k) => k.isActive) || rtdbList[0];
         setSelectedTestKey(active.key);
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Lỗi tải API Keys');
+      const msg = err?.message || 'Lỗi tải API Keys';
+      if (msg.toLowerCase().includes('permission')) {
+        setErrorMsg(
+          'Firebase RTDB chưa mở quyền cho nhánh api_keys. Hãy mở tab "Rules Firebase", sao chép database.rules.json mới dán vào Firebase Console!'
+        );
+      } else {
+        setErrorMsg(msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -127,29 +207,102 @@ export const AdminApiKeysTab: React.FC = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
     try {
+      const trimmedName = newKeyName.trim();
+      const trimmedCustom = customKeyInput.trim();
       const headers = await getAdminAuthHeaders();
-      const res = await fetch('/api/admin/keys', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: newKeyName.trim(),
-          customKey: customKeyInput.trim() || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Không thể tạo API Key');
+
+      let created: ApiKeyItem | null = null;
+      let synced = false;
+
+      try {
+        const res = await fetch('/api/admin/keys', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            name: trimmedName,
+            customKey: trimmedCustom || undefined,
+          }),
+        });
+        const parsed = await safeParseJson(res);
+        if (parsed.isJson) {
+          if (!res.ok || !parsed.data?.success) {
+            throw new Error(parsed.data?.error || 'Không thể tạo API Key');
+          }
+          created = parsed.data.key;
+          synced = Boolean(parsed.data.cloudSynced);
+        }
+      } catch (apiErr: any) {
+        // Re-throw real backend validation/auth errors; fall back only if fetch/non-JSON
+        if (apiErr?.message && !apiErr.message.includes('Failed to fetch')) {
+          throw apiErr;
+        }
       }
-      const created: ApiKeyItem = data.key;
-      setKeys((prev) => [created, ...prev]);
-      setRevealedKeys((prev) => ({ ...prev, [created.id]: true }));
+
+      // Direct Firebase RTDB fallback when /api/admin/keys isn't served (e.g., static Shared App URL)
+      if (!created) {
+        let finalKey = trimmedCustom;
+        if (finalKey) {
+          if (finalKey.length < 8 || finalKey.length > 128) {
+            throw new Error('API Key tự nhập phải dài từ 8 đến 128 ký tự.');
+          }
+          if (!/^[a-zA-Z0-9_\-.]+$/.test(finalKey)) {
+            throw new Error('API Key chỉ được chứa chữ cái, số, dấu gạch dưới (_), gạch ngang (-) hoặc dấu chấm (.).');
+          }
+        } else {
+          finalKey = generateRandomKey();
+        }
+
+        const keyHash = await sha256Hex(finalKey);
+        if (keys.some((k) => k.keyHash === keyHash)) {
+          throw new Error('API Key này đã tồn tại. Vui lòng chọn key khác.');
+        }
+
+        const idBytes = new Uint8Array(6);
+        crypto.getRandomValues(idBytes);
+        const idHex = Array.from(idBytes)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+
+        created = {
+          id: `key_${idHex}`,
+          name: trimmedName,
+          key: finalKey,
+          keyHash,
+          keyPreview: maskKeyPreview(finalKey),
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          createdBy: auth.currentUser?.email || 'admin',
+          lastUsedAt: null,
+          usageCount: 0,
+        };
+
+        await set(ref(rtdb, `api_keys/${created.id}`), created);
+        await set(ref(rtdb, `api_key_hashes/${created.keyHash}`), {
+          id: created.id,
+          name: created.name,
+          isActive: created.isActive,
+          createdAt: created.createdAt,
+          createdBy: created.createdBy,
+        });
+        synced = true;
+      }
+
+      setKeys((prev) => [created!, ...prev]);
+      setRevealedKeys((prev) => ({ ...prev, [created!.id]: true }));
       setSelectedTestKey(created.key);
-      setCloudSynced(Boolean(data.cloudSynced));
+      setCloudSynced(synced);
       setNewKeyName('');
       setCustomKeyInput('');
       setSuccessMsg(`Đã tạo API Key "${created.name}" thành công!`);
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Lỗi tạo API Key');
+      const msg = err?.message || 'Lỗi tạo API Key';
+      if (msg.toLowerCase().includes('permission')) {
+        setErrorMsg(
+          'Firebase RTDB đang chặn quyền ghi vào nhánh api_keys (PERMISSION_DENIED). Vui lòng mở tab "Rules Firebase" -> sao chép database.rules.json mới dán lên Firebase Console!'
+        );
+      } else {
+        setErrorMsg(msg);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -159,17 +312,42 @@ export const AdminApiKeysTab: React.FC = () => {
     setBusyKeyId(item.id);
     setErrorMsg(null);
     try {
+      const nextActive = !item.isActive;
       const headers = await getAdminAuthHeaders();
-      const res = await fetch(`/api/admin/keys/${item.id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ isActive: !item.isActive }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Không thể cập nhật trạng thái API Key');
+      let updated: ApiKeyItem | null = null;
+
+      try {
+        const res = await fetch(`/api/admin/keys/${item.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ isActive: nextActive }),
+        });
+        const parsed = await safeParseJson(res);
+        if (parsed.isJson) {
+          if (!res.ok || !parsed.data?.success) {
+            throw new Error(parsed.data?.error || 'Không thể cập nhật trạng thái API Key');
+          }
+          updated = parsed.data.key;
+        }
+      } catch (apiErr: any) {
+        if (apiErr?.message && !apiErr.message.includes('Failed to fetch')) {
+          throw apiErr;
+        }
       }
-      setKeys((prev) => prev.map((k) => (k.id === item.id ? data.key : k)));
+
+      if (!updated) {
+        updated = { ...item, isActive: nextActive };
+        await set(ref(rtdb, `api_keys/${updated.id}`), updated);
+        await set(ref(rtdb, `api_key_hashes/${updated.keyHash}`), {
+          id: updated.id,
+          name: updated.name,
+          isActive: updated.isActive,
+          createdAt: updated.createdAt,
+          createdBy: updated.createdBy,
+        });
+      }
+
+      setKeys((prev) => prev.map((k) => (k.id === item.id ? updated! : k)));
     } catch (err: any) {
       setErrorMsg(err?.message || 'Lỗi cập nhật trạng thái API Key');
     } finally {
@@ -183,14 +361,31 @@ export const AdminApiKeysTab: React.FC = () => {
     setSuccessMsg(null);
     try {
       const headers = await getAdminAuthHeaders();
-      const res = await fetch(`/api/admin/keys/${item.id}`, {
-        method: 'DELETE',
-        headers,
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Không thể xóa API Key');
+      let deletedByServer = false;
+
+      try {
+        const res = await fetch(`/api/admin/keys/${item.id}`, {
+          method: 'DELETE',
+          headers,
+        });
+        const parsed = await safeParseJson(res);
+        if (parsed.isJson) {
+          if (!res.ok || !parsed.data?.success) {
+            throw new Error(parsed.data?.error || 'Không thể xóa API Key');
+          }
+          deletedByServer = true;
+        }
+      } catch (apiErr: any) {
+        if (apiErr?.message && !apiErr.message.includes('Failed to fetch')) {
+          throw apiErr;
+        }
       }
+
+      if (!deletedByServer) {
+        await remove(ref(rtdb, `api_keys/${item.id}`));
+        await remove(ref(rtdb, `api_key_hashes/${item.keyHash}`));
+      }
+
       setKeys((prev) => prev.filter((k) => k.id !== item.id));
       if (selectedTestKey === item.key) {
         setSelectedTestKey('');
@@ -220,17 +415,31 @@ export const AdminApiKeysTab: React.FC = () => {
       const res = await fetch(selectedEndpoint, { headers });
       const text = await res.text();
       let formatted = text;
+      let isValidJson = false;
       try {
         formatted = JSON.stringify(JSON.parse(text), null, 2);
+        isValidJson = true;
       } catch {
         // keep raw
       }
+      if (!isValidJson && res.status === 404) {
+        formatted = JSON.stringify(
+          {
+            success: false,
+            error:
+              'Môi trường preview tĩnh (Shared App URL) không chạy Express Node.js backend cho endpoint /api/v1/*. API Key của bạn vẫn đã được lưu trên Firebase RTDB. Để test endpoint HTTP trực tiếp, hãy mở Development App URL hoặc chạy server Node.js (`npm run dev` / `npm start`).',
+            rawResponse: text.slice(0, 120),
+          },
+          null,
+          2
+        );
+      }
       setTestResult({
         status: res.status,
-        ok: res.ok,
+        ok: res.ok && isValidJson,
         body: formatted,
       });
-      if (withKey && res.ok) {
+      if (withKey && res.ok && isValidJson) {
         fetchKeys();
       }
     } catch (err: any) {

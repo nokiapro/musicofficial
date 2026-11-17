@@ -1,8 +1,7 @@
 import { ref, set, get, child, update, onValue } from 'firebase/database';
-import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
 import { rtdb, db, auth } from './firebase';
 import { Song, AppUser, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage, ArtistBio } from '../types/music';
-import { SONGS_DATABASE } from '../data/songs';
 
 // Recursively strips all undefined properties from objects/arrays so Firebase never throws "value argument contains undefined"
 export function cleanForFirebase<T = any>(obj: any): T {
@@ -189,7 +188,7 @@ export const MusicService = {
       console.warn('Firestore fallback read notice:', err);
     }
 
-    return SONGS_DATABASE;
+    return [];
   },
 
   // Save all songs to Firebase
@@ -1132,11 +1131,19 @@ export const MusicService = {
   async fetchSiteSettings(): Promise<SiteSettings | null> {
     try {
       const snapshot = await get(ref(rtdb, 'site_settings'));
-      if (snapshot.exists()) {
+      if (snapshot.exists() && snapshot.val()) {
         return snapshot.val();
       }
     } catch (e) {
-      console.warn('Site settings fetch notice:', e);
+      console.warn('Site settings RTDB fetch notice:', e);
+    }
+    try {
+      const fsSnap = await getDoc(doc(db, 'site_settings', 'global'));
+      if (fsSnap.exists()) {
+        return fsSnap.data() as SiteSettings;
+      }
+    } catch (e) {
+      console.warn('Site settings Firestore fetch notice:', e);
     }
     return null;
   },
@@ -1159,10 +1166,28 @@ export const MusicService = {
 
   async saveSiteSettings(settings: SiteSettings): Promise<void> {
     const clean = cleanForFirebase(settings);
+    let rtdbSaved = false;
+    let firestoreSaved = false;
+    let lastError: unknown = null;
+
     try {
       await set(ref(rtdb, 'site_settings'), clean);
+      rtdbSaved = true;
     } catch (e) {
-      console.warn('Site settings save notice:', e);
+      lastError = e;
+      console.warn('Site settings RTDB save notice:', e);
+    }
+
+    try {
+      await setDoc(doc(db, 'site_settings', 'global'), clean);
+      firestoreSaved = true;
+    } catch (e) {
+      if (!rtdbSaved) lastError = e;
+      console.warn('Site settings Firestore save notice:', e);
+    }
+
+    if (!rtdbSaved && !firestoreSaved) {
+      throw lastError || new Error('Không thể lưu cấu hình website lên Firebase. Vui lòng kiểm tra Rules Firebase.');
     }
   },
 

@@ -34,6 +34,7 @@ export const MobileProfileView: React.FC = () => {
     setActiveMobileTab,
     logout,
     updateUserProfile,
+    siteSettings,
   } = useMusic();
 
   const [displayNameInput, setDisplayNameInput] = useState(currentUser?.displayName || '');
@@ -445,9 +446,11 @@ export const MobileProfileView: React.FC = () => {
       )}
 
       {/* THÔNG TIN ỨNG DỤNG */}
-      <div className="text-center pt-4 text-[10px] text-white/30 space-y-1">
-        <p className="font-bold uppercase tracking-widest text-white/40">XuanKen Music Mobile v3.2</p>
-        <p>Bản quyền thuộc về XuanKen Music Official • Nền tảng âm nhạc trực tuyến</p>
+      <div className="text-center pt-4 text-[10px] text-white/30 space-y-1 px-4">
+        <p className="font-bold uppercase tracking-widest text-white/40">
+          {siteSettings?.siteName || 'XuanKen Music'} Mobile v3.2
+        </p>
+        <p>{siteSettings?.siteSlogan || 'Nghe & Mua Nhạc Bản Quyền'} • Nền tảng âm nhạc trực tuyến</p>
       </div>
     </div>
   );

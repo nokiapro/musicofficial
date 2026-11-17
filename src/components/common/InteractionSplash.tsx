@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Heart, Disc } from 'lucide-react';
+import { useMusic } from '../../context/MusicContext';
 
 export const InteractionSplash: React.FC = () => {
+  const { siteSettings } = useMusic();
   const [isVisible, setIsVisible] = useState(() => {
     try {
       return sessionStorage.getItem('xuanken_splash_dismissed') !== 'true';
@@ -37,6 +39,11 @@ export const InteractionSplash: React.FC = () => {
 
   if (!isVisible) return null;
 
+  const splashLogo =
+    siteSettings?.logoUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png';
+  const splashName = (siteSettings?.siteName || 'XUANKEN MUSIC').trim();
+  const splashSlogan = (siteSettings?.siteSlogan || 'OFFICIAL').trim();
+
   return (
     <div
       id="interaction-hint"
@@ -53,8 +60,8 @@ export const InteractionSplash: React.FC = () => {
       <div className="hint-logo">
         {!imgError ? (
           <img
-            src="https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png"
-            alt="Logo Xuanken Music"
+            src={splashLogo}
+            alt={splashName}
             onError={() => setImgError(true)}
           />
         ) : (
@@ -75,12 +82,12 @@ export const InteractionSplash: React.FC = () => {
           animation: 'titleGradient 3.5s ease infinite',
         }}
       >
-        XUANKEN MUSIC
+        {splashName}
       </h1>
 
-      {/* Subtitle */}
-      <p className="text-xs sm:text-sm text-[#aaa] tracking-[5px] sm:tracking-[7px] font-bold uppercase mb-8 sm:mb-11 opacity-80">
-        OFFICIAL
+      {/* Subtitle / Slogan */}
+      <p className="text-xs sm:text-sm text-[#aaa] tracking-[3px] sm:tracking-[5px] font-bold uppercase mb-8 sm:mb-11 opacity-80 text-center px-6 max-w-md">
+        {splashSlogan}
       </p>
 
       {/* Touch To Start Button with breathing glow */}

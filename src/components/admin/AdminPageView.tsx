@@ -27,6 +27,7 @@ import {
   Globe,
   Sliders,
   Upload,
+  Disc,
   Disc3,
   Mic2,
   KeyRound,
@@ -87,6 +88,7 @@ export const AdminPageView: React.FC = () => {
   const [minListenDurationInput, setMinListenDurationInput] = useState(siteSettings?.minListenDurationSeconds?.toString() || '5');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSuccessMsg, setSettingsSuccessMsg] = useState<string | null>(null);
+  const [settingsErrorMsg, setSettingsErrorMsg] = useState<string | null>(null);
 
   // Sync inputs when siteSettings change
   React.useEffect(() => {
@@ -105,6 +107,7 @@ export const AdminPageView: React.FC = () => {
     e.preventDefault();
     setIsSavingSettings(true);
     setSettingsSuccessMsg(null);
+    setSettingsErrorMsg(null);
     try {
       await updateSiteSettings({
         siteName: siteNameInput.trim() || 'XuanKen Music',
@@ -115,9 +118,12 @@ export const AdminPageView: React.FC = () => {
         defaultSongPrice: Math.max(0, parseInt(defaultSongPriceInput, 10) || 20000),
         minListenDurationSeconds: Math.max(1, parseInt(minListenDurationInput, 10) || 5),
       });
-      setSettingsSuccessMsg('Đã lưu cấu hình website thành công! Toàn bộ tên web, ảnh logo, favicon và tiền mặc định đã được cập nhật.');
-    } catch (err) {
+      setSettingsSuccessMsg('Đã lưu cấu hình website thành công! Tên web, slogan bên dưới logo, ảnh logo, favicon và tiền mặc định đã được cập nhật đồng bộ.');
+    } catch (err: any) {
       console.error(err);
+      setSettingsErrorMsg(
+        err?.message || 'Không thể lưu cấu hình lên Firebase. Vui lòng kiểm tra Rules Firebase trong tab Rules Firebase.'
+      );
     } finally {
       setIsSavingSettings(false);
     }
@@ -2102,6 +2108,18 @@ service firebase.storage {
             </div>
           )}
 
+          {settingsErrorMsg && (
+            <div className="p-4 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs flex items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+                <span className="font-bold">{settingsErrorMsg}</span>
+              </div>
+              <button onClick={() => setSettingsErrorMsg(null)} className="text-white/60 hover:text-white p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSaveSettings} className="space-y-4 sm:space-y-6">
             {/* 1. THÔNG TIN THƯƠNG HIỆU & TIÊU ĐỀ TRANG */}
             <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#170f23] border border-white/10 shadow-2xl space-y-4">
@@ -2111,13 +2129,49 @@ service firebase.storage {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Thông Tin Nhận Diện Website</h3>
-                  <p className="text-[11px] text-white/50">Cài đặt tên trang web, khẩu hiệu và hình ảnh thương hiệu</p>
+                  <p className="text-[11px] text-white/50">Đổi tên thương hiệu, slogan bên dưới logo Sidebar/Splash và hình ảnh nhận diện</p>
+                </div>
+              </div>
+
+              {/* Live Preview Card */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-black/35 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">
+                    Xem trước hiển thị góc trên bên trái (Sidebar PC)
+                  </span>
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center accent-glow-btn shrink-0">
+                      <Disc className="w-5 h-5 text-white animate-spin-slow" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      {(() => {
+                        const previewName = (siteNameInput || 'XuanKen Music').trim();
+                        const words = previewName.split(/\s+/).filter(Boolean);
+                        const lead = words.length > 1 ? words.slice(0, -1).join(' ') : previewName;
+                        const tail = words.length > 1 ? words[words.length - 1] : '';
+                        return (
+                          <span className="text-[18px] font-extrabold tracking-tight text-white uppercase leading-tight font-display">
+                            {lead}
+                            {tail ? (
+                              <>
+                                {' '}
+                                <span style={{ color: 'var(--color-accent)' }}>{tail}</span>
+                              </>
+                            ) : null}
+                          </span>
+                        );
+                      })()}
+                      <span className="text-[10.5px] font-medium text-white/55 tracking-[0.03em] mt-1 leading-snug break-words">
+                        {(siteSloganInput || 'Nghe & Mua Nhạc Bản Quyền').trim()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-white/80 mb-1.5">Tên Website / Ứng Dụng *</label>
+                  <label className="block text-xs font-bold text-white/80 mb-1.5">Tên Website / Thương Hiệu *</label>
                   <input
                     type="text"
                     required
@@ -2126,20 +2180,20 @@ service firebase.storage {
                     placeholder="VD: XuanKen Music"
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-[#9b4de0] transition-colors"
                   />
-                  <p className="text-[10px] text-white/40 mt-1">Xuất hiện trên thanh tiêu đề trình duyệt và thanh điều hướng</p>
+                  <p className="text-[10px] text-white/40 mt-1">Hiển thị ở góc trên Sidebar trái, màn hình chào và tiêu đề tab trình duyệt</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-white/80 mb-1.5">Slogan / Khẩu Hiệu *</label>
+                  <label className="block text-xs font-bold text-white/80 mb-1.5">Slogan Bên Dưới Tên Thương Hiệu *</label>
                   <input
                     type="text"
                     required
                     value={siteSloganInput}
                     onChange={(e) => setSiteSloganInput(e.target.value)}
-                    placeholder="VD: Nghe & Mua Nhạc Bản Quyền"
+                    placeholder="VD: NGHE & MUA NHẠC BẢN QUYỀN"
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#9b4de0] transition-colors"
                   />
-                  <p className="text-[10px] text-white/40 mt-1">Phụ đề hiển thị bên dưới logo và mô tả chia sẻ</p>
+                  <p className="text-[10px] text-white/40 mt-1">Hiển thị ngay bên dưới tên {siteNameInput.trim() || 'XuanKen Music'} ở Sidebar, màn hình chào & Mobile</p>
                 </div>
               </div>
 

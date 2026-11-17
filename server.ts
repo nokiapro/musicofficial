@@ -566,44 +566,51 @@ async function requireAdminAuth(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const authHeader = req.headers['authorization'];
-  const idToken =
-    typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')
-      ? authHeader.slice(7).trim()
-      : '';
+  try {
+    const authHeader = req.headers['authorization'];
+    const idToken =
+      typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')
+        ? authHeader.slice(7).trim()
+        : '';
 
-  if (!idToken) {
-    res.status(401).json({
+    if (!idToken) {
+      res.status(401).json({
+        success: false,
+        error: 'Vui lòng đăng nhập tài khoản Admin để quản lý API Key.',
+      });
+      return;
+    }
+
+    const verifiedUser = await verifyFirebaseIdToken(idToken);
+    if (!verifiedUser) {
+      res.status(401).json({
+        success: false,
+        error: 'Phiên đăng nhập Firebase không hợp lệ hoặc đã hết hạn.',
+      });
+      return;
+    }
+
+    const isAdmin = await checkIsFirebaseAdmin(
+      verifiedUser.uid,
+      verifiedUser.email,
+      idToken
+    );
+    if (!isAdmin) {
+      res.status(403).json({
+        success: false,
+        error: 'Chỉ Admin mới có quyền tạo và quản lý API Key.',
+      });
+      return;
+    }
+
+    req.adminUser = verifiedUser;
+    next();
+  } catch (err: any) {
+    res.status(500).json({
       success: false,
-      error: 'Vui lòng đăng nhập tài khoản Admin để quản lý API Key.',
+      error: err?.message || 'Lỗi xác thực Admin.',
     });
-    return;
   }
-
-  const verifiedUser = await verifyFirebaseIdToken(idToken);
-  if (!verifiedUser) {
-    res.status(401).json({
-      success: false,
-      error: 'Phiên đăng nhập Firebase không hợp lệ hoặc đã hết hạn.',
-    });
-    return;
-  }
-
-  const isAdmin = await checkIsFirebaseAdmin(
-    verifiedUser.uid,
-    verifiedUser.email,
-    idToken
-  );
-  if (!isAdmin) {
-    res.status(403).json({
-      success: false,
-      error: 'Chỉ Admin mới có quyền tạo và quản lý API Key.',
-    });
-    return;
-  }
-
-  req.adminUser = verifiedUser;
-  next();
 }
 
 // =====================================================================
@@ -620,187 +627,230 @@ async function startServer() {
   // ADMIN API KEY MANAGEMENT ENDPOINTS (Protected by Firebase Admin Token)
   // -----------------------------------------------------------------
   app.get('/api/admin/keys', requireAdminAuth, async (req: AuthenticatedApiRequest, res: Response) => {
-    const authHeader = req.headers['authorization'] as string;
-    const idToken = authHeader.slice(7).trim();
+    try {
+      const authHeader = req.headers['authorization'] as string;
+      const idToken = authHeader.slice(7).trim();
 
-    // Try merging keys from Firebase RTDB in case container restarted
-    const remoteKeys = await fetchRtdbJson<Record<string, ApiKeyRecord>>('api_keys', idToken);
-    let cloudAvailable = remoteKeys.ok;
-    if (remoteKeys.ok && remoteKeys.data && typeof remoteKeys.data === 'object') {
-      let changed = false;
-      for (const remoteRecord of Object.values(remoteKeys.data)) {
-        if (remoteRecord && remoteRecord.id && remoteRecord.keyHash) {
-          const localIdx = apiKeysCache.findIndex((k) => k.id === remoteRecord.id);
-          if (localIdx === -1) {
-            apiKeysCache.push({
-              ...remoteRecord,
-              usageCount: remoteRecord.usageCount || 0,
-              lastUsedAt: remoteRecord.lastUsedAt || null,
-            });
-            changed = true;
+      // Try merging keys from Firebase RTDB in case container restarted
+      const remoteKeys = await fetchRtdbJson<Record<string, ApiKeyRecord>>('api_keys', idToken);
+      const cloudAvailable = remoteKeys.ok;
+      if (remoteKeys.ok && remoteKeys.data && typeof remoteKeys.data === 'object') {
+        let changed = false;
+        for (const remoteRecord of Object.values(remoteKeys.data)) {
+          if (remoteRecord && remoteRecord.id && remoteRecord.keyHash) {
+            const localIdx = apiKeysCache.findIndex((k) => k.id === remoteRecord.id);
+            if (localIdx === -1) {
+              apiKeysCache.push({
+                ...remoteRecord,
+                usageCount: remoteRecord.usageCount || 0,
+                lastUsedAt: remoteRecord.lastUsedAt || null,
+              });
+              changed = true;
+            }
           }
         }
+        if (changed) {
+          saveLocalApiKeys(apiKeysCache);
+        }
       }
-      if (changed) {
-        saveLocalApiKeys(apiKeysCache);
-      }
-    }
 
-    const sorted = [...apiKeysCache].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    res.json({
-      success: true,
-      cloudSynced: cloudAvailable,
-      keys: sorted,
-    });
+      const sorted = [...apiKeysCache].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      res.json({
+        success: true,
+        cloudSynced: cloudAvailable,
+        keys: sorted,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err?.message || 'Lỗi tải danh sách API Key.',
+      });
+    }
   });
 
   app.post('/api/admin/keys', requireAdminAuth, async (req: AuthenticatedApiRequest, res: Response) => {
-    const authHeader = req.headers['authorization'] as string;
-    const idToken = authHeader.slice(7).trim();
+    try {
+      const authHeader = req.headers['authorization'] as string;
+      const idToken = authHeader.slice(7).trim();
 
-    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-    const customKey =
-      typeof req.body?.customKey === 'string' ? req.body.customKey.trim() : '';
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      const customKey =
+        typeof req.body?.customKey === 'string' ? req.body.customKey.trim() : '';
 
-    if (!name) {
-      res.status(400).json({
-        success: false,
-        error: 'Vui lòng nhập tên gợi nhớ cho API Key (ví dụ: App Mobile, Web Đối Tác).',
-      });
-      return;
-    }
-
-    let finalKey = customKey;
-    if (finalKey) {
-      if (finalKey.length < 8 || finalKey.length > 128) {
+      if (!name) {
         res.status(400).json({
           success: false,
-          error: 'API Key tự nhập phải dài từ 8 đến 128 ký tự.',
+          error: 'Vui lòng nhập tên gợi nhớ cho API Key (ví dụ: App Mobile, Web Đối Tác).',
         });
         return;
       }
-      if (!/^[a-zA-Z0-9_\-.]+$/.test(finalKey)) {
-        res.status(400).json({
+
+      let finalKey = customKey;
+      if (finalKey) {
+        if (finalKey.length < 8 || finalKey.length > 128) {
+          res.status(400).json({
+            success: false,
+            error: 'API Key tự nhập phải dài từ 8 đến 128 ký tự.',
+          });
+          return;
+        }
+        if (!/^[a-zA-Z0-9_\-.]+$/.test(finalKey)) {
+          res.status(400).json({
+            success: false,
+            error: 'API Key chỉ được chứa chữ cái, số, dấu gạch dưới (_), gạch ngang (-) hoặc dấu chấm (.).',
+          });
+          return;
+        }
+      } else {
+        finalKey = generateApiKey();
+      }
+
+      const keyHash = sha256(finalKey);
+      if (apiKeysCache.some((k) => k.keyHash === keyHash)) {
+        res.status(409).json({
           success: false,
-          error: 'API Key chỉ được chứa chữ cái, số, dấu gạch dưới (_), gạch ngang (-) hoặc dấu chấm (.).',
+          error: 'API Key này đã tồn tại. Vui lòng chọn key khác.',
         });
         return;
       }
-    } else {
-      finalKey = generateApiKey();
-    }
 
-    const keyHash = sha256(finalKey);
-    if (apiKeysCache.some((k) => k.keyHash === keyHash)) {
-      res.status(409).json({
-        success: false,
-        error: 'API Key này đã tồn tại. Vui lòng chọn key khác.',
+      const record: ApiKeyRecord = {
+        id: `key_${crypto.randomBytes(6).toString('hex')}`,
+        name,
+        key: finalKey,
+        keyHash,
+        keyPreview: maskKey(finalKey),
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        createdBy: req.adminUser?.email || 'admin',
+        lastUsedAt: null,
+        usageCount: 0,
+      };
+
+      apiKeysCache.unshift(record);
+      saveLocalApiKeys(apiKeysCache);
+
+      // Best-effort cloud sync to Firebase RTDB
+      const syncedMain = await writeRtdbJson(`api_keys/${record.id}`, record, idToken, 'PUT');
+      const syncedHash = await writeRtdbJson(
+        `api_key_hashes/${record.keyHash}`,
+        {
+          id: record.id,
+          name: record.name,
+          isActive: record.isActive,
+          createdAt: record.createdAt,
+          createdBy: record.createdBy,
+        },
+        idToken,
+        'PUT'
+      );
+
+      res.status(201).json({
+        success: true,
+        cloudSynced: syncedMain && syncedHash,
+        key: record,
       });
-      return;
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err?.message || 'Lỗi tạo API Key.',
+      });
     }
-
-    const record: ApiKeyRecord = {
-      id: `key_${crypto.randomBytes(6).toString('hex')}`,
-      name,
-      key: finalKey,
-      keyHash,
-      keyPreview: maskKey(finalKey),
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      createdBy: req.adminUser?.email || 'admin',
-      lastUsedAt: null,
-      usageCount: 0,
-    };
-
-    apiKeysCache.unshift(record);
-    saveLocalApiKeys(apiKeysCache);
-
-    // Best-effort cloud sync to Firebase RTDB
-    const syncedMain = await writeRtdbJson(`api_keys/${record.id}`, record, idToken, 'PUT');
-    const syncedHash = await writeRtdbJson(
-      `api_key_hashes/${record.keyHash}`,
-      {
-        id: record.id,
-        name: record.name,
-        isActive: record.isActive,
-        createdAt: record.createdAt,
-        createdBy: record.createdBy,
-      },
-      idToken,
-      'PUT'
-    );
-
-    res.status(201).json({
-      success: true,
-      cloudSynced: syncedMain && syncedHash,
-      key: record,
-    });
   });
 
   app.patch('/api/admin/keys/:id', requireAdminAuth, async (req: AuthenticatedApiRequest, res: Response) => {
-    const authHeader = req.headers['authorization'] as string;
-    const idToken = authHeader.slice(7).trim();
-    const { id } = req.params;
+    try {
+      const authHeader = req.headers['authorization'] as string;
+      const idToken = authHeader.slice(7).trim();
+      const { id } = req.params;
 
-    const target = apiKeysCache.find((k) => k.id === id);
-    if (!target) {
-      res.status(404).json({ success: false, error: 'Không tìm thấy API Key.' });
-      return;
+      let target = apiKeysCache.find((k) => k.id === id);
+      if (!target) {
+        const remote = await fetchRtdbJson<ApiKeyRecord>(`api_keys/${id}`, idToken);
+        if (remote.ok && remote.data) {
+          target = remote.data;
+          apiKeysCache.push(target);
+        }
+      }
+      if (!target) {
+        res.status(404).json({ success: false, error: 'Không tìm thấy API Key.' });
+        return;
+      }
+
+      if (typeof req.body?.isActive === 'boolean') {
+        target.isActive = req.body.isActive;
+      }
+      if (typeof req.body?.name === 'string' && req.body.name.trim()) {
+        target.name = req.body.name.trim();
+      }
+
+      saveLocalApiKeys(apiKeysCache);
+
+      const syncedMain = await writeRtdbJson(`api_keys/${target.id}`, target, idToken, 'PUT');
+      const syncedHash = await writeRtdbJson(
+        `api_key_hashes/${target.keyHash}`,
+        {
+          id: target.id,
+          name: target.name,
+          isActive: target.isActive,
+          createdAt: target.createdAt,
+          createdBy: target.createdBy,
+        },
+        idToken,
+        'PUT'
+      );
+
+      res.json({
+        success: true,
+        cloudSynced: syncedMain && syncedHash,
+        key: target,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err?.message || 'Lỗi cập nhật API Key.',
+      });
     }
-
-    if (typeof req.body?.isActive === 'boolean') {
-      target.isActive = req.body.isActive;
-    }
-    if (typeof req.body?.name === 'string' && req.body.name.trim()) {
-      target.name = req.body.name.trim();
-    }
-
-    saveLocalApiKeys(apiKeysCache);
-
-    const syncedMain = await writeRtdbJson(`api_keys/${target.id}`, target, idToken, 'PUT');
-    const syncedHash = await writeRtdbJson(
-      `api_key_hashes/${target.keyHash}`,
-      {
-        id: target.id,
-        name: target.name,
-        isActive: target.isActive,
-        createdAt: target.createdAt,
-        createdBy: target.createdBy,
-      },
-      idToken,
-      'PUT'
-    );
-
-    res.json({
-      success: true,
-      cloudSynced: syncedMain && syncedHash,
-      key: target,
-    });
   });
 
   app.delete('/api/admin/keys/:id', requireAdminAuth, async (req: AuthenticatedApiRequest, res: Response) => {
-    const authHeader = req.headers['authorization'] as string;
-    const idToken = authHeader.slice(7).trim();
-    const { id } = req.params;
+    try {
+      const authHeader = req.headers['authorization'] as string;
+      const idToken = authHeader.slice(7).trim();
+      const { id } = req.params;
 
-    const idx = apiKeysCache.findIndex((k) => k.id === id);
-    if (idx === -1) {
-      res.status(404).json({ success: false, error: 'Không tìm thấy API Key.' });
-      return;
+      const idx = apiKeysCache.findIndex((k) => k.id === id);
+      let removed: ApiKeyRecord | null = null;
+      if (idx !== -1) {
+        [removed] = apiKeysCache.splice(idx, 1);
+        saveLocalApiKeys(apiKeysCache);
+      } else {
+        const remote = await fetchRtdbJson<ApiKeyRecord>(`api_keys/${id}`, idToken);
+        if (remote.ok && remote.data) {
+          removed = remote.data;
+        }
+      }
+
+      if (!removed) {
+        res.status(404).json({ success: false, error: 'Không tìm thấy API Key.' });
+        return;
+      }
+
+      await writeRtdbJson(`api_keys/${removed.id}`, null, idToken, 'DELETE');
+      await writeRtdbJson(`api_key_hashes/${removed.keyHash}`, null, idToken, 'DELETE');
+
+      res.json({
+        success: true,
+        deletedId: removed.id,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err?.message || 'Lỗi xóa API Key.',
+      });
     }
-
-    const [removed] = apiKeysCache.splice(idx, 1);
-    saveLocalApiKeys(apiKeysCache);
-
-    await writeRtdbJson(`api_keys/${removed.id}`, null, idToken, 'DELETE');
-    await writeRtdbJson(`api_key_hashes/${removed.keyHash}`, null, idToken, 'DELETE');
-
-    res.json({
-      success: true,
-      deletedId: removed.id,
-    });
   });
 
   // -----------------------------------------------------------------
