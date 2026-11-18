@@ -58,10 +58,48 @@ interface RawSong {
   audioFormat?: string;
   price?: number | string;
   demoUrl?: string;
+  mp3_128Url?: string;
   mp3Url?: string;
   wavUrl?: string;
   isAlbumTrack?: boolean;
   albumId?: string;
+}
+
+interface MemberRecord {
+  uid: string;
+  email: string;
+  displayName?: string;
+  avatarUrl?: string;
+  balance?: number;
+  purchasedSongIds?: string[];
+  likedSongIds?: string[];
+  likedAlbumIds?: string[];
+  blockedSongIds?: string[];
+  usedVoucherCodes?: string[];
+  role?: 'admin' | 'user';
+  createdAt?: string;
+}
+
+interface SongMasterRecord {
+  id?: string;
+  price?: number;
+  mp3Url?: string;
+  wavUrl?: string;
+  updatedAt?: string;
+}
+
+interface UserContext {
+  uid: string;
+  email: string;
+  displayName: string;
+  idToken: string;
+  isAdmin: boolean;
+  balance: number;
+  purchasedSongIds: string[];
+  likedSongIds: string[];
+  likedAlbumIds: string[];
+  usedVoucherCodes: string[];
+  member: MemberRecord | null;
 }
 
 interface AuthenticatedApiRequest extends Request {
@@ -74,6 +112,7 @@ interface AuthenticatedApiRequest extends Request {
     uid: string;
     email: string;
   };
+  userContext?: UserContext;
 }
 
 // =====================================================================
@@ -163,16 +202,27 @@ function getEnvApiKeyHashes(): Map<string, ApiKeyRecord> {
 }
 
 // =====================================================================
-// FIREBASE REST HELPERS
+// FIREBASE REST & IDENTITY TOOLKIT HELPERS
 // =====================================================================
 async function fetchRtdbJson<T = unknown>(
   nodePath: string,
-  authToken?: string
+  authToken?: string,
+  extraParams?: Record<string, string>
 ): Promise<{ ok: boolean; status: number; data: T | null }> {
   try {
     const cleanPath = nodePath.replace(/^\/+/, '');
-    const query = authToken ? `?auth=${encodeURIComponent(authToken)}` : '';
-    const res = await fetch(`${RTDB_URL}/${cleanPath}.json${query}`, {
+    const params = new URLSearchParams();
+    if (authToken) {
+      params.set('auth', authToken);
+    }
+    if (extraParams) {
+      for (const [k, v] of Object.entries(extraParams)) {
+        params.set(k, v);
+      }
+    }
+    const qs = params.toString();
+    const url = `${RTDB_URL}/${cleanPath}.json${qs ? `?${qs}` : ''}`;
+    const res = await fetch(url, {
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) {
@@ -200,6 +250,10 @@ async function writeRtdbJson(
       headers: { 'Content-Type': 'application/json' },
       body: method === 'DELETE' ? undefined : JSON.stringify(payload),
     });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.warn(`[RTDB] ${method} ${nodePath} returned ${res.status}:`, errText);
+    }
     return res.ok;
   } catch (err) {
     console.warn(`[RTDB] Failed to ${method} ${nodePath}:`, err);
@@ -209,7 +263,7 @@ async function writeRtdbJson(
 
 async function verifyFirebaseIdToken(
   idToken: string
-): Promise<{ uid: string; email: string } | null> {
+): Promise<{ uid: string; email: string; displayName?: string } | null> {
   try {
     const res = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
@@ -221,17 +275,131 @@ async function verifyFirebaseIdToken(
     );
     if (!res.ok) return null;
     const json = (await res.json()) as {
-      users?: Array<{ localId?: string; email?: string }>;
+      users?: Array<{ localId?: string; email?: string; displayName?: string }>;
     };
     const user = json?.users?.[0];
     if (!user?.localId) return null;
     return {
       uid: user.localId,
       email: (user.email || '').toLowerCase().trim(),
+      displayName: user.displayName || undefined,
     };
   } catch {
     return null;
   }
+}
+
+async function signInFirebaseEmail(email: string, password: string) {
+  const res = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true }),
+    }
+  );
+  const json = (await res.json()) as any;
+  if (!res.ok) {
+    const fbMsg = String(json?.error?.message || '');
+    let error = 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.';
+    if (fbMsg.includes('INVALID_LOGIN_CREDENTIALS') || fbMsg.includes('INVALID_PASSWORD') || fbMsg.includes('EMAIL_NOT_FOUND')) {
+      error = 'Email hoặc mật khẩu không chính xác.';
+    } else if (fbMsg.includes('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+      error = 'Đăng nhập sai quá nhiều lần. Vui lòng thử lại sau.';
+    } else if (fbMsg.includes('USER_DISABLED')) {
+      error = 'Tài khoản này đã bị vô hiệu hóa.';
+    }
+    return { ok: false as const, status: 401, error, code: fbMsg || 'AUTH_FAILED' };
+  }
+  return {
+    ok: true as const,
+    uid: String(json.localId),
+    email: String(json.email || email).toLowerCase().trim(),
+    displayName: String(json.displayName || ''),
+    idToken: String(json.idToken),
+    refreshToken: String(json.refreshToken),
+    expiresIn: Number(json.expiresIn || 3600),
+  };
+}
+
+async function signUpFirebaseEmail(email: string, password: string, displayName?: string) {
+  const res = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true }),
+    }
+  );
+  const json = (await res.json()) as any;
+  if (!res.ok) {
+    const fbMsg = String(json?.error?.message || '');
+    let error = 'Đăng ký tài khoản thất bại.';
+    if (fbMsg.includes('EMAIL_EXISTS')) {
+      error = 'Email này đã được sử dụng. Vui lòng đăng nhập.';
+    } else if (fbMsg.includes('WEAK_PASSWORD')) {
+      error = 'Mật khẩu quá yếu (tối thiểu 6 ký tự).';
+    } else if (fbMsg.includes('INVALID_EMAIL')) {
+      error = 'Địa chỉ email không hợp lệ.';
+    }
+    return { ok: false as const, status: 400, error, code: fbMsg || 'SIGNUP_FAILED' };
+  }
+
+  const idToken = String(json.idToken);
+  if (displayName && displayName.trim()) {
+    await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${FIREBASE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          displayName: displayName.trim(),
+          returnSecureToken: false,
+        }),
+      }
+    ).catch(() => {});
+  }
+
+  return {
+    ok: true as const,
+    uid: String(json.localId),
+    email: String(json.email || email).toLowerCase().trim(),
+    displayName: (displayName || '').trim() || email.split('@')[0],
+    idToken,
+    refreshToken: String(json.refreshToken),
+    expiresIn: Number(json.expiresIn || 3600),
+  };
+}
+
+async function refreshFirebaseToken(refreshToken: string) {
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+  });
+  const res = await fetch(
+    `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    }
+  );
+  const json = (await res.json()) as any;
+  if (!res.ok || !json?.id_token) {
+    return {
+      ok: false as const,
+      status: 401,
+      error: 'Refresh token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
+    };
+  }
+  return {
+    ok: true as const,
+    idToken: String(json.id_token),
+    refreshToken: String(json.refresh_token || refreshToken),
+    expiresIn: Number(json.expires_in || 3600),
+    uid: String(json.user_id || ''),
+  };
 }
 
 async function checkIsFirebaseAdmin(
@@ -253,8 +421,77 @@ async function checkIsFirebaseAdmin(
   return false;
 }
 
+async function loadOrInitUserContext(
+  uid: string,
+  email: string,
+  idToken: string,
+  fallbackDisplayName?: string
+): Promise<UserContext> {
+  const [memberRes, entitlementsRes, adminNodeRes] = await Promise.all([
+    fetchRtdbJson<MemberRecord>(`members/${uid}`, idToken),
+    fetchRtdbJson<Record<string, any>>(`user_purchases/${uid}`, idToken),
+    fetchRtdbJson<unknown>(`admins/${uid}`, idToken),
+  ]);
+
+  let member = memberRes.ok ? memberRes.data : null;
+  const isPrimaryAdmin = PRIMARY_ADMIN_EMAILS.some(
+    (e) => e.toLowerCase() === email.toLowerCase()
+  );
+
+  if (!member) {
+    const siteSettings = await fetchCachedRtdb<{ defaultStartingBalance?: number }>('site_settings', 15000);
+    const startingBalance =
+      typeof siteSettings?.defaultStartingBalance === 'number'
+        ? Math.min(500000, Math.max(0, siteSettings.defaultStartingBalance))
+        : 500000;
+
+    member = {
+      uid,
+      email,
+      displayName: fallbackDisplayName || email.split('@')[0] || 'Thành Viên',
+      balance: startingBalance,
+      purchasedSongIds: [],
+      likedSongIds: [],
+      likedAlbumIds: [],
+      blockedSongIds: [],
+      usedVoucherCodes: [],
+      role: isPrimaryAdmin ? 'admin' : 'user',
+      createdAt: new Date().toLocaleDateString('vi-VN'),
+    };
+    await writeRtdbJson(`members/${uid}`, member, idToken, 'PUT');
+  }
+
+  const isAdmin =
+    isPrimaryAdmin ||
+    Boolean(adminNodeRes.ok && adminNodeRes.data) ||
+    member.role === 'admin';
+
+  const memberPurchased = Array.isArray(member.purchasedSongIds)
+    ? member.purchasedSongIds.filter((s): s is string => typeof s === 'string')
+    : [];
+  const entitlementPurchased =
+    entitlementsRes.ok && entitlementsRes.data && typeof entitlementsRes.data === 'object'
+      ? Object.keys(entitlementsRes.data).filter(Boolean)
+      : [];
+  const purchasedSongIds = Array.from(new Set([...memberPurchased, ...entitlementPurchased]));
+
+  return {
+    uid,
+    email,
+    displayName: member.displayName || fallbackDisplayName || email.split('@')[0] || 'Thành Viên',
+    idToken,
+    isAdmin,
+    balance: typeof member.balance === 'number' ? member.balance : 0,
+    purchasedSongIds,
+    likedSongIds: Array.isArray(member.likedSongIds) ? member.likedSongIds : [],
+    likedAlbumIds: Array.isArray(member.likedAlbumIds) ? member.likedAlbumIds : [],
+    usedVoucherCodes: Array.isArray(member.usedVoucherCodes) ? member.usedVoucherCodes : [],
+    member,
+  };
+}
+
 // =====================================================================
-// CATALOG CACHE & PAID/FREE LINK SANITIZATION
+// CATALOG CACHE & PERSONALIZED SONG / ALBUM SANITIZATION
 // =====================================================================
 const catalogCache = new Map<string, { expiresAt: number; data: unknown }>();
 
@@ -272,22 +509,40 @@ async function fetchCachedRtdb<T>(nodePath: string, ttlMs = 10000): Promise<T | 
   return hit ? (hit.data as T) : null;
 }
 
-function sanitizePublicSong(raw: RawSong, idFallback: string) {
+function sanitizeSongForUser(
+  raw: RawSong,
+  idFallback: string,
+  userCtx?: UserContext,
+  masterRecord?: SongMasterRecord | null
+) {
+  const id = raw?.id || idFallback;
   const price =
     typeof raw?.price === 'number' ? raw.price : Number(raw?.price) || 0;
   const isPaid = price > 0;
+  const isUserBuyer = Boolean(userCtx?.purchasedSongIds.includes(id));
+  const hasFullAccess = !isPaid || Boolean(userCtx?.isAdmin) || isUserBuyer;
 
-  // Paid songs: strictly hide mp3Url and wavUrl, only expose demoUrl (60s preview)
-  // Free songs (price <= 0): expose full mp3Url, wavUrl, and demoUrl
   const demoUrl = raw?.demoUrl ? String(raw.demoUrl).trim() : null;
-  const fullMp3 = !isPaid && raw?.mp3Url ? String(raw.mp3Url).trim() : null;
-  const fullWav = !isPaid && raw?.wavUrl ? String(raw.wavUrl).trim() : null;
-  const audioUrl = isPaid
-    ? demoUrl
-    : fullWav || fullMp3 || demoUrl || null;
+  const mp3_128Url = raw?.mp3_128Url ? String(raw.mp3_128Url).trim() : null;
+
+  // Protected 320kbps MP3 & WAV Lossless ONLY exposed when free OR user owns / admin
+  const rawFullMp3 = masterRecord?.mp3Url || raw?.mp3Url || '';
+  const rawFullWav = masterRecord?.wavUrl || raw?.wavUrl || '';
+  const fullMp3 = hasFullAccess && rawFullMp3 ? String(rawFullMp3).trim() : null;
+  const fullWav = hasFullAccess && rawFullWav ? String(rawFullWav).trim() : null;
+
+  const audioUrl = hasFullAccess
+    ? fullWav || fullMp3 || mp3_128Url || demoUrl || null
+    : demoUrl || mp3_128Url || null;
+
+  const availableStreamType = hasFullAccess
+    ? 'full'
+    : mp3_128Url
+    ? '128kbps'
+    : 'demo';
 
   return {
-    id: raw?.id || idFallback,
+    id,
     stt: typeof raw?.stt === 'number' ? raw.stt : null,
     title: raw?.title || 'Bài Hát Chưa Đặt Tên',
     artists: raw?.artists || 'XuanKen',
@@ -305,14 +560,17 @@ function sanitizePublicSong(raw: RawSong, idFallback: string) {
     audioFormat: raw?.audioFormat === 'WAV' ? 'WAV' : 'MP3',
     price,
     isPaid,
-    audioProtected: isPaid,
-    availableStreamType: isPaid ? 'demo' : 'full',
+    isPurchased: !isPaid || isUserBuyer || Boolean(userCtx?.isAdmin),
+    hasFullAccess,
+    audioProtected: !hasFullAccess,
+    availableStreamType,
     playCount: typeof raw?.playCount === 'number' ? raw.playCount : 0,
     likesCount:
       typeof raw?.likesCount === 'number'
         ? raw.likesCount
         : Number(raw?.likesCount) || 0,
     demoUrl,
+    mp3_128Url,
     mp3Url: fullMp3,
     wavUrl: fullWav,
     audioUrl,
@@ -321,20 +579,31 @@ function sanitizePublicSong(raw: RawSong, idFallback: string) {
   };
 }
 
-function sanitizePublicAlbumSong(raw: RawSong, albumId: string, albumArtist: string, albumCover: string, idx: number) {
+function sanitizeAlbumSongForUser(
+  raw: RawSong,
+  albumId: string,
+  albumArtist: string,
+  albumCover: string,
+  idx: number,
+  userCtx?: UserContext
+) {
+  const id = raw?.id || `albsong-${albumId}-${idx + 1}`;
   const price =
     typeof raw?.price === 'number' ? raw.price : Number(raw?.price) || 0;
   const isPaid = price > 0;
+  const isUserBuyer = Boolean(userCtx?.purchasedSongIds.includes(id));
+  const hasFullAccess = !isPaid || Boolean(userCtx?.isAdmin) || isUserBuyer;
 
   const demoUrl = raw?.demoUrl ? String(raw.demoUrl).trim() : null;
-  const fullMp3 = !isPaid && raw?.mp3Url ? String(raw.mp3Url).trim() : null;
-  const fullWav = !isPaid && raw?.wavUrl ? String(raw.wavUrl).trim() : null;
-  const audioUrl = isPaid
-    ? demoUrl
-    : fullWav || fullMp3 || demoUrl || null;
+  const mp3_128Url = raw?.mp3_128Url ? String(raw.mp3_128Url).trim() : null;
+  const fullMp3 = hasFullAccess && raw?.mp3Url ? String(raw.mp3Url).trim() : null;
+  const fullWav = hasFullAccess && raw?.wavUrl ? String(raw.wavUrl).trim() : null;
+  const audioUrl = hasFullAccess
+    ? fullWav || fullMp3 || mp3_128Url || demoUrl || null
+    : demoUrl || mp3_128Url || null;
 
   return {
-    id: raw?.id || `albsong-${albumId}-${idx + 1}`,
+    id,
     albumId: raw?.albumId || albumId,
     stt: typeof raw?.stt === 'number' ? raw.stt : idx + 1,
     title: raw?.title || `Bài hát ${idx + 1}`,
@@ -347,10 +616,13 @@ function sanitizePublicAlbumSong(raw: RawSong, albumId: string, albumArtist: str
     coverImage: raw?.coverImage || albumCover,
     price,
     isPaid,
-    audioProtected: isPaid,
-    availableStreamType: isPaid ? 'demo' : 'full',
+    isPurchased: hasFullAccess,
+    hasFullAccess,
+    audioProtected: !hasFullAccess,
+    availableStreamType: hasFullAccess ? 'full' : mp3_128Url ? '128kbps' : 'demo',
     playCount: typeof raw?.playCount === 'number' ? raw.playCount : 0,
     demoUrl,
+    mp3_128Url,
     mp3Url: fullMp3,
     wavUrl: fullWav,
     audioUrl,
@@ -359,22 +631,78 @@ function sanitizePublicAlbumSong(raw: RawSong, albumId: string, albumArtist: str
   };
 }
 
-async function getAllPublicSongs() {
+async function fetchAuthorizedMastersMap(
+  entries: Array<[string, RawSong]>,
+  userCtx?: UserContext
+): Promise<Map<string, SongMasterRecord>> {
+  const mastersMap = new Map<string, SongMasterRecord>();
+
+  if (userCtx?.isAdmin) {
+    const allMasters = await fetchRtdbJson<Record<string, SongMasterRecord>>(
+      'song_masters',
+      userCtx.idToken
+    );
+    if (allMasters.ok && allMasters.data && typeof allMasters.data === 'object') {
+      for (const [id, rec] of Object.entries(allMasters.data)) {
+        if (rec) mastersMap.set(id, rec);
+      }
+      return mastersMap;
+    }
+  }
+
+  // Only fetch protected masters for songs the user is legitimately allowed to access
+  const authorizedIds = entries
+    .filter(([key, val]) => {
+      const id = val?.id || key;
+      const price = typeof val?.price === 'number' ? val.price : Number(val?.price) || 0;
+      if (price <= 0) return Boolean(userCtx);
+      return Boolean(userCtx && userCtx.purchasedSongIds.includes(id));
+    })
+    .map(([key, val]) => val?.id || key);
+
+  if (authorizedIds.length > 0 && userCtx) {
+    const results = await Promise.all(
+      authorizedIds.map(async (songId) => {
+        const res = await fetchRtdbJson<SongMasterRecord>(
+          `song_masters/${songId}`,
+          userCtx.idToken
+        );
+        return [songId, res.ok ? res.data : null] as const;
+      })
+    );
+    for (const [songId, rec] of results) {
+      if (rec) mastersMap.set(songId, rec);
+    }
+  }
+
+  return mastersMap;
+}
+
+async function getAllSongsForUser(userCtx?: UserContext) {
   const raw = await fetchCachedRtdb<Record<string, RawSong> | RawSong[]>('songs');
   if (!raw) return [];
-  const entries: Array<[string, RawSong]> = Array.isArray(raw)
-    ? raw
-        .map((s, idx): [string, RawSong] => [s?.id || `song-${idx + 1}`, s])
-        .filter(([, s]) => Boolean(s))
-    : Object.entries(raw);
+  const entries: Array<[string, RawSong]> = (
+    Array.isArray(raw)
+      ? raw
+          .map((s, idx): [string, RawSong] => [s?.id || `song-${idx + 1}`, s])
+          .filter(([, s]) => Boolean(s))
+      : Object.entries(raw)
+  ).filter(
+    ([, val]) =>
+      val && (val.title || val.demoUrl || val.mp3_128Url || val.mp3Url || val.wavUrl)
+  );
+
+  const mastersMap = await fetchAuthorizedMastersMap(entries, userCtx);
 
   return entries
-    .filter(([, val]) => val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl))
-    .map(([key, val]) => sanitizePublicSong(val, key))
+    .map(([key, val]) => {
+      const id = val?.id || key;
+      return sanitizeSongForUser(val, key, userCtx, mastersMap.get(id) || null);
+    })
     .sort((a, b) => (a.stt ?? 999999) - (b.stt ?? 999999));
 }
 
-async function getAllPublicAlbums() {
+async function getAllAlbumsForUser(userCtx?: UserContext) {
   const raw = await fetchCachedRtdb<Record<string, any> | any[]>('exclusive_albums');
   if (!raw) return [];
   const entries: Array<[string, any]> = Array.isArray(raw)
@@ -393,7 +721,7 @@ async function getAllPublicAlbums() {
         ? (Object.values(val.songs).filter(Boolean) as RawSong[])
         : [];
       const songs = rawSongs.map((s, idx) =>
-        sanitizePublicAlbumSong(s, albumId, albumArtist, albumCover, idx)
+        sanitizeAlbumSongForUser(s, albumId, albumArtist, albumCover, idx, userCtx)
       );
       return {
         id: albumId,
@@ -420,7 +748,7 @@ async function getAllPublicArtists() {
   }
 
   // Fallback: synthesize artist list from public songs if artist_bios node isn't populated or rules restrict direct RTDB read
-  const songs = await getAllPublicSongs();
+  const songs = await getAllSongsForUser();
   const seen = new Map<string, { id: string; name: string; avatarUrl: string | null; songCount: number; genres: string[] }>();
   for (const s of songs) {
     const names = String(s.artists || 'XuanKen')
@@ -447,12 +775,15 @@ async function getAllPublicArtists() {
 }
 
 // =====================================================================
-// MIDDLEWARE: CORS, API KEY AUTH, ADMIN AUTH
+// MIDDLEWARE: CORS, API KEY AUTH, USER TOKEN SYNC, ADMIN AUTH
 // =====================================================================
 function apiCorsMiddleware(req: Request, res: Response, next: NextFunction): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, x-api-key, x-user-token'
+  );
   if (req.method === 'OPTIONS') {
     res.status(204).end();
     return;
@@ -465,16 +796,98 @@ function extractApiKeyFromRequest(req: Request): string {
   if (typeof headerKey === 'string' && headerKey.trim()) {
     return headerKey.trim();
   }
+  const queryKey = req.query.apiKey || req.query.api_key || req.query.key;
+  if (typeof queryKey === 'string' && queryKey.trim()) {
+    return queryKey.trim();
+  }
   const authHeader = req.headers['authorization'];
   if (typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')) {
     const token = authHeader.slice(7).trim();
     if (token) return token;
   }
-  const queryKey = req.query.apiKey || req.query.api_key || req.query.key;
-  if (typeof queryKey === 'string' && queryKey.trim()) {
-    return queryKey.trim();
+  return '';
+}
+
+function extractUserTokenFromRequest(req: Request): string {
+  const userHeader = req.headers['x-user-token'];
+  if (typeof userHeader === 'string' && userHeader.trim()) {
+    return userHeader.trim();
+  }
+  const queryToken = req.query.userToken || req.query.user_token;
+  if (typeof queryToken === 'string' && queryToken.trim()) {
+    return queryToken.trim();
+  }
+  // Allow Authorization: Bearer <firebase_id_token> when x-api-key or ?apiKey is also provided
+  const hasSeparateApiKey = Boolean(
+    (typeof req.headers['x-api-key'] === 'string' && req.headers['x-api-key'].trim()) ||
+      req.query.apiKey ||
+      req.query.api_key ||
+      req.query.key
+  );
+  if (hasSeparateApiKey) {
+    const authHeader = req.headers['authorization'];
+    if (typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')) {
+      const token = authHeader.slice(7).trim();
+      if (token) return token;
+    }
   }
   return '';
+}
+
+async function resolveOptionalUserContext(
+  req: AuthenticatedApiRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const userToken = extractUserTokenFromRequest(req);
+    if (!userToken) {
+      req.userContext = undefined;
+      next();
+      return;
+    }
+
+    const verified = await verifyFirebaseIdToken(userToken);
+    if (!verified) {
+      res.status(401).json({
+        success: false,
+        code: 'USER_TOKEN_INVALID',
+        error:
+          'Token tài khoản người dùng (x-user-token) không hợp lệ hoặc đã hết hạn. Vui lòng gọi POST /api/v1/auth/refresh hoặc đăng nhập lại.',
+      });
+      return;
+    }
+
+    req.userContext = await loadOrInitUserContext(
+      verified.uid,
+      verified.email,
+      userToken,
+      verified.displayName
+    );
+    next();
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: err?.message || 'Lỗi xác thực tài khoản người dùng.',
+    });
+  }
+}
+
+function requireUserAuth(
+  req: AuthenticatedApiRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  if (!req.userContext) {
+    res.status(401).json({
+      success: false,
+      code: 'USER_AUTH_REQUIRED',
+      error:
+        'Endpoint này yêu cầu đăng nhập tài khoản người dùng. Hãy gọi POST /api/v1/auth/login để lấy idToken và gửi qua header "x-user-token" (hoặc "Authorization: Bearer <idToken>" kèm "x-api-key").',
+    });
+    return;
+  }
+  next();
 }
 
 async function requireApiKey(
@@ -854,43 +1267,291 @@ async function startServer() {
   });
 
   // -----------------------------------------------------------------
-  // PUBLIC MUSIC API ROUTER (STRICTLY PROTECTED BY ADMIN API KEY)
+  // PUBLIC / MOBILE MUSIC API ROUTER (STRICTLY PROTECTED BY ADMIN API KEY)
   // -----------------------------------------------------------------
   const publicRouter = express.Router();
   publicRouter.use(requireApiKey);
+  publicRouter.use(resolveOptionalUserContext);
 
   publicRouter.get(['/', '/info'], (req: AuthenticatedApiRequest, res: Response) => {
     res.json({
       success: true,
-      service: 'XuanKen Music Public API',
-      version: '1.0.0',
+      service: 'XuanKen Music API (Web & Mobile Sync)',
+      version: '2.0.0',
       authenticatedAs: req.apiKeyMeta,
+      userSession: req.userContext
+        ? {
+            authenticated: true,
+            uid: req.userContext.uid,
+            email: req.userContext.email,
+            displayName: req.userContext.displayName,
+            balance: req.userContext.balance,
+            purchasedCount: req.userContext.purchasedSongIds.length,
+            isAdmin: req.userContext.isAdmin,
+          }
+        : { authenticated: false },
       rules: {
-        paidSongs: 'Ẩn hoàn toàn link full (mp3Url/wavUrl = null), chỉ trả về demoUrl (nếu có).',
-        freeSongs: 'Trả về đầy đủ link nhạc (mp3Url, wavUrl, demoUrl).',
+        publicAudio:
+          'Khách / user chưa mua chỉ nhận demoUrl (60s) và mp3_128Url (128kbps). Link 320kbps (mp3Url) & WAV Lossless (wavUrl) được tách bảo mật tại song_masters và trả về null.',
+        purchasedAudio:
+          'Khi gửi kèm x-user-token (hoặc Bearer idToken cùng x-api-key) của tài khoản đã mua bài hát, API tự động mở khóa và trả về đầy đủ mp3Url (320kbps) & wavUrl.',
+        personalPlaylists:
+          'Playlist cá nhân riêng tư theo từng tài khoản. Không có tài khoản hoặc tài khoản khác không thể xem playlist cá nhân của người khác.',
       },
       endpoints: [
+        'POST /api/v1/auth/login',
+        'POST /api/v1/auth/register',
+        'POST /api/v1/auth/refresh',
+        'GET /api/v1/me',
+        'POST /api/v1/me/likes',
         'GET /api/v1/songs',
         'GET /api/v1/songs/:id',
+        'GET /api/v1/songs/:id/stream',
+        'POST /api/v1/songs/:id/purchase',
+        'GET /api/v1/purchases',
+        'POST /api/v1/purchases',
+        'GET /api/v1/vouchers/validate',
+        'GET /api/v1/playlists',
+        'GET /api/v1/playlists/:id',
+        'POST /api/v1/playlists',
+        'PATCH /api/v1/playlists/:id',
+        'DELETE /api/v1/playlists/:id',
         'GET /api/v1/albums',
         'GET /api/v1/albums/:id',
         'GET /api/v1/artists',
         'GET /api/v1/artists/:id',
         'GET /api/v1/charts',
-        'GET /api/v1/playlists',
         'GET /api/v1/site',
       ],
     });
   });
 
-  publicRouter.get('/songs', async (req: Request, res: Response) => {
+  // -----------------------------------------------------------------
+  // USER ACCOUNT SYNC (SHARED WITH WEB FIREBASE ACCOUNTS)
+  // -----------------------------------------------------------------
+  publicRouter.post('/auth/login', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
-      let songs = await getAllPublicSongs();
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      if (!email || !password) {
+        res.status(400).json({
+          success: false,
+          error: 'Vui lòng nhập đầy đủ email và mật khẩu.',
+        });
+        return;
+      }
+
+      const authRes = await signInFirebaseEmail(email, password);
+      if (!authRes.ok) {
+        res.status(authRes.status).json({
+          success: false,
+          code: authRes.code,
+          error: authRes.error,
+        });
+        return;
+      }
+
+      const userCtx = await loadOrInitUserContext(
+        authRes.uid,
+        authRes.email,
+        authRes.idToken,
+        authRes.displayName
+      );
+
+      res.json({
+        success: true,
+        idToken: authRes.idToken,
+        refreshToken: authRes.refreshToken,
+        expiresIn: authRes.expiresIn,
+        user: {
+          uid: userCtx.uid,
+          email: userCtx.email,
+          displayName: userCtx.displayName,
+          avatarUrl: userCtx.member?.avatarUrl || null,
+          balance: userCtx.balance,
+          purchasedSongIds: userCtx.purchasedSongIds,
+          likedSongIds: userCtx.likedSongIds,
+          likedAlbumIds: userCtx.likedAlbumIds,
+          usedVoucherCodes: userCtx.usedVoucherCodes,
+          role: userCtx.isAdmin ? 'admin' : 'user',
+          createdAt: userCtx.member?.createdAt || null,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err?.message || 'Lỗi đăng nhập tài khoản.',
+      });
+    }
+  });
+
+  publicRouter.post('/auth/register', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      const displayName =
+        typeof req.body?.displayName === 'string' ? req.body.displayName.trim() : '';
+
+      if (!email || !password) {
+        res.status(400).json({
+          success: false,
+          error: 'Vui lòng nhập đầy đủ email và mật khẩu.',
+        });
+        return;
+      }
+
+      const authRes = await signUpFirebaseEmail(email, password, displayName);
+      if (!authRes.ok) {
+        res.status(authRes.status).json({
+          success: false,
+          code: authRes.code,
+          error: authRes.error,
+        });
+        return;
+      }
+
+      const userCtx = await loadOrInitUserContext(
+        authRes.uid,
+        authRes.email,
+        authRes.idToken,
+        authRes.displayName
+      );
+
+      res.status(201).json({
+        success: true,
+        idToken: authRes.idToken,
+        refreshToken: authRes.refreshToken,
+        expiresIn: authRes.expiresIn,
+        user: {
+          uid: userCtx.uid,
+          email: userCtx.email,
+          displayName: userCtx.displayName,
+          avatarUrl: userCtx.member?.avatarUrl || null,
+          balance: userCtx.balance,
+          purchasedSongIds: userCtx.purchasedSongIds,
+          likedSongIds: userCtx.likedSongIds,
+          likedAlbumIds: userCtx.likedAlbumIds,
+          usedVoucherCodes: userCtx.usedVoucherCodes,
+          role: userCtx.isAdmin ? 'admin' : 'user',
+          createdAt: userCtx.member?.createdAt || null,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err?.message || 'Lỗi đăng ký tài khoản.',
+      });
+    }
+  });
+
+  publicRouter.post('/auth/refresh', async (req: Request, res: Response) => {
+    try {
+      const refreshToken =
+        typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : '';
+      if (!refreshToken) {
+        res.status(400).json({
+          success: false,
+          error: 'Thiếu refreshToken.',
+        });
+        return;
+      }
+      const refreshed = await refreshFirebaseToken(refreshToken);
+      if (!refreshed.ok) {
+        res.status(refreshed.status).json({
+          success: false,
+          error: refreshed.error,
+        });
+        return;
+      }
+      res.json({
+        success: true,
+        idToken: refreshed.idToken,
+        refreshToken: refreshed.refreshToken,
+        expiresIn: refreshed.expiresIn,
+        uid: refreshed.uid,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err?.message || 'Lỗi làm mới phiên đăng nhập.',
+      });
+    }
+  });
+
+  publicRouter.get('/me', requireUserAuth, (req: AuthenticatedApiRequest, res: Response) => {
+    const user = req.userContext!;
+    res.json({
+      success: true,
+      user: {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        avatarUrl: user.member?.avatarUrl || null,
+        balance: user.balance,
+        purchasedSongIds: user.purchasedSongIds,
+        likedSongIds: user.likedSongIds,
+        likedAlbumIds: user.likedAlbumIds,
+        usedVoucherCodes: user.usedVoucherCodes,
+        role: user.isAdmin ? 'admin' : 'user',
+        createdAt: user.member?.createdAt || null,
+      },
+    });
+  });
+
+  publicRouter.post('/me/likes', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const songId = typeof req.body?.songId === 'string' ? req.body.songId.trim() : '';
+      if (!songId) {
+        res.status(400).json({ success: false, error: 'Thiếu songId.' });
+        return;
+      }
+
+      const currentSet = new Set(user.likedSongIds);
+      const shouldLike =
+        typeof req.body?.liked === 'boolean' ? req.body.liked : !currentSet.has(songId);
+      if (shouldLike) {
+        currentSet.add(songId);
+      } else {
+        currentSet.delete(songId);
+      }
+      const nextLikes = Array.from(currentSet);
+
+      const savedMember = await writeRtdbJson(
+        `members/${user.uid}`,
+        { likedSongIds: nextLikes },
+        user.idToken,
+        'PATCH'
+      );
+      await writeRtdbJson(
+        `users/${user.uid}/liked_songs`,
+        { likedSongIds: nextLikes, updatedAt: Date.now() },
+        user.idToken,
+        'PUT'
+      );
+
+      res.json({
+        success: savedMember,
+        liked: shouldLike,
+        likedSongIds: nextLikes,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi cập nhật danh sách yêu thích.' });
+    }
+  });
+
+  // -----------------------------------------------------------------
+  // SONGS & PROTECTED MASTER STREAMING
+  // -----------------------------------------------------------------
+  publicRouter.get('/songs', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      let songs = await getAllSongsForUser(req.userContext);
 
       const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
       const genre = typeof req.query.genre === 'string' ? req.query.genre.trim().toLowerCase() : '';
       const artist = typeof req.query.artist === 'string' ? req.query.artist.trim().toLowerCase() : '';
       const paidFilter = typeof req.query.paid === 'string' ? req.query.paid.trim().toLowerCase() : '';
+      const purchasedFilter = typeof req.query.purchased === 'string' ? req.query.purchased.trim().toLowerCase() : '';
       const sort = typeof req.query.sort === 'string' ? req.query.sort.trim().toLowerCase() : 'stt';
 
       if (q) {
@@ -913,6 +1574,9 @@ async function startServer() {
       } else if (paidFilter === 'false' || paidFilter === '0') {
         songs = songs.filter((s) => !s.isPaid);
       }
+      if (purchasedFilter === 'true' || purchasedFilter === '1') {
+        songs = songs.filter((s) => s.isPurchased);
+      }
 
       if (sort === 'popular' || sort === 'plays') {
         songs.sort((a, b) => b.playCount - a.playCount);
@@ -930,6 +1594,8 @@ async function startServer() {
 
       res.json({
         success: true,
+        authenticated: Boolean(req.userContext),
+        userId: req.userContext?.uid || null,
         total,
         page,
         limit,
@@ -941,23 +1607,408 @@ async function startServer() {
     }
   });
 
-  publicRouter.get('/songs/:id', async (req: Request, res: Response) => {
+  publicRouter.get('/songs/:id', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
-      const songs = await getAllPublicSongs();
+      const songs = await getAllSongsForUser(req.userContext);
       const found = songs.find((s) => s.id === req.params.id);
       if (!found) {
         res.status(404).json({ success: false, error: 'Không tìm thấy bài hát.' });
         return;
       }
-      res.json({ success: true, data: found });
+      res.json({
+        success: true,
+        authenticated: Boolean(req.userContext),
+        data: found,
+      });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || 'Lỗi tải chi tiết bài hát' });
     }
   });
 
-  publicRouter.get('/albums', async (req: Request, res: Response) => {
+  publicRouter.get('/songs/:id/stream', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
-      let albums = await getAllPublicAlbums();
+      const songs = await getAllSongsForUser(req.userContext);
+      const found = songs.find((s) => s.id === req.params.id);
+      if (!found) {
+        res.status(404).json({ success: false, error: 'Không tìm thấy bài hát.' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        authenticated: Boolean(req.userContext),
+        data: {
+          songId: found.id,
+          title: found.title,
+          artists: found.artists,
+          price: found.price,
+          isPaid: found.isPaid,
+          isPurchased: found.isPurchased,
+          hasFullAccess: found.hasFullAccess,
+          streamType: found.availableStreamType,
+          demoUrl: found.demoUrl,
+          mp3_128Url: found.mp3_128Url,
+          mp3Url: found.mp3Url,
+          wavUrl: found.wavUrl,
+          audioUrl: found.audioUrl,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi lấy luồng phát nhạc' });
+    }
+  });
+
+  // -----------------------------------------------------------------
+  // VOUCHERS & SONG PURCHASE API (FOR MOBILE APP)
+  // -----------------------------------------------------------------
+  async function findRawSongById(songId: string): Promise<{ id: string; raw: RawSong } | null> {
+    const direct = await fetchRtdbJson<RawSong>(`songs/${songId}`);
+    if (direct.ok && direct.data) {
+      return { id: direct.data.id || songId, raw: direct.data };
+    }
+    const allRaw = await fetchRtdbJson<Record<string, RawSong> | RawSong[]>('songs');
+    if (allRaw.ok && allRaw.data) {
+      const entries: Array<[string, RawSong]> = Array.isArray(allRaw.data)
+        ? allRaw.data.map((s, idx): [string, RawSong] => [s?.id || `song-${idx + 1}`, s]).filter(([, s]) => Boolean(s))
+        : Object.entries(allRaw.data);
+      const matched = entries.find(([k, v]) => k === songId || v?.id === songId);
+      if (matched) {
+        return { id: matched[1]?.id || matched[0], raw: matched[1] };
+      }
+    }
+    return null;
+  }
+
+  async function evaluateVoucher(
+    codeInput: string,
+    originalPrice: number,
+    usedVoucherCodes: string[] = []
+  ): Promise<{
+    valid: boolean;
+    error?: string;
+    voucher?: any;
+    discountAmount: number;
+    finalPrice: number;
+  }> {
+    const normalized = codeInput.trim().toUpperCase();
+    if (!normalized) {
+      return { valid: true, discountAmount: 0, finalPrice: originalPrice };
+    }
+    if (usedVoucherCodes.map((c) => c.toUpperCase()).includes(normalized)) {
+      return {
+        valid: false,
+        error: `Bạn đã sử dụng mã giảm giá "${normalized}" trước đó rồi.`,
+        discountAmount: 0,
+        finalPrice: originalPrice,
+      };
+    }
+
+    const vouchersRes = await fetchRtdbJson<Record<string, any> | any[]>('vouchers');
+    const list: any[] = vouchersRes.ok && vouchersRes.data
+      ? Array.isArray(vouchersRes.data)
+        ? vouchersRes.data.filter(Boolean)
+        : Object.values(vouchersRes.data).filter(Boolean)
+      : [];
+
+    const voucher = list.find(
+      (v) => String(v?.code || '').trim().toUpperCase() === normalized && v?.isActive !== false
+    );
+    if (!voucher) {
+      return {
+        valid: false,
+        error: `Mã giảm giá "${normalized}" không tồn tại hoặc đã hết hạn.`,
+        discountAmount: 0,
+        finalPrice: originalPrice,
+      };
+    }
+
+    const minSpend = typeof voucher.minSpend === 'number' ? voucher.minSpend : 0;
+    if (originalPrice < minSpend) {
+      return {
+        valid: false,
+        error: `Mã "${normalized}" yêu cầu đơn tối thiểu ${minSpend.toLocaleString('vi-VN')}đ.`,
+        discountAmount: 0,
+        finalPrice: originalPrice,
+      };
+    }
+
+    const discountVal = Number(voucher.discountValue) || 0;
+    let discountAmount = 0;
+    if (voucher.discountType === 'percent') {
+      discountAmount = Math.round((originalPrice * discountVal) / 100);
+    } else {
+      discountAmount = discountVal;
+    }
+    discountAmount = Math.min(originalPrice, Math.max(0, discountAmount));
+    const finalPrice = Math.max(0, originalPrice - discountAmount);
+
+    return {
+      valid: true,
+      voucher,
+      discountAmount,
+      finalPrice,
+    };
+  }
+
+  publicRouter.get('/vouchers/validate', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const code = typeof req.query.code === 'string' ? req.query.code.trim() : '';
+      const songId = typeof req.query.songId === 'string' ? req.query.songId.trim() : '';
+      if (!code) {
+        res.status(400).json({ success: false, error: 'Vui lòng truyền tham số ?code=...' });
+        return;
+      }
+
+      let originalPrice = Number(req.query.amount) || 0;
+      if (songId) {
+        const found = await findRawSongById(songId);
+        if (!found) {
+          res.status(404).json({ success: false, error: 'Không tìm thấy bài hát.' });
+          return;
+        }
+        originalPrice =
+          typeof found.raw.price === 'number'
+            ? found.raw.price
+            : Number(found.raw.price) || 0;
+      }
+
+      const result = await evaluateVoucher(
+        code,
+        originalPrice,
+        req.userContext?.usedVoucherCodes || []
+      );
+      if (!result.valid) {
+        res.status(400).json({ success: false, error: result.error });
+        return;
+      }
+
+      res.json({
+        success: true,
+        code: result.voucher?.code,
+        discountType: result.voucher?.discountType,
+        discountValue: result.voucher?.discountValue,
+        description: result.voucher?.description || '',
+        originalPrice,
+        discountAmount: result.discountAmount,
+        finalPrice: result.finalPrice,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi kiểm tra voucher.' });
+    }
+  });
+
+  async function handleSongPurchase(req: AuthenticatedApiRequest, res: Response, targetSongId: string) {
+    try {
+      const user = req.userContext!;
+      const songId = targetSongId.trim();
+      if (!songId) {
+        res.status(400).json({ success: false, error: 'Thiếu songId để mua bài hát.' });
+        return;
+      }
+
+      const found = await findRawSongById(songId);
+      if (!found) {
+        res.status(404).json({ success: false, error: 'Không tìm thấy bài hát.' });
+        return;
+      }
+
+      const rawSong = found.raw;
+      const originalPrice =
+        typeof rawSong.price === 'number' ? rawSong.price : Number(rawSong.price) || 0;
+
+      // Already owned or free
+      if (originalPrice <= 0 || user.purchasedSongIds.includes(found.id)) {
+        const masterRes = await fetchRtdbJson<SongMasterRecord>(
+          `song_masters/${found.id}`,
+          user.idToken
+        );
+        const unlockedSong = sanitizeSongForUser(
+          rawSong,
+          found.id,
+          user,
+          masterRes.ok ? masterRes.data : null
+        );
+        res.json({
+          success: true,
+          alreadyPurchased: true,
+          message:
+            originalPrice <= 0
+              ? 'Bài hát này miễn phí, bạn đã có quyền nghe toàn bộ.'
+              : 'Tài khoản của bạn đã mua bài hát này rồi.',
+          balance: user.balance,
+          purchasedSongIds: user.purchasedSongIds,
+          song: unlockedSong,
+        });
+        return;
+      }
+
+      // Optional voucher
+      const voucherCode =
+        typeof req.body?.voucherCode === 'string' ? req.body.voucherCode.trim() : '';
+      const voucherCheck = await evaluateVoucher(
+        voucherCode,
+        originalPrice,
+        user.usedVoucherCodes
+      );
+      if (!voucherCheck.valid) {
+        res.status(400).json({ success: false, error: voucherCheck.error });
+        return;
+      }
+
+      const finalPrice = voucherCheck.finalPrice;
+      if (user.balance < finalPrice) {
+        res.status(402).json({
+          success: false,
+          code: 'INSUFFICIENT_BALANCE',
+          error: `Số dư tài khoản không đủ (${user.balance.toLocaleString('vi-VN')}đ < ${finalPrice.toLocaleString('vi-VN')}đ). Vui lòng nạp thêm tiền.`,
+          currentBalance: user.balance,
+          requiredAmount: finalPrice,
+          shortfall: finalPrice - user.balance,
+        });
+        return;
+      }
+
+      const newBalance = user.balance - finalPrice;
+      const nextPurchased = Array.from(new Set([...user.purchasedSongIds, found.id]));
+      const nextUsedVouchers =
+        voucherCheck.voucher?.code
+          ? Array.from(new Set([...user.usedVoucherCodes, String(voucherCheck.voucher.code).toUpperCase()]))
+          : user.usedVoucherCodes;
+
+      const memberPatch: Record<string, any> = {
+        balance: newBalance,
+        purchasedSongIds: nextPurchased,
+      };
+      if (nextUsedVouchers.length > 0) {
+        memberPatch.usedVoucherCodes = nextUsedVouchers;
+      }
+
+      const memberUpdated = await writeRtdbJson(
+        `members/${user.uid}`,
+        memberPatch,
+        user.idToken,
+        'PATCH'
+      );
+      if (!memberUpdated) {
+        res.status(500).json({
+          success: false,
+          error: 'Không thể cập nhật số dư thành viên trên Firebase. Vui lòng kiểm tra Firebase Rules.',
+        });
+        return;
+      }
+
+      const purchaseId = `pur_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+      const timestamp = new Date().toISOString();
+      const purchaseRecord = {
+        id: purchaseId,
+        userId: user.uid,
+        userEmail: user.email,
+        songId: found.id,
+        songTitle: rawSong.title || 'Bài hát',
+        price: finalPrice,
+        originalPrice,
+        discountAmount: voucherCheck.discountAmount,
+        voucherCode: voucherCheck.voucher?.code || null,
+        source: 'mobile_api',
+        timestamp,
+      };
+
+      // Write user_purchases entitlement first so song_masters/{id} unlocks immediately for this user
+      await writeRtdbJson(
+        `user_purchases/${user.uid}/${found.id}`,
+        {
+          songId: found.id,
+          purchaseId,
+          price: finalPrice,
+          purchasedAt: timestamp,
+        },
+        user.idToken,
+        'PUT'
+      );
+      await writeRtdbJson(`purchases/${purchaseId}`, purchaseRecord, user.idToken, 'PUT');
+
+      // Update local user context and fetch protected master links
+      user.balance = newBalance;
+      user.purchasedSongIds = nextPurchased;
+      user.usedVoucherCodes = nextUsedVouchers;
+
+      const masterRes = await fetchRtdbJson<SongMasterRecord>(
+        `song_masters/${found.id}`,
+        user.idToken
+      );
+      const unlockedSong = sanitizeSongForUser(
+        rawSong,
+        found.id,
+        user,
+        masterRes.ok ? masterRes.data : null
+      );
+
+      res.status(201).json({
+        success: true,
+        alreadyPurchased: false,
+        message: `Mua thành công bài hát "${unlockedSong.title}"! Đã mở khóa link chất lượng cao (320kbps / WAV).`,
+        purchase: purchaseRecord,
+        balance: newBalance,
+        purchasedSongIds: nextPurchased,
+        song: unlockedSong,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi mua bài hát qua API.' });
+    }
+  }
+
+  publicRouter.post('/songs/:id/purchase', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    await handleSongPurchase(req, res, String(req.params.id || ''));
+  });
+
+  publicRouter.post('/purchases', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    const songId = typeof req.body?.songId === 'string' ? req.body.songId : '';
+    await handleSongPurchase(req, res, songId);
+  });
+
+  publicRouter.get('/purchases', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const entRes = await fetchRtdbJson<Record<string, any>>(
+        `user_purchases/${user.uid}`,
+        user.idToken
+      );
+      const entitlements =
+        entRes.ok && entRes.data && typeof entRes.data === 'object'
+          ? Object.values(entRes.data).filter(Boolean)
+          : [];
+
+      // Resolve detailed purchase records referenced by entitlements
+      const purchaseIds = entitlements
+        .map((e: any) => e?.purchaseId)
+        .filter((pid: any): pid is string => typeof pid === 'string' && pid !== 'synced');
+
+      const detailList = await Promise.all(
+        purchaseIds.map(async (pid) => {
+          const pRes = await fetchRtdbJson<any>(`purchases/${pid}`, user.idToken);
+          return pRes.ok ? pRes.data : null;
+        })
+      );
+
+      res.json({
+        success: true,
+        uid: user.uid,
+        balance: user.balance,
+        purchasedSongIds: user.purchasedSongIds,
+        entitlements,
+        purchases: detailList.filter(Boolean),
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tải lịch sử mua bài hát.' });
+    }
+  });
+
+  // -----------------------------------------------------------------
+  // ALBUMS, ARTISTS, CHARTS
+  // -----------------------------------------------------------------
+  publicRouter.get('/albums', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      let albums = await getAllAlbumsForUser(req.userContext);
       const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
       if (q) {
         albums = albums.filter(
@@ -974,6 +2025,7 @@ async function startServer() {
 
       res.json({
         success: true,
+        authenticated: Boolean(req.userContext),
         total,
         page,
         limit,
@@ -984,15 +2036,19 @@ async function startServer() {
     }
   });
 
-  publicRouter.get('/albums/:id', async (req: Request, res: Response) => {
+  publicRouter.get('/albums/:id', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
-      const albums = await getAllPublicAlbums();
+      const albums = await getAllAlbumsForUser(req.userContext);
       const found = albums.find((a) => a.id === req.params.id);
       if (!found) {
         res.status(404).json({ success: false, error: 'Không tìm thấy album.' });
         return;
       }
-      res.json({ success: true, data: found });
+      res.json({
+        success: true,
+        authenticated: Boolean(req.userContext),
+        data: found,
+      });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || 'Lỗi tải chi tiết album' });
     }
@@ -1019,7 +2075,7 @@ async function startServer() {
     }
   });
 
-  publicRouter.get('/artists/:id', async (req: Request, res: Response) => {
+  publicRouter.get('/artists/:id', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
       const artists = await getAllPublicArtists();
       const targetId = decodeURIComponent(req.params.id).toLowerCase();
@@ -1032,7 +2088,7 @@ async function startServer() {
         res.status(404).json({ success: false, error: 'Không tìm thấy nghệ sĩ.' });
         return;
       }
-      const songs = await getAllPublicSongs();
+      const songs = await getAllSongsForUser(req.userContext);
       const artistNameLower = String((artist as any).name || '').toLowerCase();
       const artistSongs = songs.filter((s) =>
         s.artists
@@ -1052,10 +2108,10 @@ async function startServer() {
     }
   });
 
-  publicRouter.get('/charts', async (req: Request, res: Response) => {
+  publicRouter.get('/charts', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
       const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
-      const songs = await getAllPublicSongs();
+      const songs = await getAllSongsForUser(req.userContext);
       const topAllTime = [...songs]
         .sort((a, b) => b.playCount - a.playCount)
         .slice(0, limit);
@@ -1073,21 +2129,254 @@ async function startServer() {
     }
   });
 
-  publicRouter.get('/playlists', async (_req: Request, res: Response) => {
+  // -----------------------------------------------------------------
+  // PERSONAL PLAYLISTS (STRICTLY PRIVATE PER USER ACCOUNT)
+  // -----------------------------------------------------------------
+  publicRouter.get('/playlists', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
-      const raw = await fetchCachedRtdb<Record<string, any> | any[]>('playlists');
-      const list = raw
-        ? Array.isArray(raw)
-          ? raw.filter(Boolean)
-          : Object.values(raw).filter(Boolean)
-        : [];
+      const user = req.userContext;
+      // Guest / unauthenticated API calls MUST NOT see anyone's personal playlists
+      if (!user) {
+        res.json({
+          success: true,
+          authenticated: false,
+          total: 0,
+          data: [],
+          message:
+            'Playlist cá nhân là dữ liệu riêng tư theo tài khoản. Vui lòng truyền x-user-token (hoặc Bearer idToken cùng x-api-key) để xem danh sách playlist của tài khoản đang đăng nhập.',
+        });
+        return;
+      }
+
+      const includeAllAsAdmin = user.isAdmin && req.query.scope === 'all';
+      const playlistsRes = includeAllAsAdmin
+        ? await fetchRtdbJson<Record<string, any> | any[]>('playlists', user.idToken)
+        : await fetchRtdbJson<Record<string, any> | any[]>(
+            'playlists',
+            user.idToken,
+            {
+              orderBy: '"userId"',
+              equalTo: JSON.stringify(user.uid),
+            }
+          );
+
+      const rawList =
+        playlistsRes.ok && playlistsRes.data
+          ? Array.isArray(playlistsRes.data)
+            ? playlistsRes.data.filter(Boolean)
+            : Object.values(playlistsRes.data).filter(Boolean)
+          : [];
+
+      const scoped = includeAllAsAdmin
+        ? rawList
+        : rawList.filter((p: any) => p && p.userId === user.uid);
+
+      const formatted = scoped.map((p: any) => ({
+        ...p,
+        songIds: Array.isArray(p.songIds) ? p.songIds : [],
+      }));
+
+      const expandSongs =
+        req.query.expand === 'songs' || req.query.expand === 'true' || req.query.expand === '1';
+      if (expandSongs && formatted.length > 0) {
+        const allSongs = await getAllSongsForUser(user);
+        const byId = new Map(allSongs.map((s) => [s.id, s]));
+        for (const pl of formatted) {
+          pl.songs = pl.songIds
+            .map((sid: string) => byId.get(sid))
+            .filter(Boolean);
+        }
+      }
+
       res.json({
         success: true,
-        total: list.length,
-        data: list,
+        authenticated: true,
+        userId: user.uid,
+        total: formatted.length,
+        data: formatted,
       });
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err?.message || 'Lỗi tải danh sách playlist' });
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tải danh sách playlist cá nhân' });
+    }
+  });
+
+  publicRouter.get('/playlists/:id', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const playlistRes = await fetchRtdbJson<any>(
+        `playlists/${req.params.id}`,
+        req.userContext?.idToken
+      );
+      if (!playlistRes.ok || !playlistRes.data) {
+        if (playlistRes.status === 401 || playlistRes.status === 403) {
+          res.status(req.userContext ? 403 : 401).json({
+            success: false,
+            error: 'Bạn không có quyền truy cập playlist cá nhân này.',
+          });
+          return;
+        }
+        res.status(404).json({ success: false, error: 'Không tìm thấy playlist.' });
+        return;
+      }
+
+      const pl = playlistRes.data;
+      const isOwnerOrAdmin = Boolean(
+        req.userContext && (pl.userId === req.userContext.uid || req.userContext.isAdmin)
+      );
+      if (!pl.isPublic && !isOwnerOrAdmin) {
+        res.status(req.userContext ? 403 : 401).json({
+          success: false,
+          error: 'Playlist cá nhân này thuộc về tài khoản khác.',
+        });
+        return;
+      }
+
+      const songIds = Array.isArray(pl.songIds) ? pl.songIds : [];
+      const allSongs = await getAllSongsForUser(req.userContext);
+      const byId = new Map(allSongs.map((s) => [s.id, s]));
+
+      res.json({
+        success: true,
+        data: {
+          ...pl,
+          songIds,
+          songs: songIds.map((sid: string) => byId.get(sid)).filter(Boolean),
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tải chi tiết playlist' });
+    }
+  });
+
+  publicRouter.post('/playlists', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) {
+        res.status(400).json({ success: false, error: 'Vui lòng nhập tên playlist.' });
+        return;
+      }
+
+      const id = `pl_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+      const playlist = {
+        id,
+        name: name.slice(0, 100),
+        description:
+          typeof req.body?.description === 'string'
+            ? req.body.description.trim().slice(0, 300)
+            : '',
+        userId: user.uid,
+        songIds: Array.isArray(req.body?.songIds)
+          ? Array.from(new Set(req.body.songIds.filter((s: any) => typeof s === 'string')))
+          : [],
+        isPublic: Boolean(req.body?.isPublic),
+        createdAt: new Date().toISOString(),
+      };
+
+      const saved = await writeRtdbJson(`playlists/${id}`, playlist, user.idToken, 'PUT');
+      if (!saved) {
+        res.status(500).json({ success: false, error: 'Không thể lưu playlist lên Firebase.' });
+        return;
+      }
+
+      res.status(201).json({ success: true, data: playlist });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tạo playlist cá nhân' });
+    }
+  });
+
+  publicRouter.patch('/playlists/:id', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const { id } = req.params;
+      const existingRes = await fetchRtdbJson<any>(`playlists/${id}`, user.idToken);
+      if (!existingRes.ok || !existingRes.data) {
+        res.status(existingRes.status === 401 || existingRes.status === 403 ? 403 : 404).json({
+          success: false,
+          error:
+            existingRes.status === 401 || existingRes.status === 403
+              ? 'Bạn không có quyền chỉnh sửa playlist này.'
+              : 'Không tìm thấy playlist.',
+        });
+        return;
+      }
+
+      const existing = existingRes.data;
+      if (existing.userId !== user.uid && !user.isAdmin) {
+        res.status(403).json({
+          success: false,
+          error: 'Chỉ chủ sở hữu mới được chỉnh sửa playlist này.',
+        });
+        return;
+      }
+
+      let songIds: string[] = Array.isArray(existing.songIds) ? [...existing.songIds] : [];
+      if (Array.isArray(req.body?.songIds)) {
+        songIds = Array.from(new Set(req.body.songIds.filter((s: any) => typeof s === 'string')));
+      }
+      if (typeof req.body?.addSongId === 'string' && req.body.addSongId.trim()) {
+        const sid = req.body.addSongId.trim();
+        if (!songIds.includes(sid)) songIds.push(sid);
+      }
+      if (typeof req.body?.removeSongId === 'string' && req.body.removeSongId.trim()) {
+        const sid = req.body.removeSongId.trim();
+        songIds = songIds.filter((s) => s !== sid);
+      }
+
+      const updated = {
+        ...existing,
+        name:
+          typeof req.body?.name === 'string' && req.body.name.trim()
+            ? req.body.name.trim().slice(0, 100)
+            : existing.name,
+        description:
+          typeof req.body?.description === 'string'
+            ? req.body.description.trim().slice(0, 300)
+            : existing.description || '',
+        isPublic:
+          typeof req.body?.isPublic === 'boolean' ? req.body.isPublic : Boolean(existing.isPublic),
+        songIds,
+      };
+
+      const saved = await writeRtdbJson(`playlists/${id}`, updated, user.idToken, 'PUT');
+      if (!saved) {
+        res.status(500).json({ success: false, error: 'Không thể cập nhật playlist.' });
+        return;
+      }
+
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi cập nhật playlist' });
+    }
+  });
+
+  publicRouter.delete('/playlists/:id', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const { id } = req.params;
+      const existingRes = await fetchRtdbJson<any>(`playlists/${id}`, user.idToken);
+      if (!existingRes.ok || !existingRes.data) {
+        res.status(existingRes.status === 401 || existingRes.status === 403 ? 403 : 404).json({
+          success: false,
+          error:
+            existingRes.status === 401 || existingRes.status === 403
+              ? 'Bạn không có quyền xóa playlist này.'
+              : 'Không tìm thấy playlist.',
+        });
+        return;
+      }
+
+      if (existingRes.data.userId !== user.uid && !user.isAdmin) {
+        res.status(403).json({
+          success: false,
+          error: 'Chỉ chủ sở hữu mới được xóa playlist này.',
+        });
+        return;
+      }
+
+      await writeRtdbJson(`playlists/${id}`, null, user.idToken, 'DELETE');
+      res.json({ success: true, deletedId: id });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi xóa playlist' });
     }
   });
 

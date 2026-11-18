@@ -236,6 +236,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
 
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [songs, setSongs] = useState<Song[]>([]);
+  const songMastersRef = useRef<Record<string, { mp3Url?: string; wavUrl?: string }>>({});
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -518,12 +519,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       cleanupUserSubs();
       setIsAuthLoading(true);
       if (fbUser) {
-        const [allMembers, directMember, remoteLikedResult, remoteLikedAlbums, loadedPlaylists, audioSettings] = await Promise.all([
+        const [allMembers, directMember, remoteLikedResult, remoteLikedAlbums, audioSettings] = await Promise.all([
           MusicService.fetchMembers(),
           MusicService.fetchMemberByUid(fbUser.uid),
           MusicService.fetchLikedSongs(fbUser.uid),
           MusicService.fetchLikedAlbums(fbUser.uid),
-          MusicService.fetchPlaylists(),
           MusicService.fetchAudioSettings(fbUser.uid),
         ]);
 
@@ -601,8 +601,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setLikedSongIds(mergedLikes);
         setLikedAlbumIds(mergedAlbumLikes);
 
+        const isResolvedAdmin = Boolean(
+          isPrimaryAdmin ||
+          currentMember.role === 'admin'
+        );
+
+        const loadedPlaylists = await MusicService.fetchPlaylists(fbUser.uid, isResolvedAdmin);
         const userFilteredPlaylists = (loadedPlaylists || []).filter(
-          (p) => !p.userId || p.userId === fbUser.uid
+          (p) => !p.userId || p.userId === fbUser.uid || p.isPublic
         );
         setPlaylists(userFilteredPlaylists);
         setSelectedPlaylist((prev) => (prev ? userFilteredPlaylists.find((p) => p.id === prev.id) || prev : null));
@@ -628,10 +634,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         // Real-time listener for user's own playlists across PC & Mobile
         unsubUserPlaylists = MusicService.subscribeToPlaylists((allPl) => {
-          const filtered = (allPl || []).filter((p) => !p.userId || p.userId === fbUser.uid);
+          const filtered = (allPl || []).filter((p) => !p.userId || p.userId === fbUser.uid || p.isPublic);
           setPlaylists(filtered);
           setSelectedPlaylist((prev) => (prev ? filtered.find((p) => p.id === prev.id) || prev : null));
-        });
+        }, fbUser.uid, isResolvedAdmin);
 
         // Real-time listener for user profile (balance, liked songs, liked albums, purchased songs, blocked songs, theme, audio prefs)
         unsubUserProfile = MusicService.subscribeToUserProfile(fbUser.uid, (remote) => {
@@ -686,13 +692,26 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Fetch initial songs and attach global real-time Firebase listeners
   useEffect(() => {
+    const mergeWithAuthorizedMasters = (list: Song[]) => {
+      const masters = songMastersRef.current;
+      return list.map((s) => {
+        const m = masters[s.id];
+        if (!m) return s;
+        return {
+          ...s,
+          mp3Url: m.mp3Url || s.mp3Url || '',
+          wavUrl: m.wavUrl || s.wavUrl || '',
+        };
+      });
+    };
+
     MusicService.fetchSongs().then((loadedSongs) => {
-      const validSongs = loadedSongs || [];
+      const validSongs = mergeWithAuthorizedMasters(loadedSongs || []);
       setSongs(validSongs);
     });
 
     const unsubscribeRealtime = MusicService.subscribeToSongs((updatedSongs) => {
-      const list = updatedSongs || [];
+      const list = mergeWithAuthorizedMasters(updatedSongs || []);
       setSongs(list);
       setCurrentSong((cur) => {
         if (!cur) return null;
@@ -898,19 +917,67 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (auth.currentUser?.email && isSuperAdminEmail(auth.currentUser.email))
   );
 
+  // Hydrate protected MP3 320kbps & WAV Lossless masters ONLY for authorized (purchased / free / admin) songs
+  const freeSongIdsKey = songs
+    .filter((s) => (s.price ?? 0) <= 0)
+    .map((s) => s.id)
+    .join(',');
+
+  useEffect(() => {
+    let cancelled = false;
+    const freeIds = freeSongIdsKey ? freeSongIdsKey.split(',').filter(Boolean) : [];
+    if (!currentUser?.uid && freeIds.length === 0) return;
+
+    MusicService.fetchAuthorizedSongMasters(
+      currentUser?.uid,
+      purchasedSongIds,
+      isAdmin,
+      freeIds
+    ).then((masters) => {
+      if (cancelled || !masters || Object.keys(masters).length === 0) return;
+      songMastersRef.current = { ...songMastersRef.current, ...masters };
+      setSongs((prev) =>
+        prev.map((s) => {
+          const m = masters[s.id];
+          if (!m) return s;
+          return {
+            ...s,
+            mp3Url: m.mp3Url || s.mp3Url || '',
+            wavUrl: m.wavUrl || s.wavUrl || '',
+          };
+        })
+      );
+      setCurrentSong((cur) => {
+        if (!cur || cur.isAlbumTrack) return cur;
+        const m = masters[cur.id];
+        if (!m) return cur;
+        return {
+          ...cur,
+          mp3Url: m.mp3Url || cur.mp3Url || '',
+          wavUrl: m.wavUrl || cur.wavUrl || '',
+        };
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.uid, isAdmin, purchasedSongIds.join(','), freeSongIdsKey]);
+
   const resolveAudioUrl = (song: Song | null | undefined, format: 'MP3' | 'WAV', purchased?: boolean) => {
     if (!song) return '';
-    const isActuallyPurchased = purchased || song.isPurchased || isSongPurchased(song.id);
+    const isFree = (song.price ?? 0) <= 0;
+    const isActuallyPurchased = isFree || purchased || song.isPurchased || isSongPurchased(song.id);
     let url = '';
     // Security Restriction: If song is NOT purchased and user is NOT admin,
-    // ONLY the 60-second demo URL is provided. Full lossless master links are protected.
+    // ONLY the public 60-second demo or 128kbps URL is provided. Full 320kbps MP3 / WAV links live in song_masters.
     if (!isActuallyPurchased && !isAdmin) {
-      url = song.demoUrl || song.mp3Url || '';
+      url = song.demoUrl || song.mp3_128Url || '';
     } else {
       const wantsWav = format === 'WAV' || song.audioFormat === 'WAV';
       url = wantsWav
-        ? (song.wavUrl || song.mp3Url || song.demoUrl || '')
-        : (song.mp3Url || song.wavUrl || song.demoUrl || '');
+        ? (song.wavUrl || song.mp3Url || song.mp3_128Url || song.demoUrl || '')
+        : (song.mp3Url || song.wavUrl || song.mp3_128Url || song.demoUrl || '');
     }
     // Fallback if URL contains obsolete 404 demo1/demo2/demo3 links or is empty
     if (!url || url.includes('/demo1.mp3') || url.includes('/demo2.mp3') || url.includes('/demo3.mp3')) {
@@ -1796,15 +1863,34 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCurrentUser(updatedUser);
       MusicService.upsertMember(updatedUser);
 
-      // Record audit purchase log
+      // Record audit purchase log & entitlement, then unlock protected 320/WAV master immediately
+      const purchaseId = `pur-${Date.now()}`;
       MusicService.recordPurchase({
-        id: `pur-${Date.now()}`,
+        id: purchaseId,
         userId: currentUser.uid,
         userEmail: currentUser.email,
         songId: song.id,
         songTitle: song.title,
         price: priceToPay,
         timestamp: new Date().toISOString(),
+      }).then(() => {
+        MusicService.fetchSongMasterById(song.id).then((master) => {
+          if (master && (master.mp3Url || master.wavUrl)) {
+            songMastersRef.current[song.id] = master;
+            setSongs((prev) =>
+              prev.map((s) =>
+                s.id === song.id
+                  ? { ...s, mp3Url: master.mp3Url || s.mp3Url || '', wavUrl: master.wavUrl || s.wavUrl || '' }
+                  : s
+              )
+            );
+            setCurrentSong((cur) =>
+              cur && cur.id === song.id
+                ? { ...cur, mp3Url: master.mp3Url || cur.mp3Url || '', wavUrl: master.wavUrl || cur.wavUrl || '' }
+                : cur
+            );
+          }
+        });
       });
     }
 

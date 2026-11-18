@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { useAnimatedPresence } from '../../hooks/useAnimatedPresence';
+import { compressImageDataUrl } from '../../services/musicService';
 
 interface DesktopProfileModalProps {
   isOpen: boolean;
@@ -47,15 +48,16 @@ export const DesktopProfileModal: React.FC<DesktopProfileModalProps> = ({ isOpen
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      setErrorMsg('Vui lòng chọn ảnh kích thước dưới 3MB');
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg('Vui lòng chọn ảnh kích thước dưới 5MB');
       setTimeout(() => setErrorMsg(null), 3000);
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       if (typeof reader.result === 'string') {
-        setAvatarPreview(reader.result);
+        const compressed = await compressImageDataUrl(reader.result, 320, 0.82);
+        setAvatarPreview(compressed);
         setAvatarUrlInput('');
       }
     };

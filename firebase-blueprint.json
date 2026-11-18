@@ -2,7 +2,7 @@
   "entities": {
     "Song": {
       "title": "Song",
-      "description": "A musical track with metadata, demo 60s link, lossless MP3 and WAV masters, lyrics, and playCount",
+      "description": "Public song metadata, lyrics, 60s demo link, and public 128kbps MP3 link (320kbps & WAV stored separately in song_masters for security)",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -13,8 +13,7 @@
         "audioFormat": { "type": "string", "enum": ["MP3", "WAV"] },
         "price": { "type": "number" },
         "demoUrl": { "type": "string" },
-        "mp3Url": { "type": "string" },
-        "wavUrl": { "type": "string" },
+        "mp3_128Url": { "type": "string" },
         "lrcRaw": { "type": "string" },
         "lrcUrl": { "type": "string" },
         "album": { "type": "string" },
@@ -27,6 +26,19 @@
         "releaseDate": { "type": "string" }
       },
       "required": ["id", "title", "artists", "price", "audioFormat"]
+    },
+    "SongMaster": {
+      "title": "SongMaster",
+      "description": "Protected high-quality audio master links (MP3 320kbps and WAV Lossless) accessible only to Admins, free songs, or verified buyers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "price": { "type": "number" },
+        "mp3Url": { "type": "string" },
+        "wavUrl": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id"]
     },
     "Member": {
       "title": "Member",
@@ -42,6 +54,7 @@
         "purchasedSongIds": { "type": "array" },
         "blockedSongIds": { "type": "array" },
         "likedSongIds": { "type": "array" },
+        "usedVoucherCodes": { "type": "array" },
         "createdAt": { "type": "string" }
       },
       "required": ["uid", "email", "role", "balance"]
@@ -63,7 +76,7 @@
     },
     "Playlist": {
       "title": "Playlist",
-      "description": "User custom playlist with selected song IDs",
+      "description": "User private custom playlist with selected song IDs",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -72,9 +85,10 @@
         "coverImage": { "type": "string" },
         "songIds": { "type": "array" },
         "userId": { "type": "string" },
+        "isPublic": { "type": "boolean" },
         "createdAt": { "type": "string" }
       },
-      "required": ["id", "name", "songIds"]
+      "required": ["id", "name", "songIds", "userId"]
     },
     "Voucher": {
       "title": "Voucher",
@@ -123,7 +137,11 @@
   "firestore": {
     "/songs/{songId}": {
       "schema": "Song",
-      "description": "Collection of all songs in the music store"
+      "description": "Public collection of songs (only demoUrl and 128kbps links)"
+    },
+    "/song_masters/{songId}": {
+      "schema": "SongMaster",
+      "description": "Protected collection of MP3 320kbps and WAV Lossless audio URLs"
     },
     "/members/{memberId}": {
       "schema": "Member",
@@ -135,7 +153,7 @@
     },
     "/playlists/{playlistId}": {
       "schema": "Playlist",
-      "description": "User playlist collections"
+      "description": "Private user playlist collections"
     },
     "/vouchers/{voucherId}": {
       "schema": "Voucher",

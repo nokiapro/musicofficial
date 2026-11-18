@@ -16,6 +16,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
+import { compressImageDataUrl } from '../../services/musicService';
 
 export const MobileProfileView: React.FC = () => {
   const {
@@ -52,16 +53,17 @@ export const MobileProfileView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      setErrorMsg('Vui lòng chọn ảnh có kích thước dưới 3MB');
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg('Vui lòng chọn ảnh có kích thước dưới 5MB');
       setTimeout(() => setErrorMsg(null), 3000);
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       if (typeof reader.result === 'string') {
-        setAvatarPreview(reader.result);
+        const compressed = await compressImageDataUrl(reader.result, 320, 0.82);
+        setAvatarPreview(compressed);
         setAvatarUrlInput('');
       }
     };

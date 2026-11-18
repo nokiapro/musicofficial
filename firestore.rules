@@ -34,8 +34,12 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    function hasPurchasedSong(songId) {
+      return isSignedIn() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/songs/$(songId)).data.price <= 0 ||
+        songId in get(/databases/$(database)/documents/members/$(request.auth.uid)).data.purchasedSongIds
+      );
     }
 
     // 1. ADMINS COLLECTION
@@ -44,8 +48,8 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 2. SONGS COLLECTION:
-    // - Read: Public (to show catalog, album covers, titles, lyrics and 60s demoUrl)
+    // 2. PUBLIC SONGS COLLECTION (ONLY Demo 60s & 128kbps MP3 + Metadata):
+    // - Read: Public (high quality 320kbps MP3 & WAV Lossless live in protected /song_masters)
     // - Create & Delete: Admin only
     // - Update: Admin only, OR legitimate playCount increment by 1 for #xuankenchart
     match /songs/{songId} {
@@ -58,13 +62,20 @@ service cloud.firestore {
       );
     }
 
+    // 2b. PROTECTED SONG MASTERS (MP3 320kbps & WAV Lossless ONLY):
+    // - Read: Restricted to Admin, free songs (price <= 0), or verified buyer (songId in purchasedSongIds)
+    // - Write: Admin only
+    match /song_masters/{songId} {
+      allow read: if hasPurchasedSong(songId);
+      allow write: if isAdmin();
+    }
+
     // 3. MEMBERS (USERS, MONEY & SENSITIVE WALLET DATA):
-    // Highly Sensitive: Contains balance (tiền ví), role, purchased song IDs, PII.
     // - Read: Restricted to document owner or Admin (protects PII and prevents wallet spying).
     // - Create: User registration. Role must be 'user' (cannot self-assign admin) and initial balance <= 500,000.
     // - Update:
     //    a) Admin: Full control (top-up approval, role modification).
-    //    b) Member Owner: Can update personal profile fields, but CANNOT self-escalate role or increase balance.
+    //    b) Member Owner: Can update personal profile fields, CANNOT self-escalate role or increase balance.
     //    c) Member Owner: Can purchase a song (balance decreases, purchasedSongIds increases).
     match /members/{userId} {
       allow read: if isOwner(userId) || isAdmin();
@@ -92,7 +103,7 @@ service cloud.firestore {
           // Case B: In-app purchase execution:
           // Balance can only DECREASE (no currency minting), role must stay unchanged
           (
-            incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'purchasedSongIds']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'purchasedSongIds', 'usedVoucherCodes']) &&
             incoming().role == existing().role &&
             incoming().balance is number &&
             incoming().balance <= existing().balance &&
@@ -119,14 +130,14 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // 5. PLAYLISTS:
-    // - Read: Public
-    // - Create: Authenticated user
+    // 5. PRIVATE PLAYLISTS:
+    // - Read: Owner, Admin, or explicitly marked public (isPublic == true)
+    // - Create: Authenticated user for their own userId
     // - Update & Delete: Owner or Admin
     match /playlists/{playlistId} {
-      allow read: if true;
+      allow read: if (existing().isPublic == true) || (isSignedIn() && (existing().userId == request.auth.uid || isAdmin()));
       allow create: if isSignedIn() && (
-        !('userId' in incoming()) || incoming().userId == request.auth.uid || isAdmin()
+        incoming().userId == request.auth.uid || isAdmin()
       );
       allow update, delete: if isSignedIn() && (
         existing().userId == request.auth.uid || isAdmin()
@@ -134,24 +145,18 @@ service cloud.firestore {
     }
 
     // 6. VOUCHERS (Mã giảm giá):
-    // - Read: Public
-    // - Write: Admin only
     match /vouchers/{voucherId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     // 7. SITE SETTINGS:
-    // - Read: Public
-    // - Write: Admin only
     match /site_settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     // 8. SONG REPORTS:
-    // - Create: Public bug report
-    // - Read & Manage: Admin only
     match /song_reports/{reportId} {
       allow create: if true;
       allow read, update, delete: if isAdmin();

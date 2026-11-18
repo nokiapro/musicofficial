@@ -1,5 +1,5 @@
-import { ref, set, get, child, update, onValue } from 'firebase/database';
-import { doc, getDoc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
+import { ref, set, get, child, update, onValue, query as rtdbQuery, orderByChild, equalTo } from 'firebase/database';
+import { doc, getDoc, setDoc, getDocs, collection, deleteDoc, query as fsQuery, where } from 'firebase/firestore';
 import { rtdb, db, auth } from './firebase';
 import { Song, AppUser, Playlist, Voucher, SiteSettings, ExclusiveAlbum, AlbumSong, ChatMessage, ArtistBio } from '../types/music';
 
@@ -22,6 +22,79 @@ export function cleanForFirebase<T = any>(obj: any): T {
   return cleaned as any;
 }
 
+// Compress oversized data:image/... base64 URLs in browser so they stay fast & safely under Firestore's 1MB field limit
+export async function compressImageDataUrl(
+  dataUrl: string,
+  maxDim = 320,
+  quality = 0.8
+): Promise<string> {
+  if (
+    typeof document === 'undefined' ||
+    !dataUrl ||
+    typeof dataUrl !== 'string' ||
+    !dataUrl.startsWith('data:image/')
+  ) {
+    return dataUrl;
+  }
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
+          const targetW = Math.max(1, Math.round((img.width || maxDim) * scale));
+          const targetH = Math.max(1, Math.round((img.height || maxDim) * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = targetW;
+          canvas.height = targetH;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+          const compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed && compressed.length < dataUrl.length ? compressed : dataUrl);
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch {
+      resolve(dataUrl);
+    }
+  });
+}
+
+// Ensures no string property exceeds Firestore's 1,048,487 byte limit
+export function sanitizeForFirestore<T = any>(obj: T, maxBytes = 850000): T {
+  const getByteLength = (str: string): number => {
+    if (typeof TextEncoder !== 'undefined') {
+      return new TextEncoder().encode(str).length;
+    }
+    return str.length * 2;
+  };
+
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'string') {
+    return (getByteLength(obj) > maxBytes ? '' : obj) as unknown as T;
+  }
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeForFirestore(item, maxBytes)) as unknown as T;
+  }
+  const out: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (typeof val === 'string') {
+      out[key] = getByteLength(val) > maxBytes ? '' : val;
+    } else if (val !== undefined) {
+      out[key] = sanitizeForFirestore(val, maxBytes);
+    }
+  }
+  return out as T;
+}
+
 export function sanitizeSong(raw: any, idFallback: string): Song {
   return {
     id: raw?.id || idFallback,
@@ -38,6 +111,7 @@ export function sanitizeSong(raw: any, idFallback: string): Song {
     coverImage: raw?.coverImage || '',
     coverGradient: raw?.coverGradient || 'from-purple-600 to-indigo-800',
     demoUrl: raw?.demoUrl || '',
+    mp3_128Url: raw?.mp3_128Url || '',
     mp3Url: raw?.mp3Url || '',
     wavUrl: raw?.wavUrl || '',
     playCount: typeof raw?.playCount === 'number' ? raw.playCount : 0,
@@ -191,7 +265,114 @@ export const MusicService = {
     return [];
   },
 
-  // Save all songs to Firebase
+  // Helper: strip paid 320kbps MP3 & WAV Lossless URLs from public `songs` collection
+  toPublicSongPayload(song: Song): Record<string, any> {
+    const clean = cleanForFirebase(song);
+    const price = typeof clean.price === 'number' ? clean.price : Number(clean.price) || 0;
+    if (price > 0) {
+      clean.mp3Url = '';
+      clean.wavUrl = '';
+    }
+    return clean;
+  },
+
+  // Helper: extract protected master URLs for `song_masters` node
+  toSongMasterPayload(song: Song): Record<string, any> {
+    return cleanForFirebase({
+      id: song.id,
+      price: typeof song.price === 'number' ? song.price : Number(song.price) || 0,
+      mp3Url: song.mp3Url || '',
+      wavUrl: song.wavUrl || '',
+      updatedAt: new Date().toISOString(),
+    });
+  },
+
+  // Fetch protected MP3 320kbps & WAV Lossless links only for authorized songs (purchased / free / admin)
+  async fetchAuthorizedSongMasters(
+    uid?: string,
+    purchasedIds: string[] = [],
+    isAdmin = false,
+    freeSongIds: string[] = []
+  ): Promise<Record<string, { mp3Url?: string; wavUrl?: string }>> {
+    const result: Record<string, { mp3Url?: string; wavUrl?: string }> = {};
+    if (!uid && freeSongIds.length === 0) return result;
+
+    if (isAdmin && uid) {
+      let loadedAll = false;
+      try {
+        const snap = await get(ref(rtdb, 'song_masters'));
+        if (snap.exists() && snap.val()) {
+          const val = snap.val();
+          Object.entries(val).forEach(([id, item]: [string, any]) => {
+            if (item && (item.mp3Url || item.wavUrl)) {
+              result[id] = { mp3Url: item.mp3Url || '', wavUrl: item.wavUrl || '' };
+            }
+          });
+          loadedAll = true;
+        }
+      } catch (e) {}
+
+      if (!loadedAll) {
+        try {
+          const docsSnap = await getDocs(collection(db, 'song_masters'));
+          docsSnap.forEach((d: any) => {
+            const val = d.data();
+            if (val && (val.mp3Url || val.wavUrl)) {
+              result[d.id] = { mp3Url: val.mp3Url || '', wavUrl: val.wavUrl || '' };
+            }
+          });
+        } catch (e) {}
+      }
+      return result;
+    }
+
+    const targetIds = Array.from(new Set([...(purchasedIds || []), ...(freeSongIds || [])])).filter(Boolean);
+    if (targetIds.length === 0) return result;
+
+    await Promise.all(
+      targetIds.map(async (songId) => {
+        try {
+          const snap = await get(ref(rtdb, `song_masters/${songId}`));
+          if (snap.exists() && snap.val()) {
+            const val = snap.val();
+            result[songId] = { mp3Url: val.mp3Url || '', wavUrl: val.wavUrl || '' };
+            return;
+          }
+        } catch (e) {}
+
+        try {
+          const fsSnap = await getDoc(doc(db, 'song_masters', songId));
+          if (fsSnap.exists()) {
+            const val = fsSnap.data();
+            result[songId] = { mp3Url: val.mp3Url || '', wavUrl: val.wavUrl || '' };
+          }
+        } catch (e) {}
+      })
+    );
+
+    return result;
+  },
+
+  async fetchSongMasterById(songId: string): Promise<{ mp3Url?: string; wavUrl?: string } | null> {
+    if (!songId) return null;
+    try {
+      const snap = await get(ref(rtdb, `song_masters/${songId}`));
+      if (snap.exists() && snap.val()) {
+        const val = snap.val();
+        return { mp3Url: val.mp3Url || '', wavUrl: val.wavUrl || '' };
+      }
+    } catch (e) {}
+    try {
+      const fsSnap = await getDoc(doc(db, 'song_masters', songId));
+      if (fsSnap.exists()) {
+        const val = fsSnap.data();
+        return { mp3Url: val.mp3Url || '', wavUrl: val.wavUrl || '' };
+      }
+    } catch (e) {}
+    return null;
+  },
+
+  // Save all songs to Firebase (separates 320/WAV masters from public catalog)
   async saveSongsToFirebase(songs: Song[]): Promise<{
     success: boolean;
     rtdb: boolean;
@@ -203,16 +384,18 @@ export const MusicService = {
     let firestoreSuccess = false;
     let lastError = '';
 
-    // 1. Sync to Firebase Realtime Database
+    // 1. Sync to Firebase Realtime Database (public `songs` + protected `song_masters`)
     try {
-      const songsRef = ref(rtdb, 'songs');
       const songsMap: Record<string, any> = {};
+      const mastersMap: Record<string, any> = {};
       cleanSongs.forEach((s: Song) => {
         if (s && s.id) {
-          songsMap[s.id] = cleanForFirebase(s);
+          songsMap[s.id] = this.toPublicSongPayload(s);
+          mastersMap[s.id] = this.toSongMasterPayload(s);
         }
       });
-      await set(songsRef, songsMap);
+      await set(ref(rtdb, 'songs'), songsMap);
+      await set(ref(rtdb, 'song_masters'), mastersMap);
       rtdbSuccess = true;
     } catch (err: any) {
       const errMsg = err?.message || String(err);
@@ -220,11 +403,12 @@ export const MusicService = {
       console.error('Firebase RTDB saveSongs error:', err);
     }
 
-    // 2. Also sync to Cloud Firestore
+    // 2. Also sync to Cloud Firestore (public `songs` + protected `song_masters`)
     try {
       for (const song of cleanSongs) {
         if (song && song.id) {
-          await setDoc(doc(db, 'songs', song.id), cleanForFirebase(song), { merge: true });
+          await setDoc(doc(db, 'songs', song.id), this.toPublicSongPayload(song), { merge: true });
+          await setDoc(doc(db, 'song_masters', song.id), this.toSongMasterPayload(song), { merge: true });
         }
       }
       firestoreSuccess = true;
@@ -244,14 +428,15 @@ export const MusicService = {
 
   // Add or update single song
   async upsertSong(song: Song): Promise<{ success: boolean; rtdb: boolean; firestore: boolean; error?: string }> {
-    const clean = cleanForFirebase(song);
+    const publicPayload = this.toPublicSongPayload(song);
+    const masterPayload = this.toSongMasterPayload(song);
     let rtdbSuccess = false;
     let firestoreSuccess = false;
     let lastError = '';
 
     try {
-      const songRef = ref(rtdb, `songs/${song.id}`);
-      await set(songRef, clean);
+      await set(ref(rtdb, `songs/${song.id}`), publicPayload);
+      await set(ref(rtdb, `song_masters/${song.id}`), masterPayload);
       rtdbSuccess = true;
     } catch (err: any) {
       lastError = err?.message || String(err);
@@ -259,7 +444,8 @@ export const MusicService = {
     }
 
     try {
-      await setDoc(doc(db, 'songs', song.id), clean, { merge: true });
+      await setDoc(doc(db, 'songs', song.id), publicPayload, { merge: true });
+      await setDoc(doc(db, 'song_masters', song.id), masterPayload, { merge: true });
       firestoreSuccess = true;
     } catch (err: any) {
       if (!lastError) lastError = err?.message || String(err);
@@ -296,8 +482,8 @@ export const MusicService = {
   // Delete song from RTDB and Firestore
   async deleteSong(songId: string): Promise<boolean> {
     try {
-      const songRef = ref(rtdb, `songs/${songId}`);
-      await set(songRef, null);
+      await set(ref(rtdb, `songs/${songId}`), null);
+      await set(ref(rtdb, `song_masters/${songId}`), null);
     } catch (err) {
       console.warn('Firebase delete warning:', err);
     }
@@ -305,6 +491,7 @@ export const MusicService = {
     try {
       const docRef = doc(db, 'songs', songId);
       await setDoc(docRef, { deleted: true }, { merge: true });
+      await deleteDoc(doc(db, 'song_masters', songId));
     } catch (e) {}
 
     return true;
@@ -559,7 +746,8 @@ export const MusicService = {
     try {
       for (const m of cleanMembers) {
         if (m && m.uid) {
-          await setDoc(doc(db, 'members', m.uid), m, { merge: true });
+          const fsMember = sanitizeForFirestore(m);
+          await setDoc(doc(db, 'members', m.uid), fsMember, { merge: true });
           const isUserAdmin = m.role === 'admin' ||
             (m.email && (m.email.toLowerCase().trim() === 'admin@xuanken.vn' || m.email.toLowerCase().trim() === 'phamthikimthanh.qy@gmail.com'));
           if (isUserAdmin) {
@@ -584,7 +772,15 @@ export const MusicService = {
   },
 
   async upsertMember(member: AppUser): Promise<{ success: boolean; error?: string }> {
-    const clean = cleanForFirebase(member);
+    const processed = { ...member };
+    if (
+      typeof processed.avatarUrl === 'string' &&
+      processed.avatarUrl.startsWith('data:image/') &&
+      processed.avatarUrl.length > 150000
+    ) {
+      processed.avatarUrl = await compressImageDataUrl(processed.avatarUrl, 320, 0.8);
+    }
+    const clean = cleanForFirebase(processed);
     let success = false;
     let lastError = '';
 
@@ -603,7 +799,7 @@ export const MusicService = {
     }
 
     try {
-      await setDoc(doc(db, 'members', member.uid), clean, { merge: true });
+      await setDoc(doc(db, 'members', member.uid), sanitizeForFirestore(clean), { merge: true });
       const isUserAdmin = member.role === 'admin' ||
         (member.email && (member.email.toLowerCase().trim() === 'admin@xuanken.vn' || member.email.toLowerCase().trim() === 'phamthikimthanh.qy@gmail.com'));
       if (isUserAdmin) {
@@ -637,13 +833,16 @@ export const MusicService = {
     } catch (e) {}
   },
 
-  // Playlists Management (100% Firebase RTDB + Firestore + Realtime Sync)
-  async fetchPlaylists(): Promise<Playlist[]> {
+  // Playlists Management (100% Firebase RTDB + Firestore + Private User Scoping)
+  async fetchPlaylists(uid?: string, isAdmin = false): Promise<Playlist[]> {
+    if (!uid && !isAdmin) return [];
     const byId = new Map<string, Playlist>();
 
     try {
-      const dbRef = ref(rtdb);
-      const snapshot = await get(child(dbRef, 'playlists'));
+      const targetRef = isAdmin
+        ? ref(rtdb, 'playlists')
+        : rtdbQuery(ref(rtdb, 'playlists'), orderByChild('userId'), equalTo(uid!));
+      const snapshot = await get(targetRef);
       if (snapshot.exists()) {
         const data = snapshot.val() || {};
         Object.values(data).forEach((p: any) => {
@@ -661,7 +860,10 @@ export const MusicService = {
 
     try {
       const colRef = collection(db, 'playlists');
-      const docsSnap = await getDocs(colRef);
+      const targetQuery = isAdmin
+        ? colRef
+        : fsQuery(colRef, where('userId', '==', uid!));
+      const docsSnap = await getDocs(targetQuery);
       if (!docsSnap.empty) {
         docsSnap.forEach((d: any) => {
           const val = d.data();
@@ -681,11 +883,17 @@ export const MusicService = {
     return Array.from(byId.values());
   },
 
-  subscribeToPlaylists(onUpdate: (playlists: Playlist[]) => void): () => void {
+  subscribeToPlaylists(onUpdate: (playlists: Playlist[]) => void, uid?: string, isAdmin = false): () => void {
+    if (!uid && !isAdmin) {
+      onUpdate([]);
+      return () => {};
+    }
     try {
-      const pRef = ref(rtdb, 'playlists');
+      const targetRef = isAdmin
+        ? ref(rtdb, 'playlists')
+        : rtdbQuery(ref(rtdb, 'playlists'), orderByChild('userId'), equalTo(uid!));
       return onValue(
-        pRef,
+        targetRef,
         (snapshot: any) => {
           if (snapshot.exists()) {
             const data = snapshot.val() || {};
@@ -889,13 +1097,25 @@ export const MusicService = {
     } catch (e) {}
   },
 
-  // Record an immutable purchase transaction
+  // Record an immutable purchase transaction & unlock user_purchases entitlement
   async recordPurchase(purchase: any): Promise<boolean> {
     const clean = cleanForFirebase(purchase);
     try {
       await set(ref(rtdb, `purchases/${purchase.id}`), clean);
     } catch (e) {
       console.warn('RTDB recordPurchase notice:', e);
+    }
+    if (purchase?.userId && purchase?.songId) {
+      try {
+        await set(ref(rtdb, `user_purchases/${purchase.userId}/${purchase.songId}`), {
+          songId: purchase.songId,
+          purchaseId: purchase.id,
+          price: purchase.price ?? 0,
+          purchasedAt: purchase.timestamp || new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn('RTDB user_purchases entitlement notice:', e);
+      }
     }
     try {
       await setDoc(doc(db, 'purchases', purchase.id), clean, { merge: true });
@@ -905,7 +1125,7 @@ export const MusicService = {
     return true;
   },
 
-  // 1-Click Sync All: Pushes all songs, members, playlists, and vouchers to Firebase
+  // 1-Click Sync All: Pushes public songs, protected song_masters, members, user_purchases, playlists, and vouchers to Firebase
   async syncAllToFirebase(
     songs: Song[],
     members: AppUser[],
@@ -922,19 +1142,61 @@ export const MusicService = {
     let rtdbSuccess = false;
     let firestoreSuccess = false;
     let lastError = '';
+    const rtdbErrors: string[] = [];
+    const fsErrors: string[] = [];
 
-    // 1. Prepare clean data map
+    // 1. Prepare clean data map (compress oversized base64 avatars first so Firestore/RTDB stay lean)
     const cleanSongs = cleanForFirebase(songs) || [];
-    const cleanMembers = cleanForFirebase(members) || [];
+    const rawCleanMembers: AppUser[] = cleanForFirebase(members) || [];
+    const cleanMembers: AppUser[] = await Promise.all(
+      rawCleanMembers.map(async (m) => {
+        if (
+          m &&
+          typeof m.avatarUrl === 'string' &&
+          m.avatarUrl.startsWith('data:image/') &&
+          m.avatarUrl.length > 150000
+        ) {
+          const compressed = await compressImageDataUrl(m.avatarUrl, 320, 0.8);
+          return { ...m, avatarUrl: compressed };
+        }
+        return m;
+      })
+    );
     const cleanPlaylists = cleanForFirebase(playlists) || [];
     const cleanVouchers = cleanForFirebase(vouchers) || [];
     const cleanAlbums = (exclusiveAlbums || []).map((a, i) => sanitizeAlbum(a, a.id || `alb-${i}`));
 
     const songsMap: Record<string, any> = {};
-    cleanSongs.forEach((s: Song) => { if (s?.id) songsMap[s.id] = s; });
+    const mastersMap: Record<string, any> = {};
+    cleanSongs.forEach((s: Song) => {
+      if (s?.id) {
+        songsMap[s.id] = this.toPublicSongPayload(s);
+        mastersMap[s.id] = this.toSongMasterPayload(s);
+      }
+    });
 
     const membersMap: Record<string, any> = {};
-    cleanMembers.forEach((m: AppUser) => { if (m?.uid) membersMap[m.uid] = m; });
+    const userPurchasesMap: Record<string, Record<string, any>> = {};
+    cleanMembers.forEach((m: AppUser) => {
+      if (m?.uid) {
+        membersMap[m.uid] = m;
+        if (Array.isArray(m.purchasedSongIds) && m.purchasedSongIds.length > 0) {
+          const ent: Record<string, any> = {};
+          m.purchasedSongIds.forEach((sid) => {
+            if (sid) {
+              ent[sid] = {
+                songId: sid,
+                purchaseId: 'synced',
+                purchasedAt: new Date().toISOString(),
+              };
+            }
+          });
+          if (Object.keys(ent).length > 0) {
+            userPurchasesMap[m.uid] = ent;
+          }
+        }
+      }
+    });
 
     const playlistsMap: Record<string, any> = {};
     cleanPlaylists.forEach((p: Playlist) => { if (p?.id) playlistsMap[p.id] = p; });
@@ -945,55 +1207,100 @@ export const MusicService = {
     const albumsMap: Record<string, any> = {};
     cleanAlbums.forEach((a: ExclusiveAlbum) => { if (a?.id) albumsMap[a.id] = cleanForFirebase(a); });
 
-    // 2. Write to Firebase Realtime Database
-    try {
-      const payload: Record<string, any> = {
-        songs: songsMap,
-        members: membersMap,
-        playlists: playlistsMap,
-        vouchers: vouchersMap,
-        lastSyncedAt: new Date().toISOString(),
-      };
-      if (cleanAlbums.length > 0) {
-        payload.exclusive_albums = albumsMap;
-      }
-      await update(ref(rtdb), payload);
-      rtdbSuccess = true;
-    } catch (err: any) {
-      lastError = err?.message || String(err);
-      console.error('Firebase RTDB syncAll error:', err);
+    // 2. Write to Firebase Realtime Database per-branch (avoids un-ruled root key rejection & isolates partial failures)
+    const rtdbWrites: Array<[string, unknown]> = [
+      ['songs', songsMap],
+      ['song_masters', mastersMap],
+      ['members', membersMap],
+      ['playlists', playlistsMap],
+      ['vouchers', vouchersMap],
+    ];
+    if (Object.keys(userPurchasesMap).length > 0) {
+      rtdbWrites.push(['user_purchases', userPurchasesMap]);
+    }
+    if (cleanAlbums.length > 0) {
+      rtdbWrites.push(['exclusive_albums', albumsMap]);
     }
 
-    // 3. Write to Cloud Firestore
-    try {
-      for (const s of cleanSongs) {
-        if (s?.id) await setDoc(doc(db, 'songs', s.id), s, { merge: true });
+    let rtdbBranchOkCount = 0;
+    for (const [branch, value] of rtdbWrites) {
+      try {
+        await set(ref(rtdb, branch), value);
+        rtdbBranchOkCount++;
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        rtdbErrors.push(`${branch}: ${msg}`);
+        console.warn(`Firebase RTDB syncAll branch "${branch}" notice:`, err);
       }
-      for (const m of cleanMembers) {
-        if (m?.uid) await setDoc(doc(db, 'members', m.uid), m, { merge: true });
-      }
-      for (const v of cleanVouchers) {
-        if (v?.id) await setDoc(doc(db, 'vouchers', v.id), v, { merge: true });
-      }
-      if (cleanAlbums.length > 0) {
-        for (const a of cleanAlbums) {
-          if (a?.id) await setDoc(doc(db, 'exclusive_albums', a.id), cleanForFirebase(a), { merge: true });
-        }
-      }
-      firestoreSuccess = true;
-    } catch (err: any) {
-      if (!lastError) lastError = err?.message || String(err);
-      console.error('Firestore syncAll error:', err);
+    }
+    rtdbSuccess = rtdbBranchOkCount > 0 && rtdbErrors.length === 0;
+    if (rtdbErrors.length > 0) {
+      lastError = rtdbErrors[0];
     }
 
-    const overallSuccess = rtdbSuccess || firestoreSuccess;
+    // 3. Write to Cloud Firestore safely (sanitizing strings > 850KB so Firestore 1MB field limit never aborts sync)
+    let fsWritesOk = 0;
+    for (const s of cleanSongs) {
+      if (!s?.id) continue;
+      try {
+        await setDoc(doc(db, 'songs', s.id), sanitizeForFirestore(this.toPublicSongPayload(s)), { merge: true });
+        await setDoc(doc(db, 'song_masters', s.id), sanitizeForFirestore(this.toSongMasterPayload(s)), { merge: true });
+        fsWritesOk++;
+      } catch (err: any) {
+        fsErrors.push(`songs/${s.id}: ${err?.message || String(err)}`);
+      }
+    }
+    for (const m of cleanMembers) {
+      if (!m?.uid) continue;
+      try {
+        await setDoc(doc(db, 'members', m.uid), sanitizeForFirestore(m), { merge: true });
+        fsWritesOk++;
+      } catch (err: any) {
+        fsErrors.push(`members/${m.uid}: ${err?.message || String(err)}`);
+      }
+    }
+    for (const v of cleanVouchers) {
+      if (!v?.id) continue;
+      try {
+        await setDoc(doc(db, 'vouchers', v.id), sanitizeForFirestore(v), { merge: true });
+        fsWritesOk++;
+      } catch (err: any) {
+        fsErrors.push(`vouchers/${v.id}: ${err?.message || String(err)}`);
+      }
+    }
+    for (const a of cleanAlbums) {
+      if (!a?.id) continue;
+      try {
+        await setDoc(doc(db, 'exclusive_albums', a.id), sanitizeForFirestore(cleanForFirebase(a)), { merge: true });
+        fsWritesOk++;
+      } catch (err: any) {
+        fsErrors.push(`exclusive_albums/${a.id}: ${err?.message || String(err)}`);
+      }
+    }
+
+    firestoreSuccess = fsWritesOk > 0 && fsErrors.length === 0;
+    if (!lastError && fsErrors.length > 0) {
+      lastError = fsErrors[0];
+    }
+
+    const overallSuccess = rtdbBranchOkCount > 0 || fsWritesOk > 0;
+    const warnings: string[] = [];
+    if (rtdbErrors.length > 0) {
+      warnings.push(`RTDB lưu ý (${rtdbErrors.join('; ')})`);
+    }
+    if (fsErrors.length > 0) {
+      warnings.push(`Firestore lưu ý (${fsErrors.slice(0, 2).join('; ')})`);
+    }
+
     return {
       success: overallSuccess,
       rtdb: rtdbSuccess,
       firestore: firestoreSuccess,
-      error: overallSuccess ? undefined : lastError,
+      error: warnings.length > 0 ? warnings.join(' | ') : undefined,
       details: overallSuccess
-        ? `Đã đồng bộ ${cleanSongs.length} bài hát, ${cleanAlbums.length} album, ${cleanMembers.length} thành viên, ${cleanPlaylists.length} playlists, ${cleanVouchers.length} vouchers lên Firebase!`
+        ? `Đã đồng bộ & tách bảo mật ${cleanSongs.length} bài hát (320/WAV vào song_masters), ${cleanAlbums.length} album, ${cleanMembers.length} thành viên, ${cleanPlaylists.length} playlists, ${cleanVouchers.length} vouchers lên Firebase!${
+            warnings.length > 0 ? ` (Lưu ý: ${warnings.join(' | ')})` : ''
+          }`
         : `Lỗi đồng bộ: ${lastError}`,
     };
   },
@@ -1078,7 +1385,15 @@ export const MusicService = {
 
   // User Settings sync (theme, crossfade, format, liked, blocked, likedAlbumIds)
   async saveUserSettings(uid: string, settings: any): Promise<void> {
-    const clean = cleanForFirebase(settings);
+    const processed = { ...settings };
+    if (
+      typeof processed.avatarUrl === 'string' &&
+      processed.avatarUrl.startsWith('data:image/') &&
+      processed.avatarUrl.length > 150000
+    ) {
+      processed.avatarUrl = await compressImageDataUrl(processed.avatarUrl, 320, 0.8);
+    }
+    const clean = cleanForFirebase(processed);
     if (!uid || !clean) return;
 
     try {
@@ -1106,7 +1421,7 @@ export const MusicService = {
     }
 
     try {
-      await setDoc(doc(db, 'members', uid), clean, { merge: true });
+      await setDoc(doc(db, 'members', uid), sanitizeForFirestore(clean), { merge: true });
     } catch (e) {
       console.warn('User settings Firestore save notice:', e);
     }

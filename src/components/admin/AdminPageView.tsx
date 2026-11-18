@@ -210,6 +210,7 @@ export const AdminPageView: React.FC = () => {
   const [audioFormat, setAudioFormat] = useState<AudioFormat>('MP3');
   const [price, setPrice] = useState('20000');
   const [demoUrl, setDemoUrl] = useState('');
+  const [mp3128Url, setMp3128Url] = useState('');
   const [mp3Url, setMp3Url] = useState('');
   const [wavUrl, setWavUrl] = useState('');
   const [coverImage, setCoverImage] = useState('https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
@@ -461,6 +462,7 @@ export const AdminPageView: React.FC = () => {
     setDurationSeconds('30');
     setPlayCountInput('0');
     setDemoUrl('');
+    setMp3128Url('');
     setMp3Url('');
     setWavUrl('');
     setLrcType('text');
@@ -487,6 +489,7 @@ export const AdminPageView: React.FC = () => {
     setDurationSeconds((totalSecs % 60).toString().padStart(2, '0'));
     setPlayCountInput((song.playCount || 0).toString());
     setDemoUrl(song.demoUrl || '');
+    setMp3128Url(song.mp3_128Url || '');
     setMp3Url(song.mp3Url || '');
     setWavUrl(song.wavUrl || '');
     setLrcType(song.lrcUrl ? 'link' : 'text');
@@ -550,6 +553,7 @@ export const AdminPageView: React.FC = () => {
           price: parseInt(price, 10) || 0,
           playCount: numPlayCount,
           demoUrl: demoUrl.trim() || '',
+          mp3_128Url: mp3128Url.trim() || '',
           mp3Url: mp3Url.trim() || '',
           wavUrl: wavUrl.trim() || '',
           lrcUrl: lrcType === 'link' ? lrcUrl.trim() : '',
@@ -575,6 +579,7 @@ export const AdminPageView: React.FC = () => {
         price: parseInt(price, 10) || 0,
         playCount: numPlayCount,
         demoUrl: demoUrl.trim() || '',
+        mp3_128Url: mp3128Url.trim() || '',
         mp3Url: mp3Url.trim() || '',
         wavUrl: wavUrl.trim() || '',
         lrcUrl: lrcType === 'link' ? lrcUrl.trim() : '',
@@ -985,7 +990,8 @@ export const AdminPageView: React.FC = () => {
                       <div className="flex items-center justify-between pt-2.5 border-t border-white/5 gap-2">
                         <div className="flex items-center gap-1 text-[9px] flex-wrap">
                           <span className={`px-1.5 py-0.5 rounded font-bold ${song.demoUrl ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-white/30'}`}>Demo</span>
-                          <span className={`px-1.5 py-0.5 rounded font-bold ${song.mp3Url ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-white/30'}`}>MP3</span>
+                          <span className={`px-1.5 py-0.5 rounded font-bold ${song.mp3_128Url ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/5 text-white/30'}`}>128</span>
+                          <span className={`px-1.5 py-0.5 rounded font-bold ${song.mp3Url ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-white/30'}`}>320</span>
                           <span className={`px-1.5 py-0.5 rounded font-bold ${song.wavUrl ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-white/30'}`}>WAV</span>
                           {song.lrcRaw || song.lrcUrl ? (
                             <span className="px-1.5 py-0.5 rounded font-bold bg-cyan-500/20 text-cyan-300">LRC</span>
@@ -1077,7 +1083,7 @@ export const AdminPageView: React.FC = () => {
                             {Math.floor(song.duration / 60)}:{(song.duration % 60).toString().padStart(2, '0')}
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1.5 text-[10px]">
+                            <div className="flex items-center justify-center gap-1 text-[10px]">
                               <span
                                 className={`px-1.5 py-0.5 rounded font-bold ${
                                   song.demoUrl ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-white/30'
@@ -1088,11 +1094,19 @@ export const AdminPageView: React.FC = () => {
                               </span>
                               <span
                                 className={`px-1.5 py-0.5 rounded font-bold ${
+                                  song.mp3_128Url ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/5 text-white/30'
+                                }`}
+                                title={song.mp3_128Url || 'Chưa có link MP3 128kbps'}
+                              >
+                                128
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded font-bold ${
                                   song.mp3Url ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-white/30'
                                 }`}
-                                title={song.mp3Url || 'Chưa có link mp3'}
+                                title={song.mp3Url || 'Chưa có link MP3 320kbps'}
                               >
-                                MP3
+                                320
                               </span>
                               <span
                                 className={`px-1.5 py-0.5 rounded font-bold ${
@@ -1431,31 +1445,14 @@ export const AdminPageView: React.FC = () => {
               Các quy tắc (Security Rules) đã được cấu hình chặt chẽ theo tiêu chuẩn Zero-Trust và Phân quyền theo vai trò (RBAC/ABAC):
             </p>
             <ul className="list-disc list-inside space-y-1.5 text-white/70 pl-1">
-              <li><strong className="text-white">Bảo mật link bài hát:</strong> Khách chỉ nghe demo 60s, chỉ người mua hoặc Admin mới mở được link MP3 320kbps & WAV Lossless. Chỉ Admin có quyền thêm/sửa/xóa bài hát.</li>
-              <li><strong className="text-white">Bảo mật số dư & tiền ví:</strong> Chặn triệt để hack tiền. Thành viên không thể tự tăng số dư hoặc tự nâng quyền Admin. Số dư chỉ giảm khi thanh toán hợp lệ. Mọi yêu cầu nạp tiền phải qua Admin.</li>
-              <li><strong className="text-white">Bảo mật thành viên (PII):</strong> Số dư và thông tin riêng tư chỉ chính chủ hoặc Admin mới có quyền đọc. Chống rò rỉ dữ liệu thành viên.</li>
+              <li><strong className="text-white">Tách biệt link 128/Demo & 320/WAV:</strong> Nhánh công khai <code className="text-emerald-300">songs</code> chỉ giữ <code className="text-purple-300">demoUrl</code> & <code className="text-emerald-300">mp3_128Url</code>; link chất lượng cao <code className="text-blue-300">mp3Url (320kbps)</code> và <code className="text-amber-300">wavUrl (Lossless)</code> được tách riêng sang nhánh bảo mật <code className="text-amber-300">song_masters</code> — chỉ người đã mua (<code className="text-white">user_purchases</code> / <code className="text-white">purchasedSongIds</code>) hoặc Admin mới đọc được.</li>
+              <li><strong className="text-white">Riêng tư Playlist Cá Nhân:</strong> Nhánh <code className="text-cyan-300">playlists</code> được bảo vệ theo chủ sở hữu (<code className="text-white">userId == auth.uid</code>), tài khoản khác hoặc khách chưa đăng nhập không thể đọc trộm.</li>
+              <li><strong className="text-white">Bảo mật số dư & tiền ví:</strong> Chặn triệt để hack tiền. Thành viên không thể tự tăng số dư hoặc tự nâng quyền Admin. Số dư chỉ giảm khi mua nhạc hợp lệ.</li>
             </ul>
           </div>
 
-          {/* 1. Cloud Firestore Rules */}
-          <div className="rounded-2xl border border-purple-500/30 bg-[#170f23] overflow-hidden shadow-xl">
-            <div className="p-4 bg-purple-500/10 border-b border-purple-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm">firestore.rules (Cloud Firestore Security Rules)</span>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500 text-black">
-                    Bảo Mật Cao
-                  </span>
-                </div>
-                <p className="text-[11px] text-white/60 mt-0.5">
-                  Kiểm soát chặt chẽ bài hát, số dư ví, quyền thành viên và lịch sử mua hàng
-                </p>
-              </div>
-              <button
-                onClick={() =>
-                  copyRuleToClipboard(
-                    'firestore.rules',
-                    `rules_version = '2';
+          {(() => {
+            const firestoreRulesText = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} { allow read, write: if false; }
@@ -1472,12 +1469,20 @@ service cloud.firestore {
     }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
+    function hasPurchasedSong(songId) {
+      return isSignedIn() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/songs/$(songId)).data.price <= 0 ||
+        songId in get(/databases/$(database)/documents/members/$(request.auth.uid)).data.purchasedSongIds
+      );
+    }
 
     match /admins/{adminId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
+    // Nhánh công khai chỉ chứa Demo 60s & MP3 128kbps
     match /songs/{songId} {
       allow read: if true;
       allow create, delete: if isAdmin();
@@ -1486,6 +1491,12 @@ service cloud.firestore {
         incoming().playCount is number &&
         incoming().playCount == existing().playCount + 1
       );
+    }
+
+    // Nhánh bảo mật chứa riêng MP3 320kbps & WAV Lossless
+    match /song_masters/{songId} {
+      allow read: if hasPurchasedSong(songId);
+      allow write: if isAdmin();
     }
 
     match /members/{userId} {
@@ -1503,13 +1514,13 @@ service cloud.firestore {
           (
             incoming().diff(existing()).affectedKeys().hasOnly([
               'displayName', 'avatarUrl', 'theme', 'crossfadeDuration',
-              'preferredAudioFormat', 'likedSongIds', 'likedAlbumIds', 'blockedSongIds', 'rewindStats'
+              'preferredAudioFormat', 'likedSongIds', 'likedAlbumIds', 'blockedSongIds'
             ]) &&
             incoming().role == existing().role &&
             incoming().balance == existing().balance
           ) ||
           (
-            incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'purchasedSongIds']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'purchasedSongIds', 'usedVoucherCodes']) &&
             incoming().role == existing().role &&
             incoming().balance is number &&
             incoming().balance <= existing().balance &&
@@ -1531,294 +1542,227 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Playlist cá nhân chỉ chính chủ hoặc Admin được xem/sửa
     match /playlists/{playlistId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (
-        !('userId' in incoming()) || incoming().userId == request.auth.uid || isAdmin()
-      );
-      allow update, delete: if isSignedIn() && (
-        existing().userId == request.auth.uid || isAdmin()
-      );
+      allow read: if (existing().isPublic == true) || (isSignedIn() && (existing().userId == request.auth.uid || isAdmin()));
+      allow create: if isSignedIn() && (incoming().userId == request.auth.uid || isAdmin());
+      allow update, delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
     }
 
-    match /vouchers/{voucherId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /site_settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /song_reports/{reportId} {
-      allow create: if true;
-      allow read, update, delete: if isAdmin();
-    }
-
-    match /artist_bios/{artistId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /weekly_plays/{weekKey} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    match /system/{docId} {
-      allow read, write: if isSignedIn();
-    }
+    match /vouchers/{voucherId} { allow read: if true; allow write: if isAdmin(); }
+    match /site_settings/{settingId} { allow read: if true; allow write: if isAdmin(); }
+    match /exclusive_albums/{albumId} { allow read: if true; allow write: if isAdmin(); }
+    match /chat_messages/{messageId} { allow read, create: if true; allow update, delete: if isAdmin(); }
+    match /artist_bios/{artistId} { allow read: if true; allow write: if isAdmin(); }
+    match /song_reports/{reportId} { allow create: if true; allow read, update, delete: if isAdmin(); }
+    match /weekly_plays/{weekKey} { allow read: if true; allow write: if isSignedIn(); }
+    match /system/{docId} { allow read, write: if isSignedIn(); }
   }
-}`
-                  )
-                }
-                className="w-full sm:w-auto justify-center px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95 cursor-pointer"
-              >
-                {copiedRuleFile === 'firestore.rules' ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span>Đã sao chép!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span>Sao Chép firestore.rules</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <pre className="p-4 text-[11px] font-mono text-purple-300 bg-black/60 overflow-x-auto max-h-64 leading-relaxed">
-{`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} { allow read, write: if false; }
+}`;
 
-    function isSignedIn() { return request.auth != null; }
-    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
-    function isAdmin() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        request.auth.token.email == 'admin@xuanken.vn' ||
-        request.auth.token.email == 'phamthikimthanh.qy@gmail.com' ||
-        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
-    match /songs/{songId} {
-      allow read: if true;
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playCount']) &&
-        request.resource.data.playCount == resource.data.playCount + 1
-      );
-    }
-
-    match /members/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.role == 'user' && request.resource.data.balance <= 500000;
-      allow update: if isAdmin() || (
-        isOwner(userId) && (
-          // Sửa thông tin cá nhân (không được đổi role hoặc tăng tiền)
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'avatarUrl', 'theme', 'likedSongIds', 'likedAlbumIds', 'blockedSongIds']) &&
-           request.resource.data.role == resource.data.role && request.resource.data.balance == resource.data.balance) ||
-          // Mua nhạc (tiền chỉ được giảm, không được tăng)
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'purchasedSongIds']) &&
-           request.resource.data.role == resource.data.role && request.resource.data.balance <= resource.data.balance)
-        )
-      );
-      allow delete: if isAdmin();
-    }
-
-    match /purchases/{purchaseId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin();
-    }
-
-    match /playlists/{playlistId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-    }
-
-    match /vouchers/{voucherId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /exclusive_albums/{albumId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /chat_messages/{messageId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
-    }
-  }
-}`}
-            </pre>
-          </div>
-
-          {/* 2. Realtime Database Security Rules */}
-          <div className="rounded-2xl border border-amber-500/30 bg-[#170f23] overflow-hidden shadow-xl">
-            <div className="p-4 bg-amber-500/10 border-b border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm">database.rules.json (Realtime Database Security)</span>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white">
-                    Chống Hack Số Dư
-                  </span>
-                </div>
-                <p className="text-[11px] text-white/60 mt-0.5">
-                  Bảo vệ nhánh songs, members, tiền ví và chống can thiệp trực tiếp qua Firebase REST API
-                </p>
-              </div>
-              <button
-                onClick={() =>
-                  copyRuleToClipboard(
-                    'database.rules.json',
-                    JSON.stringify(
-                      {
-                        rules: {
-                          admins: {
-                            ".read": "auth != null",
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-                          },
-                          songs: {
-                            ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-                            "$songId": {
-                              "playCount": {
-                                ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
-                              }
-                            }
-                          },
-                          members: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-                            "$userId": {
-                              ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-                              ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
-                            }
-                          },
-                          purchases: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-                            "$purchaseId": {
-                              ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-                              ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')) : (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')))"
-                            }
-                          },
-                          playlists: {
-                            ".read": true,
-                            "$playlistId": {
-                              ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-                            }
-                          },
-                          vouchers: {
-                            ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-                          },
-                          site_settings: {
-                            ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-                          },
-                          weekly_plays: {
-                            ".read": true,
-                            ".write": "auth != null"
-                          },
-                          song_reports: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-                            "$reportId": {
-                              ".write": true
-                            }
-                          },
-                          exclusive_albums: {
-                            ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-                          },
-                          chat_messages: {
-                            ".read": true,
-                            ".write": true
-                          },
-                          artist_bios: {
-                            ".read": true,
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-                          },
-                          api_keys: {
-                            ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-                            ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-                          },
-                          api_key_hashes: {
-                            ".read": false,
-                            "$keyHash": {
-                              ".read": true,
-                              ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-                            }
-                          },
-                          _system_ping: {
-                            ".read": true,
-                            ".write": true
-                          }
-                        }
+            const rtdbRulesText = JSON.stringify(
+              {
+                rules: {
+                  admins: {
+                    ".read": "auth != null",
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                  },
+                  songs: {
+                    ".read": true,
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    "$songId": {
+                      "playCount": {
+                        ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
                       },
-                      null,
-                      2
-                    )
-                  )
+                      "mp3Url": {
+                        ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || data.parent().child('price').val() <= 0 || root.child('user_purchases').child(auth.uid).child($songId).exists())"
+                      },
+                      "wavUrl": {
+                        ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || data.parent().child('price').val() <= 0 || root.child('user_purchases').child(auth.uid).child($songId).exists())"
+                      }
+                    }
+                  },
+                  song_masters: {
+                    ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    "$songId": {
+                      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || root.child('songs').child($songId).child('price').val() <= 0 || root.child('user_purchases').child(auth.uid).child($songId).exists())"
+                    }
+                  },
+                  user_purchases: {
+                    ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    "$userId": {
+                      ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                      "$songId": {
+                        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || (auth.uid === $userId && (!data.exists() || data.child('songId').val() === $songId) && newData.child('songId').val() === $songId && root.child('songs').child($songId).exists()))"
+                      }
+                    }
+                  },
+                  members: {
+                    ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    "$userId": {
+                      ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || (auth.uid === $userId && (!data.exists() ? (newData.child('role').val() === 'user' && newData.child('balance').val() <= 500000) : (newData.child('role').val() === data.child('role').val() && (!newData.child('balance').exists() || newData.child('balance').val() <= data.child('balance').val())))))"
+                    }
+                  },
+                  purchases: {
+                    ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    "$purchaseId": {
+                      ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                      ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')) : (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')))"
+                    }
+                  },
+                  playlists: {
+                    ".indexOn": ["userId"],
+                    ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com') || (query.orderByChild == 'userId' && query.equalTo == auth.uid))",
+                    "$playlistId": {
+                      ".read": "data.child('isPublic').val() === true || (auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')))",
+                      ".write": "auth != null && (!data.exists() ? (newData.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')) : (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com')))"
+                    }
+                  },
+                  vouchers: {
+                    ".read": true,
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                  },
+                  site_settings: {
+                    ".read": true,
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                  },
+                  weekly_plays: {
+                    ".read": true,
+                    ".write": "auth != null"
+                  },
+                  song_reports: {
+                    ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    "$reportId": {
+                      ".write": true
+                    }
+                  },
+                  banned_chat_members: {
+                    ".read": true,
+                    ".write": "auth != null"
+                  },
+                  audio_settings: {
+                    ".read": true,
+                    ".write": "auth != null"
+                  },
+                  exclusive_albums: {
+                    ".read": true,
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                  },
+                  chat_messages: {
+                    ".read": true,
+                    ".write": true
+                  },
+                  users: {
+                    "$userId": {
+                      ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                      ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                    }
+                  },
+                  artist_bios: {
+                    ".read": true,
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                  },
+                  api_keys: {
+                    ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
+                    ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                  },
+                  api_key_hashes: {
+                    ".read": false,
+                    "$keyHash": {
+                      ".read": true,
+                      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
+                    }
+                  },
+                  _system_ping: {
+                    ".read": true,
+                    ".write": true
+                  }
                 }
-                className="w-full sm:w-auto justify-center px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95 cursor-pointer"
-              >
-                {copiedRuleFile === 'database.rules.json' ? (
-                  <>
-                    <Check className="w-4 h-4 text-black" />
-                    <span>Đã sao chép!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span>Sao Chép database.rules.json</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <pre className="p-4 text-[11px] font-mono text-emerald-400 bg-black/60 overflow-x-auto max-h-56 leading-relaxed">
-{`{
-  "rules": {
-    "admins": {
-      ".read": "auth != null",
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-    },
-    "songs": {
-      ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))",
-      "$songId": {
-        "playCount": {
-          ".write": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
-        }
-      }
-    },
-    "exclusive_albums": {
-      ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-    },
-    "chat_messages": {
-      ".read": true,
-      ".write": true
-    },
-    "members": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.token.email === 'admin@xuanken.vn' || auth.token.email === 'phamthikimthanh.qy@gmail.com'))"
-    },
-    "_system_ping": {
-      ".read": true,
-      ".write": true
-    }
-  }
-}`}
-            </pre>
-          </div>
+              },
+              null,
+              2
+            );
+
+            return (
+              <>
+                {/* 1. Cloud Firestore Rules */}
+                <div className="rounded-2xl border border-purple-500/30 bg-[#170f23] overflow-hidden shadow-xl">
+                  <div className="p-4 bg-purple-500/10 border-b border-purple-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-sm">firestore.rules (Cloud Firestore Security Rules)</span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500 text-black">
+                          Tách Link 320/WAV
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/60 mt-0.5">
+                        Bảo vệ song_masters (MP3 320/WAV), riêng tư playlists, số dư ví và lịch sử mua hàng
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => copyRuleToClipboard('firestore.rules', firestoreRulesText)}
+                      className="w-full sm:w-auto justify-center px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-white flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95 cursor-pointer"
+                    >
+                      {copiedRuleFile === 'firestore.rules' ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span>Đã sao chép!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>Sao Chép firestore.rules</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <pre className="p-4 text-[11px] font-mono text-purple-300 bg-black/60 overflow-x-auto max-h-64 leading-relaxed">
+                    {firestoreRulesText}
+                  </pre>
+                </div>
+
+                {/* 2. Realtime Database Security Rules */}
+                <div className="rounded-2xl border border-amber-500/30 bg-[#170f23] overflow-hidden shadow-xl">
+                  <div className="p-4 bg-amber-500/10 border-b border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-sm">database.rules.json (Realtime Database Security)</span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white">
+                          Chống Hack &amp; Tách 320/WAV
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/60 mt-0.5">
+                        Chỉ công khai Demo &amp; 128kbps; tách song_masters (320/WAV), bảo mật user_purchases, playlists riêng tư và api_keys
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => copyRuleToClipboard('database.rules.json', rtdbRulesText)}
+                      className="w-full sm:w-auto justify-center px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-xs text-black flex items-center gap-1.5 transition-all shadow-md shrink-0 active:scale-95 cursor-pointer"
+                    >
+                      {copiedRuleFile === 'database.rules.json' ? (
+                        <>
+                          <Check className="w-4 h-4 text-black" />
+                          <span>Đã sao chép!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>Sao Chép database.rules.json</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <pre className="p-4 text-[11px] font-mono text-emerald-400 bg-black/60 overflow-x-auto max-h-56 leading-relaxed">
+                    {rtdbRulesText}
+                  </pre>
+                </div>
+              </>
+            );
+          })()}
 
           {/* 3. Storage Rules */}
           <div className="rounded-2xl border border-white/10 bg-[#170f23] overflow-hidden">
@@ -2697,23 +2641,22 @@ service firebase.storage {
                 </div>
               </div>
 
-              {/* Requirement 3: 3 LINK NHẠC (Demo 60s, MP3, WAV) */}
+              {/* 4 LINK NHẠC TÁCH BIỆT BẢO MẬT (Demo 60s & 128kbps Công khai | 320kbps & WAV Bảo mật) */}
               <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
                 <p className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Link className="w-3.5 h-3.5" />
-                  3 Link Tệp Nhạc (Demo 60s, MP3, WAV)
+                  Link Tệp Nhạc (Công Khai 128/Demo • Bảo Mật 320/WAV)
                 </p>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-white/70 font-semibold">1. Link nhạc Demo 60 giây</label>
-                    <span className="text-[10px] text-amber-300">Dành cho khách nghe thử</span>
+                    <span className="text-[10px] text-purple-300">Công khai — Dành cho khách nghe thử</span>
                   </div>
                   <input
                     type="url"
                     value={demoUrl}
                     onChange={(e) => setDemoUrl(e.target.value)}
-                    
                     placeholder="https://example.com/demo60s.mp3"
                     className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-[#9b4de0]"
                   />
@@ -2721,23 +2664,37 @@ service firebase.storage {
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-white/70 font-semibold">2. Link nhạc MP3 (320kbps)</label>
-                    <span className="text-[10px] text-blue-300">File chất lượng cao</span>
+                    <label className="text-white/70 font-semibold">2. Link nhạc MP3 (128kbps)</label>
+                    <span className="text-[10px] text-emerald-300">Công khai — Lưu trên nhánh songs</span>
                   </div>
                   <input
                     type="url"
-                    value={mp3Url}
-                    onChange={(e) => setMp3Url(e.target.value)}
-                    onBlur={() => triggerAutoDuration(mp3Url)}
-                    placeholder="https://example.com/song.mp3"
+                    value={mp3128Url}
+                    onChange={(e) => setMp3128Url(e.target.value)}
+                    placeholder="https://example.com/song-128kbps.mp3"
                     className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-[#9b4de0]"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-white/70 font-semibold">3. Link nhạc WAV (Lossless)</label>
-                    <span className="text-[10px] text-amber-400">File 24-bit Lossless</span>
+                    <label className="text-white/70 font-semibold">3. Link nhạc MP3 (320kbps)</label>
+                    <span className="text-[10px] text-blue-300">Bảo mật tại song_masters — Chỉ người mua</span>
+                  </div>
+                  <input
+                    type="url"
+                    value={mp3Url}
+                    onChange={(e) => setMp3Url(e.target.value)}
+                    onBlur={() => triggerAutoDuration(mp3Url)}
+                    placeholder="https://example.com/song-320kbps.mp3"
+                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:outline-none focus:border-[#9b4de0]"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-white/70 font-semibold">4. Link nhạc WAV (Lossless)</label>
+                    <span className="text-[10px] text-amber-400">Bảo mật tại song_masters — File 24-bit</span>
                   </div>
                   <input
                     type="url"

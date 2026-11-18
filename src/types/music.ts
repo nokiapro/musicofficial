@@ -28,8 +28,9 @@ export interface Song {
   price: number; // in VND
   isPurchased?: boolean;
   demoUrl?: string; // Link nhạc demo 60 giây
-  mp3Url?: string;  // Link nhạc MP3 (320kbps)
-  wavUrl?: string;  // Link nhạc WAV Lossless
+  mp3_128Url?: string; // Link nhạc MP3 128kbps công khai
+  mp3Url?: string;  // Link nhạc MP3 (320kbps) bảo mật
+  wavUrl?: string;  // Link nhạc WAV Lossless bảo mật
   rankChange?: 'up' | 'down' | 'same';
   rankChangeValue?: number;
   isAlbumTrack?: boolean;
@@ -109,6 +110,7 @@ export interface AlbumSong {
   duration: number; // in seconds
   audioFormat: AudioFormat; // 'MP3' | 'WAV'
   coverImage?: string;
+  mp3_128Url?: string;
   mp3Url?: string;
   wavUrl?: string;
   demoUrl?: string;
@@ -160,6 +162,7 @@ export interface Playlist {
   coverImage?: string;
   songIds: string[];
   userId?: string;
+  isPublic?: boolean;
   createdAt: string;
 }
 
