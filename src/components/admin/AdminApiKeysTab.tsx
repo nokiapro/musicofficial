@@ -34,13 +34,18 @@ export interface ApiKeyItem {
 }
 
 const TEST_ENDPOINTS = [
-  { label: 'Danh sách bài hát (/api/v1/songs)', path: '/api/v1/songs?limit=5' },
-  { label: 'Thông tin tài khoản đang đăng nhập (/api/v1/me)', path: '/api/v1/me' },
-  { label: 'Playlist cá nhân theo tài khoản (/api/v1/playlists?expand=songs)', path: '/api/v1/playlists?expand=songs' },
+  { label: 'Trang chủ 1-Call (/api/v1/home)', path: '/api/v1/home?limit=10' },
+  { label: 'Tìm kiếm tổng hợp (/api/v1/search)', path: '/api/v1/search?q=xuan' },
+  { label: 'Danh sách bài hát gọn (/api/v1/songs)', path: '/api/v1/songs?limit=5' },
+  { label: 'Thông tin tài khoản (/api/v1/me)', path: '/api/v1/me' },
+  { label: 'Cài đặt nghe nhạc & Theme (/api/v1/me/settings)', path: '/api/v1/me/settings' },
+  { label: 'Bài hát đã chặn (/api/v1/me/blocks)', path: '/api/v1/me/blocks' },
+  { label: 'Playlist cá nhân (/api/v1/playlists?expand=songs)', path: '/api/v1/playlists?expand=songs' },
   { label: 'Lịch sử bài hát đã mua (/api/v1/purchases)', path: '/api/v1/purchases' },
+  { label: 'Voucher đang hoạt động (/api/v1/vouchers)', path: '/api/v1/vouchers' },
   { label: 'Album nhạc hay (/api/v1/albums)', path: '/api/v1/albums' },
   { label: 'Ca sĩ & Tiểu sử (/api/v1/artists)', path: '/api/v1/artists' },
-  { label: 'Bảng xếp hạng (/api/v1/charts)', path: '/api/v1/charts?limit=10' },
+  { label: 'Bảng xếp hạng tuần & tổng (/api/v1/charts)', path: '/api/v1/charts?limit=10' },
   { label: 'Thông tin hệ thống (/api/v1/info)', path: '/api/v1/info' },
 ];
 
@@ -511,18 +516,18 @@ export const AdminApiKeysTab: React.FC = () => {
           <div className="p-3 rounded-2xl bg-black/25 border border-white/10 flex items-start gap-2.5">
             <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-white">Tách Link 320 / WAV Bảo Mật</p>
+              <p className="font-bold text-white">Chuẩn ZingMP3 / NCT + Proxy Có Chữ Ký</p>
               <p className="text-white/60 text-[11px] mt-0.5">
-                Công khai chỉ có <code className="text-emerald-300">demoUrl</code> & <code className="text-emerald-300">mp3_128Url</code>. Link <code className="text-amber-300">320kbps</code> & <code className="text-amber-300">WAV</code> nằm riêng tại <code className="text-white/80">song_masters</code>.
+                API danh sách trả JSON siêu gọn. Khi phát mới gọi <code className="text-emerald-300">/songs/:id/stream</code> lấy <code className="text-amber-300">streamUrls</code> có chữ ký bảo mật (ẩn link gốc <code className="text-white/80">320/WAV</code>).
               </p>
             </div>
           </div>
           <div className="p-3 rounded-2xl bg-black/25 border border-white/10 flex items-start gap-2.5">
             <Unlock className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-white">Đồng Bộ Tài Khoản & Mua Nhạc</p>
+              <p className="font-bold text-white">1-Call Trang Chủ & Đồng Bộ Web</p>
               <p className="text-white/60 text-[11px] mt-0.5">
-                Đăng nhập cùng tài khoản Web via <code className="text-emerald-300">/auth/login</code> để mở khóa full bài đã mua, xem playlist riêng & mua bài mới trên App Mobile.
+                Gọi <code className="text-emerald-300">/api/v1/home</code> 1 lần duy nhất tải toàn bộ trang chủ. Đăng nhập <code className="text-emerald-300">/auth/login</code> để mua bài, tải lossless & đồng bộ cài đặt.
               </p>
             </div>
           </div>
@@ -531,7 +536,7 @@ export const AdminApiKeysTab: React.FC = () => {
             <div>
               <p className="font-bold text-white">Bắt Buộc API Key + Playlist Riêng</p>
               <p className="text-white/60 text-[11px] mt-0.5">
-                Thiếu key chặn <code className="text-red-300">401/403</code>. Không truyền <code className="text-purple-300">x-user-token</code> sẽ không lộ playlist cá nhân.
+                Thiếu key chặn <code className="text-red-300">401/403</code>. Không truyền <code className="text-purple-300">x-user-token</code> sẽ không lộ playlist & cài đặt cá nhân.
               </p>
             </div>
           </div>
@@ -844,7 +849,7 @@ export const AdminApiKeysTab: React.FC = () => {
               type="button"
               onClick={() =>
                 copyToClipboard(
-                  `// 1. Đăng nhập tài khoản chung Web\nconst { idToken } = await fetch('${originUrl}/api/v1/auth/login', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'x-api-key': '${activeKeyForSample}' },\n  body: JSON.stringify({ email: 'user@example.com', password: '******' })\n}).then(r => r.json());\n\n// 2. Lấy nhạc (có mở khóa bài đã mua) & Playlist riêng\nconst songs = await fetch('${originUrl}/api/v1/songs', {\n  headers: { 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken }\n}).then(r => r.json());\n\n// 3. Mua bài hát mới trên App Mobile\nconst buyRes = await fetch('${originUrl}/api/v1/songs/SONG_ID/purchase', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken },\n  body: JSON.stringify({ voucherCode: 'XUANKEN50' })\n}).then(r => r.json());`,
+                  `// 1. Đăng nhập tài khoản chung Web (hoặc bỏ qua nếu chỉ xem khách)\nconst { idToken } = await fetch('${originUrl}/api/v1/auth/login', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'x-api-key': '${activeKeyForSample}' },\n  body: JSON.stringify({ email: 'user@example.com', password: '******' })\n}).then(r => r.json());\n\n// 2. Lấy toàn bộ Trang chủ chỉ với 1 Request (chuẩn ZingMP3/NCT)\nconst home = await fetch('${originUrl}/api/v1/home', {\n  headers: { 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken }\n}).then(r => r.json());\n\n// 3. Lấy link stream có chữ ký bảo mật khi bấm phát bài\nconst stream = await fetch('${originUrl}/api/v1/songs/SONG_ID/stream', {\n  headers: { 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken }\n}).then(r => r.json());\n// Phát URL: stream.data.streamUrls.best\n\n// 4. Mua bài hát mới trên App Mobile\nconst buyRes = await fetch('${originUrl}/api/v1/songs/SONG_ID/purchase', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken },\n  body: JSON.stringify({ voucherCode: 'XUANKEN50' })\n}).then(r => r.json());`,
                   'sample-fetch'
                 )
               }
@@ -866,23 +871,20 @@ export const AdminApiKeysTab: React.FC = () => {
 
           <div className="space-y-3 text-xs">
             <div className="space-y-1">
-              <p className="text-white/70 font-bold">1. Đăng nhập tài khoản chung Web để lấy idToken:</p>
+              <p className="text-white/70 font-bold">1. Khởi tạo Trang Chủ App Mobile bằng 1 link duy nhất (/home):</p>
               <pre className="p-3 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-emerald-300 overflow-x-auto leading-relaxed">
-{`POST ${originUrl}/api/v1/auth/login
-Headers: { "x-api-key": "${activeKeyForSample}" }
-Body:    { "email": "user@example.com", "password": "******" }`}
+{`GET ${originUrl}/api/v1/home
+Headers: { "x-api-key": "${activeKeyForSample}", "x-user-token": "(tùy chọn)" }
+→ Trả về: site, user, featuredAlbums, newReleases, topCharts, weeklyTop, freeSongs, artists, activeVouchers`}
               </pre>
             </div>
 
             <div className="space-y-1">
-              <p className="text-white/70 font-bold">2. Gửi kèm x-user-token để nghe Full bài đã mua & lấy Playlist riêng:</p>
+              <p className="text-white/70 font-bold">2. Đăng nhập chung Web &amp; lấy Stream URL có chữ ký (320 / WAV):</p>
               <pre className="p-3 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-amber-200 overflow-x-auto leading-relaxed">
-{`fetch('${originUrl}/api/v1/songs', {
-  headers: {
-    'x-api-key': '${activeKeyForSample}',
-    'x-user-token': userIdToken // Hoặc Bearer userIdToken
-  }
-})`}
+{`POST ${originUrl}/api/v1/auth/login  { email, password }
+GET  ${originUrl}/api/v1/songs/:id/stream
+→ Trả về streamUrls: { best, demo, mp3_128, mp3_320, wav } (hỗ trợ tua Range)`}
               </pre>
             </div>
 
@@ -896,15 +898,20 @@ Body:    { "voucherCode": "XUANKEN50" } // Tùy chọn`}
             </div>
 
             <div className="space-y-1">
-              <p className="text-white/70 font-bold">4. Danh sách đầy đủ Endpoints:</p>
-              <ul className="space-y-1 text-[11px] text-white/65 font-mono bg-black/30 p-3 rounded-xl border border-white/10 max-h-48 overflow-y-auto">
-                <li>• POST /api/v1/auth/login | /register | /refresh</li>
-                <li>• GET  /api/v1/me &amp; POST /api/v1/me/likes</li>
-                <li>• GET  /api/v1/songs | /songs/:id | /songs/:id/stream</li>
+              <p className="text-white/70 font-bold">4. Danh sách đầy đủ Endpoints (đã bỏ đăng ký &amp; chat):</p>
+              <ul className="space-y-1 text-[11px] text-white/65 font-mono bg-black/30 p-3 rounded-xl border border-white/10 max-h-56 overflow-y-auto">
+                <li>• GET  /api/v1/home &amp; GET /api/v1/search?q=...</li>
+                <li>• POST /api/v1/auth/login | /auth/refresh</li>
+                <li>• GET|PATCH /api/v1/me &amp; GET|PATCH /api/v1/me/settings</li>
+                <li>• POST /api/v1/me/likes (song &amp; album) | /me/album-likes</li>
+                <li>• GET|POST /api/v1/me/blocks &amp; DELETE /api/v1/me/blocks/:songId</li>
+                <li>• GET  /api/v1/songs | /songs/:id | /songs/:id/stream | /songs/:id/download</li>
+                <li>• GET  /api/v1/stream/:id (Proxy Range có chữ ký HMAC)</li>
+                <li>• POST /api/v1/songs/:id/play &amp; POST /api/v1/songs/:id/report</li>
                 <li>• POST /api/v1/songs/:id/purchase &amp; GET|POST /api/v1/purchases</li>
-                <li>• GET  /api/v1/vouchers/validate?code=...&amp;songId=...</li>
+                <li>• GET  /api/v1/vouchers &amp; /vouchers/validate?code=...&amp;songId=...</li>
                 <li>• GET|POST /api/v1/playlists &amp; GET|PATCH|DELETE /api/v1/playlists/:id</li>
-                <li>• GET  /api/v1/albums | /artists | /charts | /site</li>
+                <li>• GET  /api/v1/albums | /albums/:id | /artists | /artists/:id | /charts | /site</li>
               </ul>
             </div>
           </div>

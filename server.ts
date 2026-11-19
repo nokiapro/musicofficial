@@ -5,6 +5,7 @@ import type { Request, Response, NextFunction } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { Readable } from 'node:stream';
 
 const PORT = Number(process.env.PORT) || 3000;
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -76,6 +77,9 @@ interface MemberRecord {
   likedAlbumIds?: string[];
   blockedSongIds?: string[];
   usedVoucherCodes?: string[];
+  theme?: string;
+  crossfadeDuration?: number;
+  preferredAudioFormat?: 'MP3' | 'WAV';
   role?: 'admin' | 'user';
   createdAt?: string;
 }
@@ -98,7 +102,11 @@ interface UserContext {
   purchasedSongIds: string[];
   likedSongIds: string[];
   likedAlbumIds: string[];
+  blockedSongIds: string[];
   usedVoucherCodes: string[];
+  theme: string;
+  crossfadeDuration: number;
+  preferredAudioFormat: 'MP3' | 'WAV';
   member: MemberRecord | null;
 }
 
@@ -239,12 +247,13 @@ async function fetchRtdbJson<T = unknown>(
 async function writeRtdbJson(
   nodePath: string,
   payload: unknown,
-  authToken: string,
+  authToken?: string,
   method: 'PUT' | 'PATCH' | 'DELETE' = 'PUT'
 ): Promise<boolean> {
   try {
     const cleanPath = nodePath.replace(/^\/+/, '');
-    const url = `${RTDB_URL}/${cleanPath}.json?auth=${encodeURIComponent(authToken)}`;
+    const query = authToken ? `?auth=${encodeURIComponent(authToken)}` : '';
+    const url = `${RTDB_URL}/${cleanPath}.json${query}`;
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -317,56 +326,6 @@ async function signInFirebaseEmail(email: string, password: string) {
     email: String(json.email || email).toLowerCase().trim(),
     displayName: String(json.displayName || ''),
     idToken: String(json.idToken),
-    refreshToken: String(json.refreshToken),
-    expiresIn: Number(json.expiresIn || 3600),
-  };
-}
-
-async function signUpFirebaseEmail(email: string, password: string, displayName?: string) {
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, returnSecureToken: true }),
-    }
-  );
-  const json = (await res.json()) as any;
-  if (!res.ok) {
-    const fbMsg = String(json?.error?.message || '');
-    let error = 'Đăng ký tài khoản thất bại.';
-    if (fbMsg.includes('EMAIL_EXISTS')) {
-      error = 'Email này đã được sử dụng. Vui lòng đăng nhập.';
-    } else if (fbMsg.includes('WEAK_PASSWORD')) {
-      error = 'Mật khẩu quá yếu (tối thiểu 6 ký tự).';
-    } else if (fbMsg.includes('INVALID_EMAIL')) {
-      error = 'Địa chỉ email không hợp lệ.';
-    }
-    return { ok: false as const, status: 400, error, code: fbMsg || 'SIGNUP_FAILED' };
-  }
-
-  const idToken = String(json.idToken);
-  if (displayName && displayName.trim()) {
-    await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${FIREBASE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idToken,
-          displayName: displayName.trim(),
-          returnSecureToken: false,
-        }),
-      }
-    ).catch(() => {});
-  }
-
-  return {
-    ok: true as const,
-    uid: String(json.localId),
-    email: String(json.email || email).toLowerCase().trim(),
-    displayName: (displayName || '').trim() || email.split('@')[0],
-    idToken,
     refreshToken: String(json.refreshToken),
     expiresIn: Number(json.expiresIn || 3600),
   };
@@ -485,8 +444,227 @@ async function loadOrInitUserContext(
     purchasedSongIds,
     likedSongIds: Array.isArray(member.likedSongIds) ? member.likedSongIds : [],
     likedAlbumIds: Array.isArray(member.likedAlbumIds) ? member.likedAlbumIds : [],
+    blockedSongIds: Array.isArray(member.blockedSongIds) ? member.blockedSongIds : [],
     usedVoucherCodes: Array.isArray(member.usedVoucherCodes) ? member.usedVoucherCodes : [],
+    theme: typeof member.theme === 'string' && member.theme ? member.theme : 'purple',
+    crossfadeDuration:
+      typeof member.crossfadeDuration === 'number' ? member.crossfadeDuration : 3,
+    preferredAudioFormat:
+      member.preferredAudioFormat === 'WAV' ? 'WAV' : 'MP3',
     member,
+  };
+}
+
+// =====================================================================
+// SIGNED STREAMING PROXY & WEEK KEY HELPERS (ZINGMP3 / NCT STYLE)
+// =====================================================================
+type StreamQuality = 'demo' | '128' | '320' | 'wav';
+
+interface StreamGrant {
+  songId: string;
+  quality: StreamQuality;
+  url: string;
+  title: string;
+  artists: string;
+  uid: string;
+  expiresAt: number;
+}
+
+const STREAM_SIGNING_SECRET =
+  process.env.STREAM_SIGNING_SECRET ||
+  sha256(`${FIREBASE_API_KEY}:${RTDB_URL}:xuanken_stream_v1`);
+const STREAM_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const streamGrantCache = new Map<string, StreamGrant>();
+
+function cleanupExpiredStreamGrants(): void {
+  const now = Date.now();
+  for (const [k, v] of streamGrantCache.entries()) {
+    if (v.expiresAt <= now) {
+      streamGrantCache.delete(k);
+    }
+  }
+}
+
+function signStreamPayload(
+  songId: string,
+  quality: StreamQuality,
+  uid: string,
+  grantId: string,
+  exp: number
+): string {
+  return crypto
+    .createHmac('sha256', STREAM_SIGNING_SECRET)
+    .update(`${songId}:${quality}:${uid}:${grantId}:${exp}`)
+    .digest('hex');
+}
+
+function verifyStreamSignature(
+  songId: string,
+  quality: StreamQuality,
+  uid: string,
+  grantId: string,
+  exp: number,
+  sig: string
+): boolean {
+  if (!sig || !Number.isFinite(exp) || Date.now() > exp) return false;
+  const expected = signStreamPayload(songId, quality, uid, grantId, exp);
+  const a = Buffer.from(sig, 'utf-8');
+  const b = Buffer.from(expected, 'utf-8');
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+function getRequestBaseUrl(req: Request): string {
+  const protoHeader = req.headers['x-forwarded-proto'];
+  const proto =
+    typeof protoHeader === 'string' && protoHeader.trim()
+      ? protoHeader.split(',')[0].trim()
+      : req.protocol || 'http';
+  const host = req.get('host') || `localhost:${PORT}`;
+  return `${proto}://${host}`;
+}
+
+function createSignedStreamUrl(
+  req: Request,
+  opts: {
+    songId: string;
+    quality: StreamQuality;
+    targetUrl: string;
+    title: string;
+    artists: string;
+    uid?: string;
+    download?: boolean;
+  }
+): string {
+  if (streamGrantCache.size > 2000) {
+    cleanupExpiredStreamGrants();
+  }
+  const grantId = crypto.randomBytes(10).toString('hex');
+  const exp = Date.now() + STREAM_TTL_MS;
+  const uid = opts.uid || 'guest';
+  streamGrantCache.set(grantId, {
+    songId: opts.songId,
+    quality: opts.quality,
+    url: opts.targetUrl,
+    title: opts.title,
+    artists: opts.artists,
+    uid,
+    expiresAt: exp,
+  });
+  const sig = signStreamPayload(opts.songId, opts.quality, uid, grantId, exp);
+  const baseUrl = getRequestBaseUrl(req);
+  const dlParam = opts.download ? '&download=1' : '';
+  return `${baseUrl}/api/v1/stream/${encodeURIComponent(opts.songId)}?q=${opts.quality}&uid=${encodeURIComponent(uid)}&g=${grantId}&exp=${exp}&sig=${sig}${dlParam}`;
+}
+
+function buildStreamUrlsForSong(
+  req: Request,
+  song: ReturnType<typeof sanitizeSongForUser>,
+  uid?: string
+) {
+  const urls: {
+    demo: string | null;
+    mp3_128: string | null;
+    mp3_320: string | null;
+    wav: string | null;
+    default: string | null;
+  } = {
+    demo: song.demoUrl
+      ? createSignedStreamUrl(req, {
+          songId: song.id,
+          quality: 'demo',
+          targetUrl: song.demoUrl,
+          title: song.title,
+          artists: song.artists,
+          uid,
+        })
+      : null,
+    mp3_128: song.mp3_128Url
+      ? createSignedStreamUrl(req, {
+          songId: song.id,
+          quality: '128',
+          targetUrl: song.mp3_128Url,
+          title: song.title,
+          artists: song.artists,
+          uid,
+        })
+      : null,
+    mp3_320:
+      song.hasFullAccess && song.mp3Url
+        ? createSignedStreamUrl(req, {
+            songId: song.id,
+            quality: '320',
+            targetUrl: song.mp3Url,
+            title: song.title,
+            artists: song.artists,
+            uid,
+          })
+        : null,
+    wav:
+      song.hasFullAccess && song.wavUrl
+        ? createSignedStreamUrl(req, {
+            songId: song.id,
+            quality: 'wav',
+            targetUrl: song.wavUrl,
+            title: song.title,
+            artists: song.artists,
+            uid,
+          })
+        : null,
+    default: null,
+  };
+  urls.default = song.hasFullAccess
+    ? urls.mp3_320 || urls.wav || urls.mp3_128 || urls.demo
+    : urls.demo || urls.mp3_128;
+  return urls;
+}
+
+function getCurrentWeekKey(): string {
+  const d = new Date();
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${weekNo}`;
+}
+
+function toCompactSong(
+  song: ReturnType<typeof sanitizeSongForUser>,
+  includeLinks = false
+) {
+  return {
+    id: song.id,
+    stt: song.stt,
+    title: song.title,
+    artists: song.artists,
+    album: song.album,
+    duration: song.duration,
+    coverImage: song.coverImage,
+    coverGradient: song.coverGradient,
+    releaseDate: song.releaseDate,
+    composer: song.composer,
+    genre: song.genre,
+    provider: song.provider,
+    audioFormat: song.audioFormat,
+    price: song.price,
+    isPaid: song.isPaid,
+    isPurchased: song.isPurchased,
+    hasFullAccess: song.hasFullAccess,
+    audioProtected: song.audioProtected,
+    availableStreamType: song.availableStreamType,
+    playCount: song.playCount,
+    likesCount: song.likesCount,
+    hasLyrics: Array.isArray(song.lyrics) && song.lyrics.length > 0,
+    demoUrl: song.demoUrl,
+    mp3_128Url: song.mp3_128Url,
+    ...(includeLinks
+      ? {
+          mp3Url: song.mp3Url,
+          wavUrl: song.wavUrl,
+          audioUrl: song.audioUrl,
+        }
+      : {}),
+    streamEndpoint: `/api/v1/songs/${song.id}/stream`,
   };
 }
 
@@ -1267,6 +1445,114 @@ async function startServer() {
   });
 
   // -----------------------------------------------------------------
+  // SIGNED AUDIO STREAM PROXY (SUPPORTS RANGE SEEKING FOR PLAYERS)
+  // -----------------------------------------------------------------
+  app.get(['/api/v1/stream/:id', '/api/stream/:id'], async (req: Request, res: Response) => {
+    try {
+      const songId = String(req.params.id || '').trim();
+      const qualityRaw = String(req.query.q || 'demo').trim();
+      const quality: StreamQuality =
+        qualityRaw === 'wav' || qualityRaw === '320' || qualityRaw === '128'
+          ? qualityRaw
+          : 'demo';
+      const uid = String(req.query.uid || 'guest');
+      const grantId = String(req.query.g || '');
+      const exp = Number(req.query.exp || 0);
+      const sig = String(req.query.sig || '');
+      const isDownload = req.query.download === '1' || req.query.download === 'true';
+
+      if (!verifyStreamSignature(songId, quality, uid, grantId, exp, sig)) {
+        res.status(403).json({
+          success: false,
+          code: 'STREAM_SIGNATURE_INVALID',
+          error: 'Link phát nhạc không hợp lệ hoặc đã hết hạn. Vui lòng gọi GET /api/v1/songs/:id/stream để lấy link mới.',
+        });
+        return;
+      }
+
+      const grant = streamGrantCache.get(grantId);
+      let targetUrl = grant && grant.songId === songId ? grant.url : '';
+      let songTitle = grant?.title || songId;
+      let songArtists = grant?.artists || 'XuanKen';
+
+      // Public fallback for demo / 128kbps if server restarted while signature is still valid
+      if (!targetUrl && (quality === 'demo' || quality === '128')) {
+        const songRes = await fetchRtdbJson<RawSong>(`songs/${songId}`);
+        if (songRes.ok && songRes.data) {
+          songTitle = songRes.data.title || songTitle;
+          songArtists = songRes.data.artists || songArtists;
+          targetUrl =
+            quality === '128'
+              ? String(songRes.data.mp3_128Url || '').trim()
+              : String(songRes.data.demoUrl || '').trim();
+        }
+      }
+
+      if (!targetUrl) {
+        res.status(404).json({
+          success: false,
+          error: 'Phiên phát nhạc đã hết hạn trên máy chủ. Vui lòng gọi lại /api/v1/songs/:id/stream.',
+        });
+        return;
+      }
+
+      const upstreamHeaders: Record<string, string> = {};
+      if (typeof req.headers.range === 'string' && req.headers.range) {
+        upstreamHeaders.Range = req.headers.range;
+      }
+
+      const upstreamRes = await fetch(targetUrl, { headers: upstreamHeaders });
+      if (!upstreamRes.ok && upstreamRes.status !== 206) {
+        res.status(502).json({
+          success: false,
+          error: `Không thể tải luồng âm thanh nguồn (HTTP ${upstreamRes.status}).`,
+        });
+        return;
+      }
+
+      const ext = quality === 'wav' ? 'wav' : 'mp3';
+      const defaultMime = quality === 'wav' ? 'audio/wav' : 'audio/mpeg';
+      const contentType = upstreamRes.headers.get('content-type') || defaultMime;
+      const contentLength = upstreamRes.headers.get('content-length');
+      const contentRange = upstreamRes.headers.get('content-range');
+      const acceptRanges = upstreamRes.headers.get('accept-ranges') || 'bytes';
+
+      res.status(upstreamRes.status);
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Accept-Ranges', acceptRanges);
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      if (contentLength) res.setHeader('Content-Length', contentLength);
+      if (contentRange) res.setHeader('Content-Range', contentRange);
+
+      if (isDownload) {
+        const cleanTitle = songTitle.replace(/[\\/:*?"<>|]/g, '').trim() || songId;
+        const cleanArtists = songArtists.replace(/[\\/:*?"<>|]/g, '').trim() || 'XuanKen';
+        const fileName = `[XuanKen Music] ${cleanTitle} - ${cleanArtists}.${ext}`;
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`
+        );
+      }
+
+      if (!upstreamRes.body) {
+        res.end();
+        return;
+      }
+
+      const nodeStream = Readable.fromWeb(upstreamRes.body as any);
+      nodeStream.on('error', () => {
+        if (!res.headersSent) res.status(500).end();
+        else res.destroy();
+      });
+      nodeStream.pipe(res);
+    } catch (err: any) {
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: err?.message || 'Lỗi phát luồng âm thanh.' });
+      }
+    }
+  });
+
+  // -----------------------------------------------------------------
   // PUBLIC / MOBILE MUSIC API ROUTER (STRICTLY PROTECTED BY ADMIN API KEY)
   // -----------------------------------------------------------------
   const publicRouter = express.Router();
@@ -1276,8 +1562,8 @@ async function startServer() {
   publicRouter.get(['/', '/info'], (req: AuthenticatedApiRequest, res: Response) => {
     res.json({
       success: true,
-      service: 'XuanKen Music API (Web & Mobile Sync)',
-      version: '2.0.0',
+      service: 'XuanKen Music API (ZingMP3/NCT Compact Architecture)',
+      version: '2.1.0',
       authenticatedAs: req.apiKeyMeta,
       userSession: req.userContext
         ? {
@@ -1291,43 +1577,263 @@ async function startServer() {
           }
         : { authenticated: false },
       rules: {
-        publicAudio:
-          'Khách / user chưa mua chỉ nhận demoUrl (60s) và mp3_128Url (128kbps). Link 320kbps (mp3Url) & WAV Lossless (wavUrl) được tách bảo mật tại song_masters và trả về null.',
+        compactLists:
+          'Các API danh sách (/home, /songs, /charts, /search) trả về dữ liệu gọn nhẹ và tự động ẩn link 320kbps/WAV (chỉ trả demoUrl & mp3_128Url). Khi bấm nghe bài nào mới gọi GET /api/v1/songs/:id/stream để lấy link phát bảo mật có chữ ký (streamUrls).',
         purchasedAudio:
-          'Khi gửi kèm x-user-token (hoặc Bearer idToken cùng x-api-key) của tài khoản đã mua bài hát, API tự động mở khóa và trả về đầy đủ mp3Url (320kbps) & wavUrl.',
+          'Khi gửi kèm x-user-token (hoặc Bearer idToken cùng x-api-key) của tài khoản đã mua bài hát, /songs/:id/stream và /songs/:id/download tự động mở khóa chất lượng 320kbps & WAV Lossless.',
         personalPlaylists:
           'Playlist cá nhân riêng tư theo từng tài khoản. Không có tài khoản hoặc tài khoản khác không thể xem playlist cá nhân của người khác.',
       },
       endpoints: [
+        'GET  /api/v1/home',
+        'GET  /api/v1/search?q=...',
         'POST /api/v1/auth/login',
-        'POST /api/v1/auth/register',
         'POST /api/v1/auth/refresh',
-        'GET /api/v1/me',
-        'POST /api/v1/me/likes',
-        'GET /api/v1/songs',
-        'GET /api/v1/songs/:id',
-        'GET /api/v1/songs/:id/stream',
+        'GET|PATCH /api/v1/me',
+        'GET|PATCH /api/v1/me/settings',
+        'POST /api/v1/me/likes (song & album)',
+        'POST /api/v1/me/album-likes',
+        'GET|POST /api/v1/me/blocks & DELETE /api/v1/me/blocks/:songId',
+        'GET  /api/v1/songs',
+        'GET  /api/v1/songs/:id',
+        'GET  /api/v1/songs/:id/stream',
+        'GET  /api/v1/songs/:id/download',
+        'POST /api/v1/songs/:id/play',
+        'POST /api/v1/songs/:id/report',
         'POST /api/v1/songs/:id/purchase',
-        'GET /api/v1/purchases',
-        'POST /api/v1/purchases',
-        'GET /api/v1/vouchers/validate',
-        'GET /api/v1/playlists',
-        'GET /api/v1/playlists/:id',
-        'POST /api/v1/playlists',
-        'PATCH /api/v1/playlists/:id',
-        'DELETE /api/v1/playlists/:id',
-        'GET /api/v1/albums',
-        'GET /api/v1/albums/:id',
-        'GET /api/v1/artists',
-        'GET /api/v1/artists/:id',
-        'GET /api/v1/charts',
-        'GET /api/v1/site',
+        'GET|POST /api/v1/purchases',
+        'GET  /api/v1/vouchers',
+        'GET  /api/v1/vouchers/validate',
+        'GET|POST /api/v1/playlists',
+        'GET|PATCH|DELETE /api/v1/playlists/:id',
+        'GET  /api/v1/albums & /api/v1/albums/:id',
+        'GET  /api/v1/artists & /api/v1/artists/:id',
+        'GET  /api/v1/charts',
+        'GET  /api/v1/site',
       ],
     });
   });
 
   // -----------------------------------------------------------------
-  // USER ACCOUNT SYNC (SHARED WITH WEB FIREBASE ACCOUNTS)
+  // HOME BOOTSTRAP & UNIFIED SEARCH (1-CALL MOBILE ENTRYPOINTS)
+  // -----------------------------------------------------------------
+  publicRouter.get('/home', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext;
+      const limit = Math.min(30, Math.max(5, parseInt(String(req.query.limit || '12'), 10) || 12));
+      const weekKey = getCurrentWeekKey();
+
+      const [songs, albums, artists, settings, weeklyRaw, vouchersRaw] = await Promise.all([
+        getAllSongsForUser(user),
+        getAllAlbumsForUser(user),
+        getAllPublicArtists(),
+        fetchCachedRtdb<Record<string, unknown>>('site_settings'),
+        fetchCachedRtdb<Record<string, number>>(`weekly_plays/${weekKey}`),
+        fetchCachedRtdb<Record<string, any> | any[]>('vouchers'),
+      ]);
+
+      const blockedSet = new Set(user?.blockedSongIds || []);
+      const visibleSongs = songs.filter((s) => !blockedSet.has(s.id));
+
+      const newReleases = [...visibleSongs]
+        .sort((a, b) => (b.stt ?? 0) - (a.stt ?? 0))
+        .slice(0, limit)
+        .map((s) => toCompactSong(s));
+
+      const topCharts = [...visibleSongs]
+        .sort((a, b) => b.playCount - a.playCount)
+        .slice(0, limit)
+        .map((s) => toCompactSong(s));
+
+      const weeklyMap = weeklyRaw && typeof weeklyRaw === 'object' ? weeklyRaw : {};
+      const weeklyTop = [...visibleSongs]
+        .map((s) => ({
+          ...toCompactSong(s),
+          weeklyPlayCount: Number(weeklyMap[s.id] || 0),
+        }))
+        .sort((a, b) => b.weeklyPlayCount - a.weeklyPlayCount || b.playCount - a.playCount)
+        .slice(0, limit);
+
+      const freeSongs = visibleSongs
+        .filter((s) => !s.isPaid)
+        .slice(0, limit)
+        .map((s) => toCompactSong(s));
+
+      const featuredAlbums = albums.slice(0, limit).map((a) => ({
+        id: a.id,
+        title: a.title,
+        artist: a.artist,
+        coverImage: a.coverImage,
+        description: a.description,
+        releaseYear: a.releaseYear,
+        genre: a.genre,
+        trackCount: a.trackCount,
+        isLiked: Boolean(user?.likedAlbumIds.includes(a.id)),
+      }));
+
+      const voucherList: any[] = vouchersRaw
+        ? Array.isArray(vouchersRaw)
+          ? vouchersRaw.filter(Boolean)
+          : Object.values(vouchersRaw).filter(Boolean)
+        : [];
+      const usedSet = new Set((user?.usedVoucherCodes || []).map((c) => c.toUpperCase()));
+      const activeVouchers = voucherList
+        .filter((v) => v && v.isActive !== false && v.code)
+        .map((v) => ({
+          id: v.id,
+          code: String(v.code).toUpperCase(),
+          discountType: v.discountType,
+          discountValue: v.discountValue,
+          minSpend: v.minSpend || 0,
+          description: v.description || '',
+          alreadyUsed: usedSet.has(String(v.code).toUpperCase()),
+        }));
+
+      res.json({
+        success: true,
+        authenticated: Boolean(user),
+        weekKey,
+        site: settings || {
+          siteName: 'XuanKen Music',
+          siteSlogan: 'Nghe & Mua Nhạc Bản Quyền',
+        },
+        user: user
+          ? {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              avatarUrl: user.member?.avatarUrl || null,
+              balance: user.balance,
+              purchasedSongIds: user.purchasedSongIds,
+              likedSongIds: user.likedSongIds,
+              likedAlbumIds: user.likedAlbumIds,
+              blockedSongIds: user.blockedSongIds,
+              role: user.isAdmin ? 'admin' : 'user',
+            }
+          : null,
+        sections: {
+          featuredAlbums,
+          newReleases,
+          topCharts,
+          weeklyTop,
+          freeSongs,
+          artists: artists.slice(0, limit),
+          activeVouchers,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tải dữ liệu Trang chủ.' });
+    }
+  });
+
+  publicRouter.get('/search', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
+      const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
+      const user = req.userContext;
+
+      const [songs, albums, artists] = await Promise.all([
+        getAllSongsForUser(user),
+        getAllAlbumsForUser(user),
+        getAllPublicArtists(),
+      ]);
+
+      const blockedSet = new Set(user?.blockedSongIds || []);
+      const matchedSongs = songs
+        .filter((s) => !blockedSet.has(s.id))
+        .filter((s) =>
+          !q
+            ? true
+            : s.title.toLowerCase().includes(q) ||
+              s.artists.toLowerCase().includes(q) ||
+              s.album.toLowerCase().includes(q) ||
+              s.composer.toLowerCase().includes(q) ||
+              s.genre.toLowerCase().includes(q)
+        )
+        .slice(0, limit)
+        .map((s) => toCompactSong(s));
+
+      const matchedAlbums = albums
+        .filter((a) =>
+          !q
+            ? true
+            : a.title.toLowerCase().includes(q) ||
+              a.artist.toLowerCase().includes(q) ||
+              a.genre.toLowerCase().includes(q)
+        )
+        .slice(0, limit)
+        .map((a) => ({
+          id: a.id,
+          title: a.title,
+          artist: a.artist,
+          coverImage: a.coverImage,
+          genre: a.genre,
+          releaseYear: a.releaseYear,
+          trackCount: a.trackCount,
+        }));
+
+      const matchedAlbumTracks = q
+        ? albums
+            .flatMap((a) =>
+              a.songs.map((track) => ({
+                ...track,
+                albumTitle: a.title,
+              }))
+            )
+            .filter(
+              (t) =>
+                !blockedSet.has(t.id) &&
+                (t.title.toLowerCase().includes(q) || t.artists.toLowerCase().includes(q))
+            )
+            .slice(0, limit)
+            .map((t) => ({
+              id: t.id,
+              albumId: t.albumId,
+              albumTitle: t.albumTitle,
+              title: t.title,
+              artists: t.artists,
+              duration: t.duration,
+              coverImage: t.coverImage,
+              price: t.price,
+              isPaid: t.isPaid,
+              isPurchased: t.isPurchased,
+              demoUrl: t.demoUrl,
+              mp3_128Url: t.mp3_128Url,
+            }))
+        : [];
+
+      const matchedArtists = artists
+        .filter((art: any) =>
+          !q
+            ? true
+            : String(art?.name || '').toLowerCase().includes(q) ||
+              String(art?.realName || '').toLowerCase().includes(q)
+        )
+        .slice(0, limit);
+
+      res.json({
+        success: true,
+        query: q,
+        data: {
+          songs: matchedSongs,
+          albums: matchedAlbums,
+          albumTracks: matchedAlbumTracks,
+          artists: matchedArtists,
+        },
+        totals: {
+          songs: matchedSongs.length,
+          albums: matchedAlbums.length,
+          albumTracks: matchedAlbumTracks.length,
+          artists: matchedArtists.length,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tìm kiếm tổng hợp.' });
+    }
+  });
+
+  // -----------------------------------------------------------------
+  // USER ACCOUNT SYNC (SHARED WITH WEB FIREBASE ACCOUNTS - LOGIN ONLY)
   // -----------------------------------------------------------------
   publicRouter.post('/auth/login', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
@@ -1372,7 +1878,13 @@ async function startServer() {
           purchasedSongIds: userCtx.purchasedSongIds,
           likedSongIds: userCtx.likedSongIds,
           likedAlbumIds: userCtx.likedAlbumIds,
+          blockedSongIds: userCtx.blockedSongIds,
           usedVoucherCodes: userCtx.usedVoucherCodes,
+          settings: {
+            theme: userCtx.theme,
+            crossfadeDuration: userCtx.crossfadeDuration,
+            preferredAudioFormat: userCtx.preferredAudioFormat,
+          },
           role: userCtx.isAdmin ? 'admin' : 'user',
           createdAt: userCtx.member?.createdAt || null,
         },
@@ -1381,65 +1893,6 @@ async function startServer() {
       res.status(500).json({
         success: false,
         error: err?.message || 'Lỗi đăng nhập tài khoản.',
-      });
-    }
-  });
-
-  publicRouter.post('/auth/register', async (req: AuthenticatedApiRequest, res: Response) => {
-    try {
-      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
-      const password = typeof req.body?.password === 'string' ? req.body.password : '';
-      const displayName =
-        typeof req.body?.displayName === 'string' ? req.body.displayName.trim() : '';
-
-      if (!email || !password) {
-        res.status(400).json({
-          success: false,
-          error: 'Vui lòng nhập đầy đủ email và mật khẩu.',
-        });
-        return;
-      }
-
-      const authRes = await signUpFirebaseEmail(email, password, displayName);
-      if (!authRes.ok) {
-        res.status(authRes.status).json({
-          success: false,
-          code: authRes.code,
-          error: authRes.error,
-        });
-        return;
-      }
-
-      const userCtx = await loadOrInitUserContext(
-        authRes.uid,
-        authRes.email,
-        authRes.idToken,
-        authRes.displayName
-      );
-
-      res.status(201).json({
-        success: true,
-        idToken: authRes.idToken,
-        refreshToken: authRes.refreshToken,
-        expiresIn: authRes.expiresIn,
-        user: {
-          uid: userCtx.uid,
-          email: userCtx.email,
-          displayName: userCtx.displayName,
-          avatarUrl: userCtx.member?.avatarUrl || null,
-          balance: userCtx.balance,
-          purchasedSongIds: userCtx.purchasedSongIds,
-          likedSongIds: userCtx.likedSongIds,
-          likedAlbumIds: userCtx.likedAlbumIds,
-          usedVoucherCodes: userCtx.usedVoucherCodes,
-          role: userCtx.isAdmin ? 'admin' : 'user',
-          createdAt: userCtx.member?.createdAt || null,
-        },
-      });
-    } catch (err: any) {
-      res.status(500).json({
-        success: false,
-        error: err?.message || 'Lỗi đăng ký tài khoản.',
       });
     }
   });
@@ -1491,30 +1944,198 @@ async function startServer() {
         purchasedSongIds: user.purchasedSongIds,
         likedSongIds: user.likedSongIds,
         likedAlbumIds: user.likedAlbumIds,
+        blockedSongIds: user.blockedSongIds,
         usedVoucherCodes: user.usedVoucherCodes,
+        settings: {
+          theme: user.theme,
+          crossfadeDuration: user.crossfadeDuration,
+          preferredAudioFormat: user.preferredAudioFormat,
+        },
         role: user.isAdmin ? 'admin' : 'user',
         createdAt: user.member?.createdAt || null,
       },
     });
   });
 
-  publicRouter.post('/me/likes', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+  publicRouter.patch('/me', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
     try {
       const user = req.userContext!;
-      const songId = typeof req.body?.songId === 'string' ? req.body.songId.trim() : '';
-      if (!songId) {
-        res.status(400).json({ success: false, error: 'Thiếu songId.' });
+      const patch: Record<string, any> = {};
+
+      if (typeof req.body?.displayName === 'string' && req.body.displayName.trim()) {
+        patch.displayName = req.body.displayName.trim().slice(0, 60);
+      }
+      if (typeof req.body?.avatarUrl === 'string') {
+        const avatar = req.body.avatarUrl.trim();
+        if (Buffer.byteLength(avatar, 'utf-8') > 500000) {
+          res.status(400).json({
+            success: false,
+            error: 'avatarUrl quá lớn (tối đa 500KB). Vui lòng dùng link ảnh hoặc nén ảnh nhỏ hơn.',
+          });
+          return;
+        }
+        patch.avatarUrl = avatar;
+      }
+
+      if (Object.keys(patch).length === 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Vui lòng truyền displayName hoặc avatarUrl cần cập nhật.',
+        });
+        return;
+      }
+
+      const saved = await writeRtdbJson(`members/${user.uid}`, patch, user.idToken, 'PATCH');
+      if (!saved) {
+        res.status(500).json({ success: false, error: 'Không thể cập nhật hồ sơ lên Firebase.' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        user: {
+          uid: user.uid,
+          email: user.email,
+          displayName: patch.displayName ?? user.displayName,
+          avatarUrl: patch.avatarUrl !== undefined ? patch.avatarUrl : user.member?.avatarUrl || null,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi cập nhật hồ sơ.' });
+    }
+  });
+
+  publicRouter.get('/me/settings', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const audioRes = await fetchRtdbJson<{
+        preferredFormat?: string;
+        formatMap?: Record<string, string>;
+        crossfadeDuration?: number;
+      }>(`users/${user.uid}/audio_settings`, user.idToken);
+
+      const audio = audioRes.ok && audioRes.data ? audioRes.data : {};
+      res.json({
+        success: true,
+        data: {
+          theme: user.theme,
+          preferredAudioFormat:
+            audio.preferredFormat === 'WAV' || user.preferredAudioFormat === 'WAV' ? 'WAV' : 'MP3',
+          crossfadeDuration:
+            typeof audio.crossfadeDuration === 'number'
+              ? audio.crossfadeDuration
+              : user.crossfadeDuration,
+          formatMap: audio.formatMap || {},
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tải cài đặt cá nhân.' });
+    }
+  });
+
+  publicRouter.patch('/me/settings', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const memberPatch: Record<string, any> = {};
+      const audioPatch: Record<string, any> = {
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (typeof req.body?.theme === 'string' && req.body.theme.trim()) {
+        memberPatch.theme = req.body.theme.trim();
+      }
+      if (typeof req.body?.preferredAudioFormat === 'string') {
+        const fmt = req.body.preferredAudioFormat.toUpperCase() === 'WAV' ? 'WAV' : 'MP3';
+        memberPatch.preferredAudioFormat = fmt;
+        audioPatch.preferredFormat = fmt;
+      }
+      if (typeof req.body?.crossfadeDuration === 'number' && Number.isFinite(req.body.crossfadeDuration)) {
+        const cf = Math.min(12, Math.max(0, Math.round(req.body.crossfadeDuration)));
+        memberPatch.crossfadeDuration = cf;
+        audioPatch.crossfadeDuration = cf;
+      }
+      if (req.body?.formatMap && typeof req.body.formatMap === 'object') {
+        audioPatch.formatMap = req.body.formatMap;
+      }
+
+      if (Object.keys(memberPatch).length > 0) {
+        await writeRtdbJson(`members/${user.uid}`, memberPatch, user.idToken, 'PATCH');
+      }
+      if (Object.keys(audioPatch).length > 1) {
+        await writeRtdbJson(`users/${user.uid}/audio_settings`, audioPatch, user.idToken, 'PATCH');
+      }
+
+      res.json({
+        success: true,
+        data: {
+          theme: memberPatch.theme ?? user.theme,
+          preferredAudioFormat: memberPatch.preferredAudioFormat ?? user.preferredAudioFormat,
+          crossfadeDuration: memberPatch.crossfadeDuration ?? user.crossfadeDuration,
+          formatMap: audioPatch.formatMap ?? undefined,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi lưu cài đặt cá nhân.' });
+    }
+  });
+
+  async function handleLikeToggle(req: AuthenticatedApiRequest, res: Response, forceAlbum = false) {
+    try {
+      const user = req.userContext!;
+      const isAlbum =
+        forceAlbum || req.body?.type === 'album' || (Boolean(req.body?.albumId) && !req.body?.songId);
+      const targetId = isAlbum
+        ? typeof (req.body?.albumId || req.body?.id) === 'string'
+          ? String(req.body?.albumId || req.body?.id).trim()
+          : ''
+        : typeof (req.body?.songId || req.body?.id) === 'string'
+        ? String(req.body?.songId || req.body?.id).trim()
+        : '';
+
+      if (!targetId) {
+        res.status(400).json({
+          success: false,
+          error: isAlbum ? 'Thiếu albumId.' : 'Thiếu songId.',
+        });
+        return;
+      }
+
+      if (isAlbum) {
+        const currentSet = new Set(user.likedAlbumIds);
+        const shouldLike =
+          typeof req.body?.liked === 'boolean' ? req.body.liked : !currentSet.has(targetId);
+        if (shouldLike) currentSet.add(targetId);
+        else currentSet.delete(targetId);
+        const nextAlbumLikes = Array.from(currentSet);
+
+        const savedMember = await writeRtdbJson(
+          `members/${user.uid}`,
+          { likedAlbumIds: nextAlbumLikes },
+          user.idToken,
+          'PATCH'
+        );
+        await writeRtdbJson(
+          `users/${user.uid}/liked_albums`,
+          { likedAlbumIds: nextAlbumLikes, updatedAt: Date.now() },
+          user.idToken,
+          'PUT'
+        );
+
+        res.json({
+          success: savedMember,
+          type: 'album',
+          albumId: targetId,
+          liked: shouldLike,
+          likedAlbumIds: nextAlbumLikes,
+        });
         return;
       }
 
       const currentSet = new Set(user.likedSongIds);
       const shouldLike =
-        typeof req.body?.liked === 'boolean' ? req.body.liked : !currentSet.has(songId);
-      if (shouldLike) {
-        currentSet.add(songId);
-      } else {
-        currentSet.delete(songId);
-      }
+        typeof req.body?.liked === 'boolean' ? req.body.liked : !currentSet.has(targetId);
+      if (shouldLike) currentSet.add(targetId);
+      else currentSet.delete(targetId);
       const nextLikes = Array.from(currentSet);
 
       const savedMember = await writeRtdbJson(
@@ -1532,20 +2153,83 @@ async function startServer() {
 
       res.json({
         success: savedMember,
+        type: 'song',
+        songId: targetId,
         liked: shouldLike,
         likedSongIds: nextLikes,
       });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || 'Lỗi cập nhật danh sách yêu thích.' });
     }
+  }
+
+  publicRouter.post('/me/likes', requireUserAuth, (req: AuthenticatedApiRequest, res: Response) => {
+    void handleLikeToggle(req, res, false);
+  });
+
+  publicRouter.post('/me/album-likes', requireUserAuth, (req: AuthenticatedApiRequest, res: Response) => {
+    void handleLikeToggle(req, res, true);
+  });
+
+  // Blocked songs management
+  publicRouter.get('/me/blocks', requireUserAuth, (req: AuthenticatedApiRequest, res: Response) => {
+    res.json({
+      success: true,
+      blockedSongIds: req.userContext!.blockedSongIds,
+    });
+  });
+
+  publicRouter.post('/me/blocks', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const songId = typeof req.body?.songId === 'string' ? req.body.songId.trim() : '';
+      if (!songId) {
+        res.status(400).json({ success: false, error: 'Thiếu songId.' });
+        return;
+      }
+      const next = Array.from(new Set([...user.blockedSongIds, songId]));
+      const saved = await writeRtdbJson(
+        `members/${user.uid}`,
+        { blockedSongIds: next },
+        user.idToken,
+        'PATCH'
+      );
+      res.json({ success: saved, blockedSongIds: next });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi chặn bài hát.' });
+    }
+  });
+
+  publicRouter.delete('/me/blocks/:songId', requireUserAuth, async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const user = req.userContext!;
+      const songId = String(req.params.songId || '').trim();
+      const next = user.blockedSongIds.filter((id) => id !== songId);
+      const saved = await writeRtdbJson(
+        `members/${user.uid}`,
+        { blockedSongIds: next },
+        user.idToken,
+        'PATCH'
+      );
+      res.json({ success: saved, blockedSongIds: next });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi bỏ chặn bài hát.' });
+    }
   });
 
   // -----------------------------------------------------------------
-  // SONGS & PROTECTED MASTER STREAMING
+  // SONGS, STREAMING, DOWNLOAD, PLAY COUNT & REPORTS
   // -----------------------------------------------------------------
   publicRouter.get('/songs', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
-      let songs = await getAllSongsForUser(req.userContext);
+      const user = req.userContext;
+      let songs = await getAllSongsForUser(user);
+
+      const includeBlocked = req.query.includeBlocked === '1' || req.query.includeBlocked === 'true';
+      if (user && !includeBlocked && user.blockedSongIds.length > 0) {
+        const blocked = new Set(user.blockedSongIds);
+        songs = songs.filter((s) => !blocked.has(s.id));
+      }
 
       const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
       const genre = typeof req.query.genre === 'string' ? req.query.genre.trim().toLowerCase() : '';
@@ -1553,6 +2237,7 @@ async function startServer() {
       const paidFilter = typeof req.query.paid === 'string' ? req.query.paid.trim().toLowerCase() : '';
       const purchasedFilter = typeof req.query.purchased === 'string' ? req.query.purchased.trim().toLowerCase() : '';
       const sort = typeof req.query.sort === 'string' ? req.query.sort.trim().toLowerCase() : 'stt';
+      const includeLinks = req.query.includeLinks === '1' || req.query.includeLinks === 'true';
 
       if (q) {
         songs = songs.filter(
@@ -1590,12 +2275,12 @@ async function startServer() {
       const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
       const total = songs.length;
       const start = (page - 1) * limit;
-      const items = songs.slice(start, start + limit);
+      const items = songs.slice(start, start + limit).map((s) => toCompactSong(s, includeLinks));
 
       res.json({
         success: true,
-        authenticated: Boolean(req.userContext),
-        userId: req.userContext?.uid || null,
+        authenticated: Boolean(user),
+        userId: user?.uid || null,
         total,
         page,
         limit,
@@ -1615,10 +2300,14 @@ async function startServer() {
         res.status(404).json({ success: false, error: 'Không tìm thấy bài hát.' });
         return;
       }
+      const streamUrls = buildStreamUrlsForSong(req, found, req.userContext?.uid);
       res.json({
         success: true,
         authenticated: Boolean(req.userContext),
-        data: found,
+        data: {
+          ...found,
+          streamUrls,
+        },
       });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || 'Lỗi tải chi tiết bài hát' });
@@ -1634,6 +2323,7 @@ async function startServer() {
         return;
       }
 
+      const streamUrls = buildStreamUrlsForSong(req, found, req.userContext?.uid);
       res.json({
         success: true,
         authenticated: Boolean(req.userContext),
@@ -1641,11 +2331,14 @@ async function startServer() {
           songId: found.id,
           title: found.title,
           artists: found.artists,
+          duration: found.duration,
           price: found.price,
           isPaid: found.isPaid,
           isPurchased: found.isPurchased,
           hasFullAccess: found.hasFullAccess,
           streamType: found.availableStreamType,
+          expiresInSeconds: Math.round(STREAM_TTL_MS / 1000),
+          streamUrls,
           demoUrl: found.demoUrl,
           mp3_128Url: found.mp3_128Url,
           mp3Url: found.mp3Url,
@@ -1655,6 +2348,157 @@ async function startServer() {
       });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err?.message || 'Lỗi lấy luồng phát nhạc' });
+    }
+  });
+
+  publicRouter.get('/songs/:id/download', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const songs = await getAllSongsForUser(req.userContext);
+      const found = songs.find((s) => s.id === req.params.id);
+      if (!found) {
+        res.status(404).json({ success: false, error: 'Không tìm thấy bài hát.' });
+        return;
+      }
+      if (!found.hasFullAccess) {
+        res.status(req.userContext ? 403 : 401).json({
+          success: false,
+          code: 'PURCHASE_REQUIRED',
+          error: 'Bạn cần mua bản quyền bài hát này trước khi tải chất lượng cao (320kbps / WAV).',
+        });
+        return;
+      }
+
+      const formatParam = String(req.query.format || found.audioFormat || 'MP3').toUpperCase();
+      const wantWav = formatParam === 'WAV' && Boolean(found.wavUrl);
+      const targetUrl = wantWav
+        ? found.wavUrl
+        : found.mp3Url || found.wavUrl || found.mp3_128Url || found.demoUrl;
+      if (!targetUrl) {
+        res.status(404).json({ success: false, error: 'Bài hát chưa có file tải về.' });
+        return;
+      }
+
+      const quality: StreamQuality =
+        targetUrl === found.wavUrl
+          ? 'wav'
+          : targetUrl === found.mp3Url
+          ? '320'
+          : targetUrl === found.mp3_128Url
+          ? '128'
+          : 'demo';
+
+      const signedDownloadUrl = createSignedStreamUrl(req, {
+        songId: found.id,
+        quality,
+        targetUrl,
+        title: found.title,
+        artists: found.artists,
+        uid: req.userContext?.uid,
+        download: true,
+      });
+
+      if (req.query.mode === 'stream') {
+        res.redirect(302, signedDownloadUrl);
+        return;
+      }
+
+      const cleanTitle = found.title.replace(/[\\/:*?"<>|]/g, '').trim() || found.id;
+      const cleanArtists = found.artists.replace(/[\\/:*?"<>|]/g, '').trim() || 'XuanKen';
+      const ext = quality === 'wav' ? 'wav' : 'mp3';
+
+      res.json({
+        success: true,
+        data: {
+          songId: found.id,
+          title: found.title,
+          format: quality === 'wav' ? 'WAV' : 'MP3',
+          fileName: `[XuanKen Music] ${cleanTitle} - ${cleanArtists}.${ext}`,
+          expiresInSeconds: Math.round(STREAM_TTL_MS / 1000),
+          downloadUrl: signedDownloadUrl,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tạo link tải nhạc.' });
+    }
+  });
+
+  publicRouter.post('/songs/:id/play', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const songId = String(req.params.id || '').trim();
+      const found = await findRawSongById(songId);
+      if (!found) {
+        res.status(404).json({ success: false, error: 'Không tìm thấy bài hát.' });
+        return;
+      }
+
+      const currentCount = typeof found.raw.playCount === 'number' ? found.raw.playCount : 0;
+      const nextPlayCount = currentCount + 1;
+      await writeRtdbJson(`songs/${found.id}/playCount`, nextPlayCount, req.userContext?.idToken, 'PUT');
+
+      const weekKey = getCurrentWeekKey();
+      let nextWeeklyCount: number | null = null;
+      if (req.userContext?.idToken) {
+        const weeklyRes = await fetchRtdbJson<number>(
+          `weekly_plays/${weekKey}/${found.id}`,
+          req.userContext.idToken
+        );
+        const curWeekly = weeklyRes.ok && typeof weeklyRes.data === 'number' ? weeklyRes.data : 0;
+        nextWeeklyCount = curWeekly + 1;
+        await writeRtdbJson(
+          `weekly_plays/${weekKey}/${found.id}`,
+          nextWeeklyCount,
+          req.userContext.idToken,
+          'PUT'
+        );
+      }
+
+      // Invalidate cached songs & weekly_plays so charts stay fresh
+      catalogCache.delete('songs');
+      catalogCache.delete(`weekly_plays/${weekKey}`);
+
+      res.json({
+        success: true,
+        songId: found.id,
+        playCount: nextPlayCount,
+        weekKey,
+        weeklyPlayCount: nextWeeklyCount,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi ghi nhận lượt nghe.' });
+    }
+  });
+
+  publicRouter.post('/songs/:id/report', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const songId = String(req.params.id || '').trim();
+      const issue = typeof req.body?.issue === 'string' ? req.body.issue.trim() : '';
+      if (!songId || !issue) {
+        res.status(400).json({ success: false, error: 'Vui lòng nhập nội dung báo lỗi (issue).' });
+        return;
+      }
+
+      const reportId = `${songId}_${Date.now()}`;
+      const payload = {
+        songId,
+        issue: issue.slice(0, 500),
+        userEmail: req.userContext?.email || 'Khách API',
+        userId: req.userContext?.uid || null,
+        source: 'api',
+        createdAt: new Date().toISOString(),
+      };
+      const saved = await writeRtdbJson(`song_reports/${reportId}`, payload, req.userContext?.idToken, 'PUT');
+      if (!saved) {
+        res.status(500).json({ success: false, error: 'Không thể gửi báo lỗi lên Firebase.' });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Đã gửi báo cáo lỗi bài hát thành công!',
+        reportId,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi gửi báo cáo bài hát.' });
     }
   });
 
@@ -1749,6 +2593,41 @@ async function startServer() {
       finalPrice,
     };
   }
+
+  publicRouter.get('/vouchers', async (req: AuthenticatedApiRequest, res: Response) => {
+    try {
+      const vouchersRes = await fetchRtdbJson<Record<string, any> | any[]>('vouchers');
+      const list: any[] =
+        vouchersRes.ok && vouchersRes.data
+          ? Array.isArray(vouchersRes.data)
+            ? vouchersRes.data.filter(Boolean)
+            : Object.values(vouchersRes.data).filter(Boolean)
+          : [];
+      const usedSet = new Set(
+        (req.userContext?.usedVoucherCodes || []).map((c) => c.toUpperCase())
+      );
+
+      const active = list
+        .filter((v) => v && v.isActive !== false && v.code)
+        .map((v) => ({
+          id: v.id,
+          code: String(v.code).toUpperCase(),
+          discountType: v.discountType,
+          discountValue: v.discountValue,
+          minSpend: typeof v.minSpend === 'number' ? v.minSpend : 0,
+          description: v.description || '',
+          alreadyUsed: usedSet.has(String(v.code).toUpperCase()),
+        }));
+
+      res.json({
+        success: true,
+        total: active.length,
+        data: active,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Lỗi tải danh sách voucher.' });
+    }
+  });
 
   publicRouter.get('/vouchers/validate', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
@@ -2088,14 +2967,18 @@ async function startServer() {
         res.status(404).json({ success: false, error: 'Không tìm thấy nghệ sĩ.' });
         return;
       }
+      const includeLinks = req.query.includeLinks === '1' || req.query.includeLinks === 'true';
       const songs = await getAllSongsForUser(req.userContext);
       const artistNameLower = String((artist as any).name || '').toLowerCase();
-      const artistSongs = songs.filter((s) =>
-        s.artists
-          .split(',')
-          .map((n) => n.trim().toLowerCase())
-          .includes(artistNameLower)
-      );
+      const artistSongs = songs
+        .filter((s) =>
+          s.artists
+            .split(',')
+            .map((n) => n.trim().toLowerCase())
+            .includes(artistNameLower)
+        )
+        .map((s) => toCompactSong(s, includeLinks));
+
       res.json({
         success: true,
         data: {
@@ -2111,16 +2994,34 @@ async function startServer() {
   publicRouter.get('/charts', async (req: AuthenticatedApiRequest, res: Response) => {
     try {
       const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
-      const songs = await getAllSongsForUser(req.userContext);
+      const includeLinks = req.query.includeLinks === '1' || req.query.includeLinks === 'true';
+      const weekKey = getCurrentWeekKey();
+
+      const [songs, weekly] = await Promise.all([
+        getAllSongsForUser(req.userContext),
+        fetchCachedRtdb<Record<string, number>>(`weekly_plays/${weekKey}`),
+      ]);
+
       const topAllTime = [...songs]
         .sort((a, b) => b.playCount - a.playCount)
+        .slice(0, limit)
+        .map((s) => toCompactSong(s, includeLinks));
+
+      const weeklyMap = weekly && typeof weekly === 'object' ? weekly : {};
+      const topWeekly = [...songs]
+        .map((s) => ({
+          ...toCompactSong(s, includeLinks),
+          weeklyPlayCount: Number(weeklyMap[s.id] || 0),
+        }))
+        .sort((a, b) => b.weeklyPlayCount - a.weeklyPlayCount || b.playCount - a.playCount)
         .slice(0, limit);
-      const weekly = await fetchCachedRtdb<Record<string, unknown>>('weekly_plays');
 
       res.json({
         success: true,
+        weekKey,
         data: {
           topSongs: topAllTime,
+          weeklyTopSongs: topWeekly,
           weeklyPlays: weekly || null,
         },
       });
@@ -2180,7 +3081,7 @@ async function startServer() {
         req.query.expand === 'songs' || req.query.expand === 'true' || req.query.expand === '1';
       if (expandSongs && formatted.length > 0) {
         const allSongs = await getAllSongsForUser(user);
-        const byId = new Map(allSongs.map((s) => [s.id, s]));
+        const byId = new Map(allSongs.map((s) => [s.id, toCompactSong(s)]));
         for (const pl of formatted) {
           pl.songs = pl.songIds
             .map((sid: string) => byId.get(sid))
@@ -2232,7 +3133,7 @@ async function startServer() {
 
       const songIds = Array.isArray(pl.songIds) ? pl.songIds : [];
       const allSongs = await getAllSongsForUser(req.userContext);
-      const byId = new Map(allSongs.map((s) => [s.id, s]));
+      const byId = new Map(allSongs.map((s) => [s.id, toCompactSong(s)]));
 
       res.json({
         success: true,
