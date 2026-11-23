@@ -957,10 +957,14 @@ async function getAllPublicArtists() {
 // =====================================================================
 function apiCorsMiddleware(req: Request, res: Response, next: NextFunction): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PATCH, DELETE, OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, x-api-key, x-user-token'
+    'Content-Type, Authorization, x-api-key, x-user-token, Accept, Origin, Range, X-Requested-With, Cache-Control'
+  );
+  res.setHeader(
+    'Access-Control-Expose-Headers',
+    'Content-Range, Accept-Ranges, Content-Length, Content-Disposition'
   );
   if (req.method === 'OPTIONS') {
     res.status(204).end();
@@ -1209,10 +1213,21 @@ async function requireAdminAuth(
 // =====================================================================
 async function startServer() {
   const app = express();
+  app.set('trust proxy', 1);
   app.use(express.json({ limit: '1mb' }));
 
   // Apply CORS to all /api routes
   app.use('/api', apiCorsMiddleware);
+
+  // Public health check (no API key required) to verify server reachability
+  app.get(['/api/health', '/api/v1/health'], (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      status: 'online',
+      service: 'XuanKen Music API',
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   // -----------------------------------------------------------------
   // ADMIN API KEY MANAGEMENT ENDPOINTS (Protected by Firebase Admin Token)
@@ -1501,7 +1516,10 @@ async function startServer() {
         upstreamHeaders.Range = req.headers.range;
       }
 
-      const upstreamRes = await fetch(targetUrl, { headers: upstreamHeaders });
+      const upstreamRes = await fetch(targetUrl, {
+        method: req.method === 'HEAD' ? 'HEAD' : 'GET',
+        headers: upstreamHeaders,
+      });
       if (!upstreamRes.ok && upstreamRes.status !== 206) {
         res.status(502).json({
           success: false,
@@ -1534,7 +1552,7 @@ async function startServer() {
         );
       }
 
-      if (!upstreamRes.body) {
+      if (req.method === 'HEAD' || !upstreamRes.body) {
         res.end();
         return;
       }

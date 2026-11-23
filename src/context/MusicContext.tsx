@@ -928,12 +928,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const freeIds = freeSongIdsKey ? freeSongIdsKey.split(',').filter(Boolean) : [];
     if (!currentUser?.uid && freeIds.length === 0) return;
 
-    MusicService.fetchAuthorizedSongMasters(
-      currentUser?.uid,
-      purchasedSongIds,
-      isAdmin,
-      freeIds
-    ).then((masters) => {
+    const applyMasters = (masters: Record<string, { mp3Url?: string; wavUrl?: string }>) => {
       if (cancelled || !masters || Object.keys(masters).length === 0) return;
       songMastersRef.current = { ...songMastersRef.current, ...masters };
       setSongs((prev) =>
@@ -957,10 +952,23 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           wavUrl: m.wavUrl || cur.wavUrl || '',
         };
       });
-    });
+    };
+
+    MusicService.fetchAuthorizedSongMasters(
+      currentUser?.uid,
+      purchasedSongIds,
+      isAdmin,
+      freeIds
+    ).then(applyMasters);
+
+    let unsubMasters: (() => void) | null = null;
+    if (isAdmin && currentUser?.uid) {
+      unsubMasters = MusicService.subscribeToSongMasters(applyMasters);
+    }
 
     return () => {
       cancelled = true;
+      if (unsubMasters) unsubMasters();
     };
   }, [currentUser?.uid, isAdmin, purchasedSongIds.join(','), freeSongIdsKey]);
 
@@ -1916,29 +1924,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Song CRUD
+  // Song CRUD (update songMastersRef immediately & upsert per-song so links are never wiped)
   const addNewSong = async (newSong: Song) => {
+    songMastersRef.current = {
+      ...songMastersRef.current,
+      [newSong.id]: {
+        mp3Url: newSong.mp3Url || '',
+        wavUrl: newSong.wavUrl || '',
+      },
+    };
     const updated = [newSong, ...songs];
+    songsRef.current = updated;
     setSongs(updated);
     if (!currentSong) {
       setCurrentSong(newSong);
     }
-    const result = await MusicService.saveSongsToFirebase(updated);
+    const result = await MusicService.upsertSong(newSong);
     return result;
   };
 
   const editSong = async (updatedSong: Song) => {
+    songMastersRef.current = {
+      ...songMastersRef.current,
+      [updatedSong.id]: {
+        mp3Url: updatedSong.mp3Url || '',
+        wavUrl: updatedSong.wavUrl || '',
+      },
+    };
     const updated = songs.map((s) => (s.id === updatedSong.id ? updatedSong : s));
+    songsRef.current = updated;
     setSongs(updated);
     if (currentSong?.id === updatedSong.id) {
       setCurrentSong(updatedSong);
     }
-    const result = await MusicService.saveSongsToFirebase(updated);
+    const result = await MusicService.upsertSong(updatedSong);
     return result;
   };
 
   const removeSong = async (songId: string) => {
+    const nextMasters = { ...songMastersRef.current };
+    delete nextMasters[songId];
+    songMastersRef.current = nextMasters;
+
     const updated = songs.filter((s) => s.id !== songId);
+    songsRef.current = updated;
     setSongs(updated);
     if (currentSong?.id === songId) {
       if (updated.length > 0) {
@@ -1948,9 +1977,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsPlaying(false);
       }
     }
-    const result = await MusicService.saveSongsToFirebase(updated);
-    await MusicService.deleteSong(songId);
-    return result;
+    const ok = await MusicService.deleteSong(songId);
+    return { success: ok, rtdb: ok, firestore: ok };
   };
 
   // Sync all state to Firebase in 1 click

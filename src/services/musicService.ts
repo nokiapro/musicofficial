@@ -209,7 +209,7 @@ export const MusicService = {
           if (snapshot.exists()) {
             const data = snapshot.val() || {};
             const songsArray: Song[] = Object.entries(data)
-              .filter(([_, val]: [string, any]) => val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl))
+              .filter(([_, val]: [string, any]) => val && (val.title || val.demoUrl || val.mp3_128Url || val.mp3Url || val.wavUrl))
               .map(([key, val]: [string, any]) => sanitizeSong(val, key));
             // Sort by stt or id
             songsArray.sort((a, b) => (a.stt || 0) - (b.stt || 0));
@@ -226,6 +226,35 @@ export const MusicService = {
     }
   },
 
+  // Subscribe to real-time protected song_masters updates (Admin only)
+  subscribeToSongMasters(
+    onUpdate: (masters: Record<string, { mp3Url?: string; wavUrl?: string }>) => void
+  ): () => void {
+    try {
+      const mastersRef = ref(rtdb, 'song_masters');
+      return onValue(
+        mastersRef,
+        (snapshot: any) => {
+          if (snapshot.exists() && snapshot.val()) {
+            const val = snapshot.val() || {};
+            const result: Record<string, { mp3Url?: string; wavUrl?: string }> = {};
+            Object.entries(val).forEach(([id, item]: [string, any]) => {
+              if (item && (item.mp3Url || item.wavUrl)) {
+                result[id] = { mp3Url: item.mp3Url || '', wavUrl: item.wavUrl || '' };
+              }
+            });
+            onUpdate(result);
+          }
+        },
+        (err: any) => {
+          console.warn('Song masters sync notice:', err);
+        }
+      );
+    } catch (e) {
+      return () => {};
+    }
+  },
+
   // Load songs from Firebase Realtime Database or Firestore
   async fetchSongs(): Promise<Song[]> {
     try {
@@ -234,7 +263,7 @@ export const MusicService = {
       if (snapshot.exists()) {
         const data = snapshot.val() || {};
         const songsArray: Song[] = Object.entries(data)
-          .filter(([_, val]: [string, any]) => val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl))
+          .filter(([_, val]: [string, any]) => val && (val.title || val.demoUrl || val.mp3_128Url || val.mp3Url || val.wavUrl))
           .map(([key, val]: [string, any]) => sanitizeSong(val, key));
         songsArray.sort((a, b) => (a.stt || 0) - (b.stt || 0));
         return songsArray;
@@ -251,7 +280,7 @@ export const MusicService = {
         const songsArray: Song[] = [];
         docsSnap.forEach((d: any) => {
           const val = d.data();
-          if (val && (val.title || val.demoUrl || val.mp3Url || val.wavUrl)) {
+          if (val && (val.title || val.demoUrl || val.mp3_128Url || val.mp3Url || val.wavUrl)) {
             songsArray.push(sanitizeSong(val, d.id));
           }
         });
@@ -382,24 +411,37 @@ export const MusicService = {
     const cleanSongs = cleanForFirebase(songs) || [];
     let rtdbSuccess = false;
     let firestoreSuccess = false;
-    let lastError = '';
+    let rtdbError = '';
+    let fsError = '';
 
-    // 1. Sync to Firebase Realtime Database (public `songs` + protected `song_masters`)
+    // 1. Sync to Firebase Realtime Database (`song_masters` FIRST so `subscribeToSongs` never sees un-hydrated state)
     try {
+      // Preserve existing masters in RTDB if a song in memory hasn't hydrated its master links yet
+      let existingMasters: Record<string, any> = {};
+      try {
+        const existingSnap = await get(ref(rtdb, 'song_masters'));
+        if (existingSnap.exists() && existingSnap.val()) {
+          existingMasters = existingSnap.val() || {};
+        }
+      } catch {}
+
       const songsMap: Record<string, any> = {};
       const mastersMap: Record<string, any> = {};
       cleanSongs.forEach((s: Song) => {
         if (s && s.id) {
           songsMap[s.id] = this.toPublicSongPayload(s);
-          mastersMap[s.id] = this.toSongMasterPayload(s);
+          const payload = this.toSongMasterPayload(s);
+          const prevMaster = existingMasters[s.id];
+          if (!payload.mp3Url && prevMaster?.mp3Url) payload.mp3Url = prevMaster.mp3Url;
+          if (!payload.wavUrl && prevMaster?.wavUrl) payload.wavUrl = prevMaster.wavUrl;
+          mastersMap[s.id] = payload;
         }
       });
-      await set(ref(rtdb, 'songs'), songsMap);
       await set(ref(rtdb, 'song_masters'), mastersMap);
+      await set(ref(rtdb, 'songs'), songsMap);
       rtdbSuccess = true;
     } catch (err: any) {
-      const errMsg = err?.message || String(err);
-      lastError = errMsg;
+      rtdbError = err?.message || String(err);
       console.error('Firebase RTDB saveSongs error:', err);
     }
 
@@ -407,57 +449,60 @@ export const MusicService = {
     try {
       for (const song of cleanSongs) {
         if (song && song.id) {
-          await setDoc(doc(db, 'songs', song.id), this.toPublicSongPayload(song), { merge: true });
-          await setDoc(doc(db, 'song_masters', song.id), this.toSongMasterPayload(song), { merge: true });
+          await setDoc(doc(db, 'song_masters', song.id), sanitizeForFirestore(this.toSongMasterPayload(song)), { merge: true });
+          await setDoc(doc(db, 'songs', song.id), sanitizeForFirestore(this.toPublicSongPayload(song)), { merge: true });
         }
       }
       firestoreSuccess = true;
     } catch (err: any) {
-      if (!lastError) lastError = err?.message || String(err);
+      fsError = err?.message || String(err);
       console.error('Firebase Firestore saveSongs error:', err);
     }
 
-    const overallSuccess = rtdbSuccess || firestoreSuccess;
+    // Primary database for live playback/UI is RTDB; if RTDB fails, report failure instead of masking it
+    const overallSuccess = rtdbSuccess;
     return {
       success: overallSuccess,
       rtdb: rtdbSuccess,
       firestore: firestoreSuccess,
-      error: overallSuccess ? undefined : lastError,
+      error: overallSuccess ? undefined : (rtdbError || fsError || 'PERMISSION_DENIED'),
     };
   },
 
-  // Add or update single song
+  // Add or update single song (atomic per songId — never overwrites other songs' links)
   async upsertSong(song: Song): Promise<{ success: boolean; rtdb: boolean; firestore: boolean; error?: string }> {
     const publicPayload = this.toPublicSongPayload(song);
     const masterPayload = this.toSongMasterPayload(song);
     let rtdbSuccess = false;
     let firestoreSuccess = false;
-    let lastError = '';
+    let rtdbError = '';
+    let fsError = '';
 
     try {
-      await set(ref(rtdb, `songs/${song.id}`), publicPayload);
+      // Write protected master FIRST so subscribeToSongs on `songs/${song.id}` never clears links
       await set(ref(rtdb, `song_masters/${song.id}`), masterPayload);
+      await set(ref(rtdb, `songs/${song.id}`), publicPayload);
       rtdbSuccess = true;
     } catch (err: any) {
-      lastError = err?.message || String(err);
+      rtdbError = err?.message || String(err);
       console.error('Firebase RTDB upsert error:', err);
     }
 
     try {
-      await setDoc(doc(db, 'songs', song.id), publicPayload, { merge: true });
-      await setDoc(doc(db, 'song_masters', song.id), masterPayload, { merge: true });
+      await setDoc(doc(db, 'song_masters', song.id), sanitizeForFirestore(masterPayload), { merge: true });
+      await setDoc(doc(db, 'songs', song.id), sanitizeForFirestore(publicPayload), { merge: true });
       firestoreSuccess = true;
     } catch (err: any) {
-      if (!lastError) lastError = err?.message || String(err);
+      fsError = err?.message || String(err);
       console.error('Firestore upsert error:', err);
     }
 
-    const overallSuccess = rtdbSuccess || firestoreSuccess;
+    const overallSuccess = rtdbSuccess;
     return {
       success: overallSuccess,
       rtdb: rtdbSuccess,
       firestore: firestoreSuccess,
-      error: overallSuccess ? undefined : lastError,
+      error: overallSuccess ? undefined : (rtdbError || fsError || 'PERMISSION_DENIED'),
     };
   },
 
@@ -1207,10 +1252,10 @@ export const MusicService = {
     const albumsMap: Record<string, any> = {};
     cleanAlbums.forEach((a: ExclusiveAlbum) => { if (a?.id) albumsMap[a.id] = cleanForFirebase(a); });
 
-    // 2. Write to Firebase Realtime Database per-branch (avoids un-ruled root key rejection & isolates partial failures)
+    // 2. Write to Firebase Realtime Database per-branch (`song_masters` before `songs`)
     const rtdbWrites: Array<[string, unknown]> = [
-      ['songs', songsMap],
       ['song_masters', mastersMap],
+      ['songs', songsMap],
       ['members', membersMap],
       ['playlists', playlistsMap],
       ['vouchers', vouchersMap],

@@ -38,6 +38,7 @@ import { useMusic } from '../../context/MusicContext';
 import { Song, AppUser, AudioFormat } from '../../types/music';
 import { audioEngine } from '../../services/audioEngine';
 import { testFirebaseConnection } from '../../services/firebase';
+import { MusicService } from '../../services/musicService';
 import { AdminCuratedAlbumsTab } from './AdminCuratedAlbumsTab';
 import { AdminArtistBiosTab } from './AdminArtistBiosTab';
 import { AdminApiKeysTab } from './AdminApiKeysTab';
@@ -197,6 +198,8 @@ export const AdminPageView: React.FC = () => {
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
   const [syncErrorMsg, setSyncErrorMsg] = useState<string | null>(null);
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
+  const [isSavingSong, setIsSavingSong] = useState(false);
+  const [songSaveError, setSongSaveError] = useState<string | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
 
@@ -469,6 +472,7 @@ export const AdminPageView: React.FC = () => {
     setLrcRaw('');
     setLrcUrl('');
     setAutoCalculatedDuration(210);
+    setSongSaveError(null);
     setIsSongModalOpen(true);
   };
 
@@ -496,11 +500,29 @@ export const AdminPageView: React.FC = () => {
     setLrcRaw(song.lrcRaw || '');
     setLrcUrl(song.lrcUrl || '');
     setAutoCalculatedDuration(totalSecs);
+    setSongSaveError(null);
     setIsSongModalOpen(true);
+
+    // Ensure latest protected 320kbps & WAV links are fetched from song_masters if missing in local state
+    if (!song.mp3Url && !song.wavUrl) {
+      const targetId = song.id;
+      MusicService.fetchSongMasterById(targetId).then((master) => {
+        if (!master) return;
+        setEditingSongId((currentId) => {
+          if (currentId !== targetId) return currentId;
+          if (master.mp3Url) setMp3Url((prev) => prev || master.mp3Url || '');
+          if (master.wavUrl) setWavUrl((prev) => prev || master.wavUrl || '');
+          return currentId;
+        });
+      });
+    }
   };
 
   const handleSaveSong = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingSong) return;
+    setIsSavingSong(true);
+    setSongSaveError(null);
 
     // Calculate user-specified duration (Phút : Giây)
     const mins = parseInt(durationMinutes, 10) || 0;
@@ -536,19 +558,46 @@ export const AdminPageView: React.FC = () => {
 
     let saveResult: { success: boolean; rtdb?: boolean; firestore?: boolean; error?: string } = { success: false };
 
-    if (editingSongId) {
-      const existing = songs.find((s) => s.id === editingSongId);
-      if (existing) {
-        const updated: Song = {
-          ...existing,
+    try {
+      if (editingSongId) {
+        const existing = songs.find((s) => s.id === editingSongId);
+        if (existing) {
+          const updated: Song = {
+            ...existing,
+            title: title.trim(),
+            artists: artists.trim(),
+            album: album.trim() || 'XuanKen Official',
+            composer: composer.trim() || artists.trim() || 'XuanKen',
+            genre: genre.trim() || 'Việt Nam, V-Pop',
+            releaseDate: releaseDate.trim() || new Date().getFullYear().toString(),
+            provider: provider.trim() || 'XuanKen Official',
+            coverImage: coverImage.trim() || existing.coverImage || '',
+            audioFormat,
+            price: parseInt(price, 10) || 0,
+            playCount: numPlayCount,
+            demoUrl: demoUrl.trim() || '',
+            mp3_128Url: mp3128Url.trim() || '',
+            mp3Url: mp3Url.trim() || '',
+            wavUrl: wavUrl.trim() || '',
+            lrcUrl: lrcType === 'link' ? lrcUrl.trim() : '',
+            lrcRaw: lrcType === 'text' ? lrcRaw : '',
+            lyrics: parsedLyrics,
+            duration: finalDuration,
+          };
+          saveResult = await editSong(updated);
+        }
+      } else {
+        const newSong: Song = {
+          id: `song-${Date.now()}`,
+          stt: songs.length + 1,
           title: title.trim(),
-          artists: artists.trim(),
-          album: album.trim() || 'XuanKen Official',
+          artists: artists.trim() || 'XuanKen',
+          album: album.trim() || 'XuanKen Music Official',
           composer: composer.trim() || artists.trim() || 'XuanKen',
           genre: genre.trim() || 'Việt Nam, V-Pop',
           releaseDate: releaseDate.trim() || new Date().getFullYear().toString(),
           provider: provider.trim() || 'XuanKen Official',
-          coverImage: coverImage.trim() || existing.coverImage || '',
+          coverImage: coverImage.trim() || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
           audioFormat,
           price: parseInt(price, 10) || 0,
           playCount: numPlayCount,
@@ -560,51 +609,28 @@ export const AdminPageView: React.FC = () => {
           lrcRaw: lrcType === 'text' ? lrcRaw : '',
           lyrics: parsedLyrics,
           duration: finalDuration,
+          coverGradient: gradients[Math.floor(Math.random() * gradients.length)],
         };
-        saveResult = await editSong(updated);
+        saveResult = await addNewSong(newSong);
       }
-    } else {
-      const newSong: Song = {
-        id: `song-${Date.now()}`,
-        stt: songs.length + 1,
-        title: title.trim(),
-        artists: artists.trim() || 'XuanKen',
-        album: album.trim() || 'XuanKen Music Official',
-        composer: composer.trim() || artists.trim() || 'XuanKen',
-        genre: genre.trim() || 'Việt Nam, V-Pop',
-        releaseDate: releaseDate.trim() || new Date().getFullYear().toString(),
-        provider: provider.trim() || 'XuanKen Official',
-        coverImage: coverImage.trim() || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
-        audioFormat,
-        price: parseInt(price, 10) || 0,
-        playCount: numPlayCount,
-        demoUrl: demoUrl.trim() || '',
-        mp3_128Url: mp3128Url.trim() || '',
-        mp3Url: mp3Url.trim() || '',
-        wavUrl: wavUrl.trim() || '',
-        lrcUrl: lrcType === 'link' ? lrcUrl.trim() : '',
-        lrcRaw: lrcType === 'text' ? lrcRaw : '',
-        lyrics: parsedLyrics,
-        duration: finalDuration,
-        coverGradient: gradients[Math.floor(Math.random() * gradients.length)],
-      };
-      saveResult = await addNewSong(newSong);
-    }
 
-    setIsSongModalOpen(false);
-    if (saveResult.success) {
-      setSyncSuccessMsg(
-        editingSongId
-          ? 'Đã cập nhật bài hát và lưu thành công lên Firebase RTDB & Firestore!'
-          : 'Đã thêm bài hát và lưu thành công lên Firebase RTDB & Firestore!'
-      );
-      setSyncErrorMsg(null);
-      setTimeout(() => setSyncSuccessMsg(null), 5000);
-    } else {
-      setSyncErrorMsg(
-        `⚠️ Lưu trên ứng dụng nhưng Firebase từ chối: ${saveResult.error || 'PERMISSION_DENIED'}. Hãy mở tab "Quy Tắc Firebase (Rules)" để mở quyền ghi!`
-      );
-      setSyncSuccessMsg(null);
+      if (saveResult.success) {
+        setIsSongModalOpen(false);
+        setSyncSuccessMsg(
+          editingSongId
+            ? 'Đã cập nhật bài hát và lưu thành công lên Firebase RTDB & Firestore!'
+            : 'Đã thêm bài hát và lưu thành công lên Firebase RTDB & Firestore!'
+        );
+        setSyncErrorMsg(null);
+        setTimeout(() => setSyncSuccessMsg(null), 5000);
+      } else {
+        const errMsg = `Firebase RTDB từ chối lưu (${saveResult.error || 'PERMISSION_DENIED'}). Hãy kiểm tra tài khoản Admin hoặc mở tab "Quy Tắc Firebase (Rules)" để cập nhật Rules!`;
+        setSongSaveError(errMsg);
+        setSyncErrorMsg(`⚠️ ${errMsg}`);
+        setSyncSuccessMsg(null);
+      }
+    } finally {
+      setIsSavingSong(false);
     }
   };
 
@@ -2482,6 +2508,12 @@ service firebase.storage {
             </div>
 
             <form onSubmit={handleSaveSong} className="mt-4 space-y-4 text-xs">
+              {songSaveError && (
+                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{songSaveError}</span>
+                </div>
+              )}
               {/* Row 1: Tên bài & Ca sỹ */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -2840,10 +2872,11 @@ service firebase.storage {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold flex items-center gap-1.5 shadow"
+                  disabled={isSavingSong}
+                  className="px-5 py-2 rounded-xl bg-[#9b4de0] hover:bg-[#8539c9] text-white font-bold flex items-center gap-1.5 shadow disabled:opacity-50 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{editingSongId ? 'Cập Nhật Bài Hát' : 'Lưu Bài Hát'}</span>
+                  <span>{isSavingSong ? 'Đang lưu...' : editingSongId ? 'Cập Nhật Bài Hát' : 'Lưu Bài Hát'}</span>
                 </button>
               </div>
             </form>

@@ -34,6 +34,7 @@ export interface ApiKeyItem {
 }
 
 const TEST_ENDPOINTS = [
+  { label: 'Kiểm tra Server Online (/api/v1/health)', path: '/api/v1/health' },
   { label: 'Trang chủ 1-Call (/api/v1/home)', path: '/api/v1/home?limit=10' },
   { label: 'Tìm kiếm tổng hợp (/api/v1/search)', path: '/api/v1/search?q=xuan' },
   { label: 'Danh sách bài hát gọn (/api/v1/songs)', path: '/api/v1/songs?limit=5' },
@@ -469,10 +470,28 @@ export const AdminApiKeysTab: React.FC = () => {
   };
 
   const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com';
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const isAiStudioDevOrPre =
+    hostname.startsWith('ais-dev-') || hostname.startsWith('ais-pre-');
   const activeKeyForSample = selectedTestKey || 'YOUR_API_KEY';
 
   return (
     <div className="space-y-6">
+      {isAiStudioDevOrPre && (
+        <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-400/40 text-amber-200 text-xs space-y-1.5">
+          <div className="font-black text-amber-300 flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+            <span>Lưu ý quan trọng khi kết nối App Điện Thoại!</span>
+          </div>
+          <p className="leading-relaxed text-amber-100/90">
+            Link xem trước hiện tại (<code className="px-1.5 py-0.5 rounded bg-black/40 text-amber-200">{originUrl}</code>) là môi trường preview của AI Studio: link <code className="text-white">ais-dev-*</code> chặn mọi app ngoài bằng cookie đăng nhập Google (<code className="text-red-300">302</code>), còn link <code className="text-white">ais-pre-*</code> chỉ chạy web tĩnh (<code className="text-red-300">404</code> với <code>/api/*</code>).
+          </p>
+          <p className="leading-relaxed text-amber-100/90">
+            Để app điện thoại kết nối được, bạn cần <strong>Deploy (Publish)</strong> ứng dụng lên <strong>Cloud Run / VPS Node.js</strong> và lấy URL public sau khi deploy (kiểm tra bằng <code className="text-emerald-300">/api/v1/health</code> trả về <code>status: "online"</code>).
+          </p>
+        </div>
+      )}
+
       {/* Banner explaining API rules */}
       <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-purple-600/20 via-[#1b112c] to-emerald-500/10 border border-purple-500/30 shadow-xl space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -849,7 +868,7 @@ export const AdminApiKeysTab: React.FC = () => {
               type="button"
               onClick={() =>
                 copyToClipboard(
-                  `// 1. Đăng nhập tài khoản chung Web (hoặc bỏ qua nếu chỉ xem khách)\nconst { idToken } = await fetch('${originUrl}/api/v1/auth/login', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'x-api-key': '${activeKeyForSample}' },\n  body: JSON.stringify({ email: 'user@example.com', password: '******' })\n}).then(r => r.json());\n\n// 2. Lấy toàn bộ Trang chủ chỉ với 1 Request (chuẩn ZingMP3/NCT)\nconst home = await fetch('${originUrl}/api/v1/home', {\n  headers: { 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken }\n}).then(r => r.json());\n\n// 3. Lấy link stream có chữ ký bảo mật khi bấm phát bài\nconst stream = await fetch('${originUrl}/api/v1/songs/SONG_ID/stream', {\n  headers: { 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken }\n}).then(r => r.json());\n// Phát URL: stream.data.streamUrls.best\n\n// 4. Mua bài hát mới trên App Mobile\nconst buyRes = await fetch('${originUrl}/api/v1/songs/SONG_ID/purchase', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken },\n  body: JSON.stringify({ voucherCode: 'XUANKEN50' })\n}).then(r => r.json());`,
+                  `// 1. Đăng nhập tài khoản chung Web (hoặc bỏ qua nếu chỉ xem khách)\nconst { idToken } = await fetch('${originUrl}/api/v1/auth/login', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'x-api-key': '${activeKeyForSample}' },\n  body: JSON.stringify({ email: 'user@example.com', password: '******' })\n}).then(r => r.json());\n\n// 2. Lấy toàn bộ Trang chủ chỉ với 1 Request (chuẩn ZingMP3/NCT)\nconst home = await fetch('${originUrl}/api/v1/home', {\n  headers: { 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken }\n}).then(r => r.json());\n\n// 3. Lấy link stream có chữ ký bảo mật khi bấm phát bài\nconst stream = await fetch('${originUrl}/api/v1/songs/SONG_ID/stream', {\n  headers: { 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken }\n}).then(r => r.json());\n// Phát URL: stream.data.streamUrls.default\n\n// 4. Mua bài hát mới trên App Mobile\nconst buyRes = await fetch('${originUrl}/api/v1/songs/SONG_ID/purchase', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'x-api-key': '${activeKeyForSample}', 'x-user-token': idToken },\n  body: JSON.stringify({ voucherCode: 'XUANKEN50' })\n}).then(r => r.json());`,
                   'sample-fetch'
                 )
               }
@@ -884,7 +903,7 @@ Headers: { "x-api-key": "${activeKeyForSample}", "x-user-token": "(tùy chọn)"
               <pre className="p-3 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-amber-200 overflow-x-auto leading-relaxed">
 {`POST ${originUrl}/api/v1/auth/login  { email, password }
 GET  ${originUrl}/api/v1/songs/:id/stream
-→ Trả về streamUrls: { best, demo, mp3_128, mp3_320, wav } (hỗ trợ tua Range)`}
+→ Trả về streamUrls: { default, demo, mp3_128, mp3_320, wav } (hỗ trợ tua Range)`}
               </pre>
             </div>
 
