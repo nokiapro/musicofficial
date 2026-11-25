@@ -28,11 +28,11 @@ export const DesktopSidebar: React.FC = () => {
     siteSettings,
   } = useMusic();
 
-  const brandName = (siteSettings?.siteName || 'XuanKen Music').trim();
+  const brandName = (siteSettings?.siteName || '').trim();
   const brandWords = brandName.split(/\s+/).filter(Boolean);
   const brandLead = brandWords.length > 1 ? brandWords.slice(0, -1).join(' ') : brandName;
   const brandTail = brandWords.length > 1 ? brandWords[brandWords.length - 1] : '';
-  const brandSlogan = (siteSettings?.siteSlogan || 'Nghe & Mua Nhạc Bản Quyền').trim();
+  const brandSlogan = (siteSettings?.siteSlogan || '').trim();
 
   // Safety redirect: If a non-admin is on admin tab, or guest is on chat/library tab, redirect to discover
   React.useEffect(() => {
@@ -75,16 +75,18 @@ export const DesktopSidebar: React.FC = () => {
             <div className="w-10 h-10 rounded-xl flex items-center justify-center accent-glow-btn group-hover:scale-105 transition-transform shrink-0">
               <Disc className="w-5 h-5 text-white animate-spin-slow" />
             </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[18px] font-extrabold tracking-tight text-white uppercase leading-tight font-display break-words">
-                {brandLead}
-                {brandTail ? (
-                  <>
-                    {' '}
-                    <span style={{ color: 'var(--color-accent)' }}>{brandTail}</span>
-                  </>
-                ) : null}
-              </span>
+            <div className="flex flex-col min-w-0 min-h-[34px] justify-center">
+              {brandName && (
+                <span className="text-[18px] font-extrabold tracking-tight text-white uppercase leading-tight font-display break-words">
+                  {brandLead}
+                  {brandTail ? (
+                    <>
+                      {' '}
+                      <span style={{ color: 'var(--color-accent)' }}>{brandTail}</span>
+                    </>
+                  ) : null}
+                </span>
+              )}
               {brandSlogan && (
                 <span
                   title={brandSlogan}

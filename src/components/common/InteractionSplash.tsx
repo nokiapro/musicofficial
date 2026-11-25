@@ -39,10 +39,9 @@ export const InteractionSplash: React.FC = () => {
 
   if (!isVisible) return null;
 
-  const splashLogo =
-    siteSettings?.logoUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png';
-  const splashName = (siteSettings?.siteName || 'XUANKEN MUSIC').trim();
-  const splashSlogan = (siteSettings?.siteSlogan || 'OFFICIAL').trim();
+  const splashLogo = siteSettings?.logoUrl || '';
+  const splashName = (siteSettings?.siteName || '').trim();
+  const splashSlogan = (siteSettings?.siteSlogan || '').trim();
 
   return (
     <div
@@ -58,10 +57,10 @@ export const InteractionSplash: React.FC = () => {
     >
       {/* Exact .hint-logo matching music6.xuanken.name.vn */}
       <div className="hint-logo">
-        {!imgError ? (
+        {splashLogo && !imgError ? (
           <img
             src={splashLogo}
-            alt={splashName}
+            alt={splashName || 'Logo'}
             onError={() => setImgError(true)}
           />
         ) : (
@@ -72,23 +71,28 @@ export const InteractionSplash: React.FC = () => {
       </div>
 
       {/* Animated Gradient Title */}
-      <h1
-        className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-[4px] sm:tracking-[6px] mb-1 text-center px-4"
-        style={{
-          background: 'linear-gradient(135deg, #c20175, #b33cea, #17adca, #dd4809)',
-          backgroundSize: '250% 250%',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          animation: 'titleGradient 3.5s ease infinite',
-        }}
-      >
-        {splashName}
-      </h1>
+      {splashName && (
+        <h1
+          className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-[4px] sm:tracking-[6px] mb-1 text-center px-4"
+          style={{
+            background: 'linear-gradient(135deg, #c20175, #b33cea, #17adca, #dd4809)',
+            backgroundSize: '250% 250%',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            animation: 'titleGradient 3.5s ease infinite',
+          }}
+        >
+          {splashName}
+        </h1>
+      )}
 
       {/* Subtitle / Slogan */}
-      <p className="text-xs sm:text-sm text-[#aaa] tracking-[3px] sm:tracking-[5px] font-bold uppercase mb-8 sm:mb-11 opacity-80 text-center px-6 max-w-md">
-        {splashSlogan}
-      </p>
+      {splashSlogan && (
+        <p className="text-xs sm:text-sm text-[#aaa] tracking-[3px] sm:tracking-[5px] font-bold uppercase mb-8 sm:mb-11 opacity-80 text-center px-6 max-w-md">
+          {splashSlogan}
+        </p>
+      )}
+      {!splashSlogan && <div className="mb-8 sm:mb-11" />}
 
       {/* Touch To Start Button with breathing glow */}
       <div

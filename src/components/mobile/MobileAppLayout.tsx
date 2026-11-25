@@ -1280,7 +1280,9 @@ export const MobileAppLayout: React.FC = () => {
       >
         <div className="flex items-center gap-2 min-w-0">
           <Smartphone style={{ color: 'var(--color-accent)' }} className="w-4 h-4 shrink-0" />
-          <span className="font-semibold truncate">{siteSettings?.siteName || 'XuanKen Music'} - Giao diện Mobile App</span>
+          <span className="font-semibold truncate">
+            {siteSettings?.siteName ? `${siteSettings.siteName} - Giao diện Mobile App` : 'Giao diện Mobile App'}
+          </span>
         </div>
         <button
           onClick={() => setViewMode('pc')}

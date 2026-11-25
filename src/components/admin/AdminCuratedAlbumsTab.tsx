@@ -22,6 +22,8 @@ import {
   CheckCircle,
   AlertCircle,
   AlertTriangle,
+  ArrowRightLeft,
+  Check,
 } from 'lucide-react';
 import { useMusic } from '../../context/MusicContext';
 import { ExclusiveAlbum, AlbumSong, AudioFormat } from '../../types/music';
@@ -38,6 +40,7 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
     updateSongInAlbum,
     removeSongFromAlbum,
     reorderSongInAlbum,
+    moveSongBetweenAlbums,
     seedDefaultAlbums,
     syncExclusiveAlbumsToFirebase,
     playAlbumTrack,
@@ -83,6 +86,11 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
   const [songToDelete, setSongToDelete] = useState<AlbumSong | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Move Song To Another Album Modal
+  const [songToMove, setSongToMove] = useState<AlbumSong | null>(null);
+  const [targetMoveAlbumId, setTargetMoveAlbumId] = useState<string>('');
+  const [isMovingSongToAlbum, setIsMovingSongToAlbum] = useState(false);
+
   // Filter/Search inside active album
   const [songSearchQuery, setSongSearchQuery] = useState('');
 
@@ -101,6 +109,11 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
     shouldRender: shouldRenderDeleteSong,
     isClosing: isClosingDeleteSong,
   } = useAnimatedData(songToDelete, 220);
+  const {
+    activeData: activeSongToMove,
+    shouldRender: shouldRenderMoveSongModal,
+    isClosing: isClosingMoveSongModal,
+  } = useAnimatedData(songToMove, 220);
   const {
     shouldRender: shouldRenderAlbumModal,
     isClosing: isClosingAlbumModal,
@@ -417,6 +430,44 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
     await reorderSongInAlbum(activeAlbumId, songId, direction);
   };
 
+  // Open Move Song To Another Album Modal
+  const handleOpenMoveToAlbum = (song: AlbumSong) => {
+    const otherAlbums = exclusiveAlbums.filter((a) => a.id !== activeAlbumId);
+    if (otherAlbums.length === 0) {
+      setFeedbackMsg({
+        text: 'Hiện chỉ có 1 album. Vui lòng tạo thêm album khác trước khi chuyển bài hát!',
+        type: 'error',
+      });
+      setTimeout(() => setFeedbackMsg(null), 4000);
+      return;
+    }
+    setSongToMove(song);
+    setTargetMoveAlbumId(otherAlbums[0].id);
+  };
+
+  // Confirm Move Song To Another Album
+  const handleConfirmMoveSongToAlbum = async () => {
+    if (!activeAlbumId || !songToMove || !targetMoveAlbumId || targetMoveAlbumId === activeAlbumId) return;
+    const targetAlbum = exclusiveAlbums.find((a) => a.id === targetMoveAlbumId);
+    setIsMovingSongToAlbum(true);
+    try {
+      await moveSongBetweenAlbums(activeAlbumId, targetMoveAlbumId, songToMove.id);
+      setFeedbackMsg({
+        text: `Đã chuyển bài hát "${songToMove.title}" sang album "${targetAlbum?.title || 'đích'}" thành công!`,
+        type: 'success',
+      });
+      setSongToMove(null);
+      setTimeout(() => setFeedbackMsg(null), 4000);
+    } catch (err: any) {
+      setFeedbackMsg({
+        text: 'Lỗi khi chuyển bài hát: ' + (err?.message || 'Không thể lưu lên Firebase'),
+        type: 'error',
+      });
+    } finally {
+      setIsMovingSongToAlbum(false);
+    }
+  };
+
   const formatSeconds = (sec: number) => {
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
@@ -673,6 +724,15 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenMoveToAlbum(song)}
+                            className="px-2.5 py-1.5 sm:p-1.5 rounded-lg bg-white/10 hover:bg-cyan-600 text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Chuyển bài hát sang album khác"
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                            <span className="sm:hidden">Chuyển</span>
+                          </button>
+
                           <button
                             onClick={() => handleOpenEditSong(song)}
                             className="px-2.5 py-1.5 sm:p-1.5 rounded-lg bg-white/10 hover:bg-[#9b4de0] text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
@@ -1426,6 +1486,137 @@ export const AdminCuratedAlbumsTab: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: MOVE SONG TO ANOTHER ALBUM */}
+      {shouldRenderMoveSongModal && activeSongToMove && (
+        <div
+          data-theme={theme}
+          onClick={() => !isMovingSongToAlbum && setSongToMove(null)}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md ${
+            isClosingMoveSongModal ? 'animate-out fade-out' : 'animate-in fade-in'
+          }`}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)',
+            }}
+            className={`w-full max-w-md rounded-3xl border p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col ${
+              isClosingMoveSongModal ? 'animate-out zoom-out-95' : 'animate-in zoom-in-95'
+            }`}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                  <ArrowRightLeft className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Chuyển Sang Album Khác</h3>
+                  <p className="text-[11px] text-white/50">Chọn album đích để di chuyển bài hát</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isMovingSongToAlbum && setSongToMove(null)}
+                className="p-1 rounded-full text-white/60 hover:text-white hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Song Info Card */}
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3 shrink-0">
+              <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
+                <img
+                  src={activeSongToMove.coverImage || activeAlbum?.coverImage}
+                  alt={activeSongToMove.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-white truncate">{activeSongToMove.title}</p>
+                <p className="text-[11px] text-white/60 truncate">
+                  {activeSongToMove.artists} • Từ: <strong className="text-white/85">{activeAlbum?.title}</strong>
+                </p>
+              </div>
+            </div>
+
+            {/* Destination Album Selector List */}
+            <div className="space-y-2 overflow-y-auto pr-1 min-h-0 flex-1">
+              <label className="block text-xs font-bold text-white/80">Chọn Album Đích:</label>
+              <div className="space-y-2">
+                {exclusiveAlbums
+                  .filter((a) => a.id !== activeAlbumId)
+                  .map((target) => {
+                    const isSelected = targetMoveAlbumId === target.id;
+                    const count = Array.isArray(target.songs) ? target.songs.length : 0;
+                    return (
+                      <button
+                        key={target.id}
+                        type="button"
+                        onClick={() => setTargetMoveAlbumId(target.id)}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/15 border-cyan-400/60 shadow-md'
+                            : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.07] hover:border-white/20'
+                        }`}
+                      >
+                        <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
+                          <img
+                            src={target.coverImage}
+                            alt={target.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src =
+                                'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-white truncate">{target.title}</p>
+                          <p className="text-[11px] text-white/55 truncate">
+                            {target.artist} • {count} bài hát
+                          </p>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-cyan-500 border-cyan-400 text-white'
+                              : 'border-white/25 bg-black/20'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSongToMove(null)}
+                disabled={isMovingSongToAlbum}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmMoveSongToAlbum}
+                disabled={isMovingSongToAlbum || !targetMoveAlbumId}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>{isMovingSongToAlbum ? 'Đang chuyển...' : 'Chuyển Sang Album Này'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

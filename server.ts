@@ -1712,8 +1712,8 @@ async function startServer() {
         authenticated: Boolean(user),
         weekKey,
         site: settings || {
-          siteName: 'XuanKen Music',
-          siteSlogan: 'Nghe & Mua Nhạc Bản Quyền',
+          siteName: '',
+          siteSlogan: '',
         },
         user: user
           ? {
@@ -3305,8 +3305,8 @@ async function startServer() {
       res.json({
         success: true,
         data: settings || {
-          siteName: 'XuanKen Music',
-          siteSlogan: 'Nghe & Mua Nhạc Bản Quyền',
+          siteName: '',
+          siteSlogan: '',
         },
       });
     } catch (err: any) {

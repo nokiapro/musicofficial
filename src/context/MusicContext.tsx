@@ -198,6 +198,7 @@ interface MusicContextType {
   updateSongInAlbum: (albumId: string, songId: string, songData: Partial<AlbumSong>) => Promise<void>;
   removeSongFromAlbum: (albumId: string, songId: string) => Promise<void>;
   reorderSongInAlbum: (albumId: string, songId: string, direction: 'up' | 'down') => Promise<void>;
+  moveSongBetweenAlbums: (sourceAlbumId: string, targetAlbumId: string, songId: string) => Promise<void>;
   seedDefaultAlbums: () => Promise<{ success: boolean; error?: string }>;
   syncExclusiveAlbumsToFirebase: () => Promise<{ success: boolean; rtdb: boolean; firestore: boolean; error?: string }>;
   playAlbumTrack: (track: AlbumSong, album: ExclusiveAlbum, shuffle?: boolean) => void;
@@ -224,14 +225,35 @@ interface MusicContextType {
 
 const MusicContext = createContext<MusicContextType | null>(null);
 
+const SITE_SETTINGS_CACHE_KEY = 'xuanken_site_settings_cache';
+
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  siteName: 'XuanKen Music',
-  siteSlogan: 'Nghe & Mua Nhạc Bản Quyền',
+  siteName: '',
+  siteSlogan: '',
   logoUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
   faviconUrl: 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
   defaultStartingBalance: 500000,
   defaultSongPrice: 20000,
   minListenDurationSeconds: 5,
+};
+
+const readCachedSiteSettings = (): SiteSettings => {
+  try {
+    const raw = localStorage.getItem(SITE_SETTINGS_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return { ...DEFAULT_SITE_SETTINGS, ...parsed };
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_SITE_SETTINGS;
+};
+
+const writeCachedSiteSettings = (settings: SiteSettings) => {
+  try {
+    localStorage.setItem(SITE_SETTINGS_CACHE_KEY, JSON.stringify(settings));
+  } catch (e) {}
 };
 
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -252,7 +274,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [purchasedSongIds, setPurchasedSongIds] = useState<string[]>([]);
   const [blockedSongIds, setBlockedSongIds] = useState<string[]>([]);
   const [userBalance, setUserBalance] = useState<number>(0);
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => readCachedSiteSettings());
   const [theme, setThemeState] = useState<ThemeId>('purple');
   const [activeDesktopTab, setActiveDesktopTabState] = useState<ActiveDesktopTab>('discover');
   const [tabHistory, setTabHistory] = useState<ActiveDesktopTab[]>(['discover']);
@@ -444,9 +466,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateSiteSettings = async (partial: Partial<SiteSettings>) => {
     const updated: SiteSettings = { ...siteSettings, ...partial };
     setSiteSettings(updated);
+    writeCachedSiteSettings(updated);
     await MusicService.saveSiteSettings(updated);
     if (updated.siteName) {
-      document.title = `${updated.siteName} - ${updated.siteSlogan || ''}`;
+      document.title = updated.siteSlogan
+        ? `${updated.siteName} - ${updated.siteSlogan}`
+        : updated.siteName;
     }
     if (updated.faviconUrl) {
       let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
@@ -745,7 +770,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const applySiteMeta = (merged: SiteSettings) => {
       if (merged.siteName) {
-        document.title = `${merged.siteName} - ${merged.siteSlogan || ''}`;
+        document.title = merged.siteSlogan
+          ? `${merged.siteName} - ${merged.siteSlogan}`
+          : merged.siteName;
       }
       if (merged.faviconUrl) {
         let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
@@ -759,21 +786,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     };
 
+    const initialCached = readCachedSiteSettings();
+    applySiteMeta(initialCached);
+
     MusicService.fetchSiteSettings().then((loaded) => {
       if (loaded) {
-        setSiteSettings((prev) => {
-          const merged = { ...prev, ...loaded };
-          applySiteMeta(merged);
-          return merged;
-        });
+        const merged = { ...DEFAULT_SITE_SETTINGS, ...loaded };
+        setSiteSettings(merged);
+        writeCachedSiteSettings(merged);
+        applySiteMeta(merged);
       }
     });
     const unsubscribeSiteSettings = MusicService.subscribeToSiteSettings((loaded) => {
-      setSiteSettings((prev) => {
-        const merged = { ...prev, ...loaded };
-        applySiteMeta(merged);
-        return merged;
-      });
+      const merged = { ...DEFAULT_SITE_SETTINGS, ...loaded };
+      setSiteSettings(merged);
+      writeCachedSiteSettings(merged);
+      applySiteMeta(merged);
     });
 
     MusicService.fetchExclusiveAlbums().then((loadedAlbums) => {
@@ -2651,6 +2679,69 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await MusicService.saveExclusiveAlbums(updated);
   };
 
+  const moveSongBetweenAlbums = async (sourceAlbumId: string, targetAlbumId: string, songId: string) => {
+    if (!sourceAlbumId || !targetAlbumId || sourceAlbumId === targetAlbumId) return;
+    const currentAlbums = exclusiveAlbumsRef.current || exclusiveAlbums;
+    const sourceAlbum = currentAlbums.find((a) => a.id === sourceAlbumId);
+    const targetAlbum = currentAlbums.find((a) => a.id === targetAlbumId);
+    if (!sourceAlbum || !targetAlbum) {
+      throw new Error('Không tìm thấy album nguồn hoặc album đích.');
+    }
+
+    const sourceSongs = Array.isArray(sourceAlbum.songs) ? sourceAlbum.songs : [];
+    const songToMove = sourceSongs.find((s) => s.id === songId);
+    if (!songToMove) {
+      throw new Error('Không tìm thấy bài hát cần chuyển trong album này.');
+    }
+
+    const targetSongs = Array.isArray(targetAlbum.songs) ? targetAlbum.songs : [];
+    const movedSong: AlbumSong = {
+      ...songToMove,
+      albumId: targetAlbumId,
+      coverImage: songToMove.coverImage || targetAlbum.coverImage || sourceAlbum.coverImage,
+      stt: targetSongs.length + 1,
+    };
+
+    const updated = currentAlbums.map((a) => {
+      if (a.id === sourceAlbumId) {
+        const remaining = (Array.isArray(a.songs) ? a.songs : [])
+          .filter((s) => s.id !== songId)
+          .map((s, idx) => ({ ...s, stt: idx + 1 }));
+        return { ...a, songs: remaining };
+      }
+      if (a.id === targetAlbumId) {
+        const nextTargetSongs = [...(Array.isArray(a.songs) ? a.songs : []), movedSong].map((s, idx) => ({
+          ...s,
+          stt: idx + 1,
+        }));
+        return { ...a, songs: nextTargetSongs };
+      }
+      return a;
+    });
+
+    const res = await MusicService.saveExclusiveAlbums(updated);
+    if (!res.success) {
+      throw new Error(res.error || 'Không thể lưu thay đổi sang album đích lên Firebase.');
+    }
+
+    setExclusiveAlbums(updated);
+    exclusiveAlbumsRef.current = updated;
+
+    if (selectedAlbum?.id === sourceAlbumId || selectedAlbum?.id === targetAlbumId) {
+      const updatedSelected = updated.find((a) => a.id === selectedAlbum.id) || null;
+      setSelectedAlbum(updatedSelected);
+    }
+
+    setCurrentSong((cur) => {
+      if (!cur || cur.id !== songId) return cur;
+      return {
+        ...cur,
+        albumId: targetAlbumId,
+        album: targetAlbum.title,
+      };
+    });
+  };
+
   const seedDefaultAlbums = async (): Promise<{ success: boolean; error?: string }> => {
     const res = await MusicService.seedDefaultAlbums();
     if (res.success) {
@@ -2962,6 +3053,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateSongInAlbum,
         removeSongFromAlbum,
         reorderSongInAlbum,
+        moveSongBetweenAlbums,
         seedDefaultAlbums,
         syncExclusiveAlbumsToFirebase,
         playAlbumTrack,

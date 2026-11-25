@@ -80,8 +80,8 @@ export const AdminPageView: React.FC = () => {
   } | null>(null);
 
   // Website Settings State (Item 11)
-  const [siteNameInput, setSiteNameInput] = useState(siteSettings?.siteName || 'XuanKen Music');
-  const [siteSloganInput, setSiteSloganInput] = useState(siteSettings?.siteSlogan || 'Nghe & Mua Nhạc Bản Quyền');
+  const [siteNameInput, setSiteNameInput] = useState(siteSettings?.siteName ?? '');
+  const [siteSloganInput, setSiteSloganInput] = useState(siteSettings?.siteSlogan ?? '');
   const [logoUrlInput, setLogoUrlInput] = useState(siteSettings?.logoUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
   const [faviconUrlInput, setFaviconUrlInput] = useState(siteSettings?.faviconUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
   const [defaultBalanceInput, setDefaultBalanceInput] = useState(siteSettings?.defaultStartingBalance?.toString() || '500000');
@@ -94,10 +94,10 @@ export const AdminPageView: React.FC = () => {
   // Sync inputs when siteSettings change
   React.useEffect(() => {
     if (siteSettings) {
-      setSiteNameInput(siteSettings.siteName || 'XuanKen Music');
-      setSiteSloganInput(siteSettings.siteSlogan || 'Nghe & Mua Nhạc Bản Quyền');
-      setLogoUrlInput(siteSettings.logoUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
-      setFaviconUrlInput(siteSettings.faviconUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+      setSiteNameInput(siteSettings.siteName ?? '');
+      setSiteSloganInput(siteSettings.siteSlogan ?? '');
+      setLogoUrlInput(siteSettings.logoUrl ?? '');
+      setFaviconUrlInput(siteSettings.faviconUrl ?? '');
       setDefaultBalanceInput((siteSettings.defaultStartingBalance ?? 500000).toString());
       setDefaultSongPriceInput((siteSettings.defaultSongPrice ?? 20000).toString());
       setMinListenDurationInput((siteSettings.minListenDurationSeconds ?? 5).toString());
@@ -111,10 +111,10 @@ export const AdminPageView: React.FC = () => {
     setSettingsErrorMsg(null);
     try {
       await updateSiteSettings({
-        siteName: siteNameInput.trim() || 'XuanKen Music',
-        siteSlogan: siteSloganInput.trim() || 'Nghe & Mua Nhạc Bản Quyền',
-        logoUrl: logoUrlInput.trim() || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
-        faviconUrl: faviconUrlInput.trim() || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png',
+        siteName: siteNameInput.trim(),
+        siteSlogan: siteSloganInput.trim(),
+        logoUrl: logoUrlInput.trim(),
+        faviconUrl: faviconUrlInput.trim(),
         defaultStartingBalance: Math.max(0, parseInt(defaultBalanceInput, 10) || 500000),
         defaultSongPrice: Math.max(0, parseInt(defaultSongPriceInput, 10) || 20000),
         minListenDurationSeconds: Math.max(1, parseInt(minListenDurationInput, 10) || 5),
@@ -2115,11 +2115,11 @@ service firebase.storage {
                     </div>
                     <div className="flex flex-col min-w-0">
                       {(() => {
-                        const previewName = (siteNameInput || 'XuanKen Music').trim();
+                        const previewName = siteNameInput.trim();
                         const words = previewName.split(/\s+/).filter(Boolean);
                         const lead = words.length > 1 ? words.slice(0, -1).join(' ') : previewName;
                         const tail = words.length > 1 ? words[words.length - 1] : '';
-                        return (
+                        return previewName ? (
                           <span className="text-[18px] font-extrabold tracking-tight text-white uppercase leading-tight font-display">
                             {lead}
                             {tail ? (
@@ -2129,11 +2129,17 @@ service firebase.storage {
                               </>
                             ) : null}
                           </span>
+                        ) : (
+                          <span className="text-sm font-semibold text-white/35 italic">Chưa đặt tên website</span>
                         );
                       })()}
-                      <span className="text-[10.5px] font-medium text-white/55 tracking-[0.03em] mt-1 leading-snug break-words">
-                        {(siteSloganInput || 'Nghe & Mua Nhạc Bản Quyền').trim()}
-                      </span>
+                      {siteSloganInput.trim() ? (
+                        <span className="text-[10.5px] font-medium text-white/55 tracking-[0.03em] mt-1 leading-snug break-words">
+                          {siteSloganInput.trim()}
+                        </span>
+                      ) : (
+                        <span className="text-[10.5px] italic text-white/30 mt-1">(Không có slogan)</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2147,23 +2153,22 @@ service firebase.storage {
                     required
                     value={siteNameInput}
                     onChange={(e) => setSiteNameInput(e.target.value)}
-                    placeholder="VD: XuanKen Music"
+                    placeholder="Nhập tên website / thương hiệu..."
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-[#9b4de0] transition-colors"
                   />
                   <p className="text-[10px] text-white/40 mt-1">Hiển thị ở góc trên Sidebar trái, màn hình chào và tiêu đề tab trình duyệt</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-white/80 mb-1.5">Slogan Bên Dưới Tên Thương Hiệu *</label>
+                  <label className="block text-xs font-bold text-white/80 mb-1.5">Slogan Bên Dưới Tên Thương Hiệu</label>
                   <input
                     type="text"
-                    required
                     value={siteSloganInput}
                     onChange={(e) => setSiteSloganInput(e.target.value)}
-                    placeholder="VD: NGHE & MUA NHẠC BẢN QUYỀN"
+                    placeholder="Nhập slogan hiển thị..."
                     className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#9b4de0] transition-colors"
                   />
-                  <p className="text-[10px] text-white/40 mt-1">Hiển thị ngay bên dưới tên {siteNameInput.trim() || 'XuanKen Music'} ở Sidebar, màn hình chào & Mobile</p>
+                  <p className="text-[10px] text-white/40 mt-1">Hiển thị ngay bên dưới tên {siteNameInput.trim() || 'thương hiệu'} ở Sidebar, màn hình chào & Mobile</p>
                 </div>
               </div>
 
@@ -2314,17 +2319,17 @@ service firebase.storage {
               <button
                 type="button"
                 onClick={() => {
-                  setSiteNameInput('XuanKen Music');
-                  setSiteSloganInput('Nghe & Mua Nhạc Bản Quyền');
-                  setLogoUrlInput('https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
-                  setFaviconUrlInput('https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+                  setSiteNameInput(siteSettings?.siteName ?? '');
+                  setSiteSloganInput(siteSettings?.siteSlogan ?? '');
+                  setLogoUrlInput(siteSettings?.logoUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
+                  setFaviconUrlInput(siteSettings?.faviconUrl || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png');
                   setDefaultBalanceInput('500000');
                   setDefaultSongPriceInput('20000');
                   setMinListenDurationInput('5');
                 }}
                 className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-white/70 hover:text-white font-bold text-xs transition-colors cursor-pointer"
               >
-                Đặt Lại Mặc Định
+                Khôi Phục Chính Sách Mặc Định
               </button>
 
               <button
