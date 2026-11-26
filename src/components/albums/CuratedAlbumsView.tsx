@@ -146,7 +146,7 @@ export const CuratedAlbumsView: React.FC = () => {
                 }}
               />
               <div
-                className="relative w-52 h-52 sm:w-64 sm:h-64 rounded-full overflow-hidden shadow-[0_18px_45px_rgba(0,0,0,0.65)] ring-4 ring-white/15 select-none group shrink-0"
+                className="relative w-52 h-52 sm:w-64 sm:h-64 rounded-full overflow-hidden shadow-[0_18px_45px_rgba(0,0,0,0.65)] ring-4 ring-white/15 bg-zinc-950 flex items-center justify-center select-none group shrink-0"
                 style={{
                   animation: 'spin 20s linear infinite',
                   animationPlayState: isCurrentAlbumSpinning ? 'running' : 'paused',
@@ -154,13 +154,37 @@ export const CuratedAlbumsView: React.FC = () => {
               >
                 <img
                   src={displaySongImage}
-                  alt={activeSong?.title || selectedAlbum.title}
+                  alt=""
+                  aria-hidden="true"
                   referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover rounded-full"
-                  onError={(e) => {
-                    e.currentTarget.src = selectedAlbum.coverImage || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
-                  }}
+                  className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-90 pointer-events-none"
                 />
+                <div
+                  className="relative z-10 w-[90%] h-[90%] flex items-center justify-center overflow-hidden"
+                  style={{
+                    maskImage: 'linear-gradient(to right, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
+                  }}
+                >
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{
+                      maskImage: 'linear-gradient(to bottom, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
+                      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
+                    }}
+                  >
+                    <img
+                      src={displaySongImage}
+                      alt={activeSong?.title || selectedAlbum.title}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.src = selectedAlbum.coverImage || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="absolute inset-0 z-20 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.18)_90deg,transparent_180deg,rgba(255,255,255,0.18)_270deg,transparent_360deg)] pointer-events-none opacity-45" />
               </div>
             </div>
 
@@ -346,12 +370,12 @@ export const CuratedAlbumsView: React.FC = () => {
 
                         {/* Cột 2: BÀI HÁT (Thumbnail + Title + Artists) */}
                         <div className="flex-1 min-w-0 flex items-center gap-3 pl-3 sm:pl-4 pr-2">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-800 border border-white/10 shrink-0 shadow-sm">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 shadow-sm flex items-center justify-center">
                             <img
                               src={song.coverImage || selectedAlbum.coverImage}
                               alt={song.title}
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-contain"
                               onError={(e) => {
                                 e.currentTarget.src = selectedAlbum.coverImage;
                               }}
@@ -556,12 +580,12 @@ export const CuratedAlbumsView: React.FC = () => {
                     </span>
 
                     {/* Album Cover Thumbnail */}
-                    <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0 shadow-md">
+                    <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 shadow-md flex items-center justify-center">
                       <img
                         src={album.coverImage}
                         alt={album.title}
                         referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-contain"
                         onError={(e) => {
                           e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
                         }}

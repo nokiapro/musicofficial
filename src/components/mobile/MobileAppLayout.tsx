@@ -388,13 +388,13 @@ export const MobileAppLayout: React.FC = () => {
                         {((discoverPage - 1) * PAGE_SIZE + idx + 1).toString().padStart(2, '0')}
                       </span>
 
-                      <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-sm bg-zinc-900 border border-white/10">
+                      <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-sm bg-zinc-950/90 border border-white/10 flex items-center justify-center">
                         {song.coverImage ? (
                           <img
                             src={song.coverImage}
                             alt={song.title}
                             referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
                         ) : null}
@@ -740,9 +740,9 @@ export const MobileAppLayout: React.FC = () => {
                         {rank === 1 ? <Crown className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> : rank}
                       </div>
 
-                      <div className="w-9 h-9 rounded-lg overflow-hidden bg-purple-900/40 shrink-0 relative border border-white/10">
+                      <div className="w-9 h-9 rounded-lg overflow-hidden bg-zinc-950/90 shrink-0 relative border border-white/10 flex items-center justify-center">
                         {song.coverImage ? (
-                          <img src={song.coverImage} alt={song.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                          <img src={song.coverImage} alt={song.title} referrerPolicy="no-referrer" className="w-full h-full object-contain" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-white/50">XK</div>
                         )}
@@ -911,13 +911,13 @@ export const MobileAppLayout: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow relative">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-950/90 shadow relative flex items-center justify-center">
                           {song.coverImage ? (
                             <img
                               src={song.coverImage}
                               alt={song.title}
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : null}
@@ -1149,13 +1149,13 @@ export const MobileAppLayout: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow relative">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-950/90 shadow relative flex items-center justify-center">
                           {song.coverImage ? (
                             <img
                               src={song.coverImage}
                               alt={song.title}
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : null}

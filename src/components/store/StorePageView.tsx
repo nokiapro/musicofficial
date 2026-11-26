@@ -151,16 +151,14 @@ export const StorePageView: React.FC = () => {
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3.5">
                           <div
-                            className={`w-11 h-11 rounded-xl bg-gradient-to-tr ${
-                              song.coverGradient || 'from-purple-600 to-indigo-800'
-                            } flex items-center justify-center shrink-0 shadow-md relative overflow-hidden border border-white/10 group-hover:scale-105 transition-transform`}
+                            className={`w-11 h-11 rounded-xl bg-zinc-950/90 flex items-center justify-center shrink-0 shadow-md relative overflow-hidden border border-white/10`}
                           >
                             {song.coverImage ? (
                               <img
                                 src={song.coverImage}
                                 alt={song.title}
                                 referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                 }}

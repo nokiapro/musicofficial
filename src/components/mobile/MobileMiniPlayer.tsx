@@ -74,13 +74,13 @@ export const MobileMiniPlayer: React.FC = () => {
             </div>
 
             {/* Front Cover Image with rounded 4 corners */}
-            <div className="relative z-10 w-11 h-11 rounded-xl overflow-hidden shadow-lg border border-white/15 bg-zinc-900 shrink-0">
+            <div className="relative z-10 w-11 h-11 rounded-xl overflow-hidden shadow-lg border border-white/15 bg-zinc-950/90 shrink-0 flex items-center justify-center">
               {currentSong.coverImage ? (
                 <img
                   src={currentSong.coverImage}
                   alt={currentSong.title}
                   referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : null}

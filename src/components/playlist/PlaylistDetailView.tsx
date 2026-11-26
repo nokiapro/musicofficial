@@ -102,7 +102,7 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
               }}
             />
             <div
-              className="relative w-48 h-48 sm:w-60 sm:h-60 rounded-full overflow-hidden shadow-[0_18px_45px_rgba(0,0,0,0.65)] ring-4 ring-white/15 select-none group shrink-0"
+              className="relative w-48 h-48 sm:w-60 sm:h-60 rounded-full overflow-hidden shadow-[0_18px_45px_rgba(0,0,0,0.65)] ring-4 ring-white/15 bg-zinc-950 flex items-center justify-center select-none group shrink-0"
               style={{
                 animation: 'spin 20s linear infinite',
                 animationPlayState: isSpinning ? 'running' : 'paused',
@@ -110,13 +110,37 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
             >
               <img
                 src={displayCover}
-                alt={playlist.name}
+                alt=""
+                aria-hidden="true"
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover rounded-full"
-                onError={(e) => {
-                  e.currentTarget.src = 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png';
-                }}
+                className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-90 pointer-events-none"
               />
+              <div
+                className="relative z-10 w-[90%] h-[90%] flex items-center justify-center overflow-hidden"
+                style={{
+                  maskImage: 'linear-gradient(to right, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
+                }}
+              >
+                <div
+                  className="w-full h-full flex items-center justify-center"
+                  style={{
+                    maskImage: 'linear-gradient(to bottom, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
+                  }}
+                >
+                  <img
+                    src={displayCover}
+                    alt={playlist.name}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png';
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="absolute inset-0 z-20 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.18)_90deg,transparent_180deg,rgba(255,255,255,0.18)_270deg,transparent_360deg)] pointer-events-none opacity-45" />
             </div>
           </div>
 
@@ -265,12 +289,12 @@ export const PlaylistDetailView: React.FC<PlaylistDetailViewProps> = ({ playlist
 
                       {/* Song Info */}
                       <div className="flex-1 min-w-0 flex items-center gap-3 pl-3 sm:pl-4 pr-2">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-800 border border-white/10 shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 shadow-sm flex items-center justify-center">
                           <img
                             src={song.coverImage || playlist.coverImage}
                             alt={song.title}
                             referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               e.currentTarget.src = playlist.coverImage || 'https://raw.githubusercontent.com/nokiapro/xuankenofficial/main/logoofficial.png';
                             }}

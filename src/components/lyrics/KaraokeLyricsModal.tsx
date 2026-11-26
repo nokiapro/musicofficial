@@ -180,16 +180,24 @@ export const KaraokeLyricsModal: React.FC = () => {
       <main className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center p-4 md:p-6 gap-6 md:gap-14 overflow-hidden min-h-0">
         {/* Left Side (Desktop): Big Square Rounded Album Cover */}
         <div className="hidden lg:flex flex-col items-center justify-center shrink-0">
-          <div className="relative w-72 h-72 md:w-80 md:h-80 lg:w-[320px] lg:h-[320px] rounded-2xl shadow-2xl overflow-hidden border border-white/10 bg-zinc-900 group">
+          <div className="relative w-72 h-72 md:w-80 md:h-80 lg:w-[320px] lg:h-[320px] rounded-2xl shadow-2xl overflow-hidden border border-white/15 bg-zinc-950/90 p-1.5 flex items-center justify-center group">
             {activeSong.coverImage ? (
-              <img
-                src={activeSong.coverImage}
-                alt={activeSong.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
+              <>
+                <img
+                  src={activeSong.coverImage}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-40 pointer-events-none"
+                />
+                <img
+                  src={activeSong.coverImage}
+                  alt={activeSong.title}
+                  className="relative z-10 w-full h-full object-contain rounded-xl"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </>
             ) : null}
             <div
               className={`w-full h-full bg-gradient-to-tr ${

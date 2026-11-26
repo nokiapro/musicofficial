@@ -530,12 +530,12 @@ export const ChatBoxView: React.FC = () => {
                     {msg.sharedSong && (
                       <div className="mt-2.5 p-2 rounded-xl bg-black/40 border border-white/15 flex items-center justify-between gap-3 min-w-[200px] sm:min-w-[260px]">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-800 shrink-0 border border-white/10">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-950/90 shrink-0 border border-white/10 flex items-center justify-center">
                             {msg.sharedSong.coverImage ? (
                               <img
                                 src={msg.sharedSong.coverImage}
                                 alt={msg.sharedSong.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-[10px] text-white/50">

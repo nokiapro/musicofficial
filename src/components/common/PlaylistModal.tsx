@@ -107,9 +107,9 @@ export const PlaylistModal: React.FC = () => {
 
         {/* Target Song Info */}
         <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-lg overflow-hidden bg-purple-900/40 shrink-0">
+          <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 flex items-center justify-center">
             {activeSong.coverImage ? (
-              <img src={activeSong.coverImage} alt={activeSong.title} className="w-full h-full object-cover" />
+              <img src={activeSong.coverImage} alt={activeSong.title} className="w-full h-full object-contain" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white/50">XK</div>
             )}

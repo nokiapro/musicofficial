@@ -103,9 +103,9 @@ export const ShareModal: React.FC = () => {
 
         {/* Song Mini Card */}
         <div className="mt-4 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl overflow-hidden bg-purple-900/40 border border-white/10 shrink-0">
+          <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 flex items-center justify-center">
             {activeSong.coverImage ? (
-              <img src={activeSong.coverImage} alt={activeSong.title} className="w-full h-full object-cover" />
+              <img src={activeSong.coverImage} alt={activeSong.title} className="w-full h-full object-contain" />
             ) : (
               <div className="w-full h-full flex items-center justify-center font-bold text-xs text-white/60">XK</div>
             )}

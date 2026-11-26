@@ -190,13 +190,13 @@ export const DesktopHeader: React.FC = () => {
                       className="flex items-center justify-between p-2 rounded-xl hover:bg-white/[0.08] cursor-pointer group transition-colors"
                     >
                       <div className="flex items-center gap-3 truncate">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow-md">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-950/90 shadow-md flex items-center justify-center">
                           {song.coverImage ? (
                             <img
                               src={song.coverImage}
                               alt={song.title}
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : null}
