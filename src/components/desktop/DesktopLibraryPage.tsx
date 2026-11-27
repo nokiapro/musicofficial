@@ -307,9 +307,9 @@ export const DesktopLibraryPage: React.FC = () => {
                     {(likedPage - 1) * PAGE_SIZE + idx + 1}
                   </span>
                   <div className="flex-1 flex items-center gap-3.5 truncate pr-4">
-                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 relative shadow-md flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0 relative shadow-md group-hover:scale-105 transition-transform">
                       {song.coverImage ? (
-                        <img src={song.coverImage} alt={song.title} referrerPolicy="no-referrer" className="w-full h-full object-contain" />
+                        <img src={song.coverImage} alt={song.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white/60">XK</div>
                       )}
@@ -624,9 +624,9 @@ export const DesktopLibraryPage: React.FC = () => {
                     #{(purchasedPage - 1) * PAGE_SIZE + idx + 1}
                   </span>
                   <div className="flex-1 flex items-center gap-3.5 truncate pr-4">
-                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 relative shadow-md flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0 relative shadow-md group-hover:scale-105 transition-transform">
                       {song.coverImage ? (
-                        <img src={song.coverImage} alt={song.title} referrerPolicy="no-referrer" className="w-full h-full object-contain" />
+                        <img src={song.coverImage} alt={song.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white/60">XK</div>
                       )}

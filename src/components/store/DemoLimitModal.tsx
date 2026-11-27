@@ -123,12 +123,12 @@ export const DemoLimitModal: React.FC = () => {
         <div className="overflow-y-auto space-y-4 mt-4 flex-1 pr-1">
           {/* Song Info */}
           <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10">
-            <div className="w-14 h-14 rounded-xl overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-xl overflow-hidden bg-purple-900/40 border border-white/10 shrink-0 flex items-center justify-center">
               {activeSong.coverImage ? (
                 <img
                   src={activeSong.coverImage}
                   alt={activeSong.title}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (

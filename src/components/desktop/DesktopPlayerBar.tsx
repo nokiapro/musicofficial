@@ -148,13 +148,13 @@ export const DesktopPlayerBar: React.FC = () => {
               style={{ backgroundColor: 'var(--color-accent)' }}
             />
           )}
-          <div className="relative w-14 h-14 rounded-2xl bg-zinc-950/90 border border-white/15 p-0.5 flex items-center justify-center shrink-0 shadow-xl overflow-hidden">
+          <div className="relative w-14 h-14 rounded-2xl bg-zinc-900 border border-white/15 p-0.5 flex items-center justify-center shrink-0 shadow-xl overflow-hidden">
             {currentSong?.coverImage ? (
               <img
                 src={currentSong.coverImage}
                 alt={currentSong.title}
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-contain rounded-[13px]"
+                className="w-full h-full object-cover rounded-[13px]"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : null}

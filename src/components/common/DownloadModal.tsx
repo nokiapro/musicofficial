@@ -94,12 +94,12 @@ export const DownloadModal: React.FC = () => {
 
         {/* Song Card */}
         <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10">
-          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-zinc-950/90 relative flex items-center justify-center">
+          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-zinc-900 relative">
             {activeSong.coverImage ? (
               <img
                 src={activeSong.coverImage}
                 alt={activeSong.title}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : null}

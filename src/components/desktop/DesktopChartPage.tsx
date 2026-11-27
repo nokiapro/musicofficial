@@ -358,13 +358,13 @@ export const DesktopChartPage: React.FC = () => {
 
                 {/* Song info & Cover */}
                 <div className="flex items-center gap-3 min-w-0 pr-2">
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-md border border-white/10 bg-zinc-950/90 flex items-center justify-center">
+                  <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-md border border-white/10 bg-zinc-900 group-hover:scale-105 transition-transform">
                     {song.coverImage ? (
                       <img
                         src={song.coverImage}
                         alt={song.title}
                         referrerPolicy="no-referrer"
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-cover"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
                     ) : null}

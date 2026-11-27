@@ -247,13 +247,13 @@ export const DesktopWeeklyTopPage: React.FC = () => {
                     {/* Song info */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-950/90 border border-white/10 shrink-0 relative shadow-md flex items-center justify-center">
+                        <div className="w-11 h-11 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0 relative shadow-md group-hover:scale-105 transition-transform">
                           {song.coverImage ? (
                             <img
                               src={song.coverImage}
                               alt={song.title}
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-contain"
+                              className="w-full h-full object-cover"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : null}

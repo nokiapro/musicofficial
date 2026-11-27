@@ -610,14 +610,12 @@ export const ArtistBioPageView: React.FC<ArtistBioPageViewProps> = ({ onEditArti
 
                     {/* Cover & Title */}
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-zinc-950/90 border border-white/10 shadow-sm flex items-center justify-center">
-                        <img
-                          src={song.coverImage || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'}
-                          alt={song.title}
-                          referrerPolicy="no-referrer"
-                          className="h-full w-full object-contain"
-                        />
-                      </div>
+                      <img
+                        src={song.coverImage || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'}
+                        alt={song.title}
+                        referrerPolicy="no-referrer"
+                        className="h-10 w-10 shrink-0 rounded-lg object-cover border border-white/10 shadow-sm"
+                      />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span

@@ -96,13 +96,13 @@ export const DesktopQueueDrawer: React.FC = () => {
                   }}
                 >
                   <div className="flex items-center gap-3 truncate">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 relative border border-white/15 bg-zinc-950/90 shadow flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 relative border border-white/15 bg-zinc-900 shadow">
                       {currentSong.coverImage ? (
                         <img
                           src={currentSong.coverImage}
                           alt={currentSong.title}
                           referrerPolicy="no-referrer"
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-cover"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : null}
@@ -157,13 +157,13 @@ export const DesktopQueueDrawer: React.FC = () => {
                       className="flex items-center justify-between p-2 rounded-xl hover:bg-white/[0.06] cursor-pointer group transition-colors"
                     >
                       <div className="flex items-center gap-3 truncate">
-                        <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-950/90 shadow flex items-center justify-center">
+                        <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow">
                           {song.coverImage ? (
                             <img
                               src={song.coverImage}
                               alt={song.title}
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-contain"
+                              className="w-full h-full object-cover"
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           ) : null}
@@ -217,13 +217,13 @@ export const DesktopQueueDrawer: React.FC = () => {
                   >
                     <div className="flex items-center gap-3 truncate">
                       <div
-                        className="w-9 h-9 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-950/90 shadow flex items-center justify-center"
+                        className="w-9 h-9 rounded-lg overflow-hidden shrink-0 relative border border-white/10 bg-zinc-900 shadow"
                       >
                         {song.coverImage ? (
                           <img
                             src={song.coverImage}
                             alt={song.title}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-cover"
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
                         ) : null}

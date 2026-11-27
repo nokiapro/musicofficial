@@ -349,13 +349,13 @@ export const MobileFullPlayerModal: React.FC = () => {
               <div className="glass-panel w-full max-w-sm mx-auto p-5 rounded-3xl space-y-4">
                 {/* Top Row: Cover + Title, Artist, Real-time Likes, Real-time Listens */}
                 <div className="flex items-center gap-3.5">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/15 bg-zinc-950/90 shrink-0 shadow-lg relative flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/15 bg-zinc-900 shrink-0 shadow-lg relative">
                     {currentSong.coverImage ? (
                       <img
                         src={currentSong.coverImage}
                         alt={currentSong.title}
                         referrerPolicy="no-referrer"
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-cover"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
                     ) : (
@@ -435,7 +435,7 @@ export const MobileFullPlayerModal: React.FC = () => {
               </div>
             </div>
 
-            {/* SLIDE 2 (CENTER): ẢNH BÌA (ĐĨA XOAY TRÒN + ẢNH NẰM GỌN KHÔNG MẤT CHI TIẾT) */}
+            {/* SLIDE 2 (CENTER): ẢNH BÌA (ĐĨA XOAY) */}
             <div className="w-1/3 h-full flex flex-col items-center justify-center px-4 py-2 overflow-hidden">
               <div className="relative flex items-center justify-center">
                 <div
@@ -459,49 +459,22 @@ export const MobileFullPlayerModal: React.FC = () => {
                       animation: 'spinSlow 20s linear infinite',
                       animationPlayState: isPlaying ? 'running' : 'paused',
                     }}
-                    className="w-full h-full rounded-full bg-zinc-950 flex items-center justify-center overflow-hidden shadow-inner relative"
+                    className="w-full h-full rounded-full bg-gradient-to-tr from-purple-600 to-indigo-800 flex items-center justify-center overflow-hidden animate-spin-slower shadow-inner relative"
                   >
-                    {currentSong.coverImage && (
+                    {currentSong.coverImage ? (
                       <img
                         src={currentSong.coverImage}
-                        alt=""
-                        aria-hidden="true"
+                        alt={currentSong.title}
                         referrerPolicy="no-referrer"
-                        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-90 pointer-events-none"
+                        className="w-full h-full object-cover rounded-full"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
+                    ) : (
+                      <Disc3 className="w-24 h-24 text-white/70" />
                     )}
 
-                    {/* Full-size uncropped artwork seamlessly blended into the circle with zero square border */}
-                    <div
-                      className="relative z-10 w-[90%] h-[90%] flex items-center justify-center overflow-hidden"
-                      style={{
-                        maskImage: 'linear-gradient(to right, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
-                        WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
-                      }}
-                    >
-                      <div
-                        className="w-full h-full flex items-center justify-center"
-                        style={{
-                          maskImage: 'linear-gradient(to bottom, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
-                          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 1.5%, #000 98.5%, transparent 100%)',
-                        }}
-                      >
-                        {currentSong.coverImage ? (
-                          <img
-                            src={currentSong.coverImage}
-                            alt={currentSong.title}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-contain"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        ) : (
-                          <Disc3 className="w-24 h-24 text-white/70" />
-                        )}
-                      </div>
-                    </div>
-
                     {/* Specular light sheen for vinyl spin effect */}
-                    <div className="absolute inset-0 z-20 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.18)_90deg,transparent_180deg,rgba(255,255,255,0.18)_270deg,transparent_360deg)] pointer-events-none opacity-45" />
+                    <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.25)_90deg,transparent_180deg,rgba(255,255,255,0.25)_270deg,transparent_360deg)] pointer-events-none opacity-60" />
                   </div>
                 </div>
               </div>
@@ -890,13 +863,13 @@ export const MobileFullPlayerModal: React.FC = () => {
                         className="flex items-center justify-between p-2.5 rounded-xl hover:opacity-90 cursor-pointer border gap-2.5 transition-all"
                       >
                         <div className="flex items-center gap-2.5 min-w-0 flex-1 truncate">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-950/90 shadow relative flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-zinc-900 shadow relative">
                             {song.coverImage ? (
                               <img
                                 src={song.coverImage}
                                 alt={song.title}
                                 referrerPolicy="no-referrer"
-                                className="w-full h-full object-contain"
+                                className="w-full h-full object-cover"
                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
                               />
                             ) : null}
